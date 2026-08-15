@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Documento Maestro y Portal Oficial — USMCF (BRM5)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #0a0a0a;
+    color: #e8e8e8;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 48px; }
+  header.cover {
+    border: 1px solid #262626;
+    border-top: 5px solid #c8102e;
+    background: #111;
+    padding: 36px 32px;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  header.cover .emblem {
+    width: 72px; height: 72px;
+    margin: 0 auto 14px;
+    border: 2px solid #c9a227;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Impact", "Arial Narrow Bold", sans-serif;
+    font-size: 11px; letter-spacing: 2px; color: #c9a227;
+    text-transform: uppercase;
+  }
+  header.cover h1 {
+    font-family: "Impact", "Arial Narrow Bold", sans-serif;
+    font-weight: 400;
+    font-size: 30px; letter-spacing: 1px; text-transform: uppercase; color: #fff;
+  }
+  header.cover p {
+    color: #c9a227; letter-spacing: 3px; font-size: 12px; text-transform: uppercase; margin-top: 6px;
+  }
+  header.cover .sub {
+    color: #999; font-size: 13px; margin-top: 12px; font-style: italic;
+  }
+  .toc {
+    background: #111; border: 1px solid #262626; padding: 22px 28px; margin-bottom: 30px;
+  }
+  .toc h2 {
+    font-family: "Impact", "Arial Narrow Bold", sans-serif;
+    font-weight: 400; font-size: 16px; letter-spacing: 1px; color: #c8102e;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .toc ol { list-style: none; counter-reset: toc; }
+  .toc li { counter-increment: toc; padding: 4px 0; color: #bbb; font-size: 13px; }
+  .toc li::before { content: counter(toc, decimal-leading-zero) "  "; color: #c9a227; font-weight: bold; }
+  section.block {
+    border: 1px solid #262626; background: #111;
+    margin-bottom: 22px; padding: 26px 30px;
+    break-inside: avoid;
+  }
+  section.block h2 {
+    display: flex; align-items: baseline; gap: 14px;
+    font-family: "Impact", "Arial Narrow Bold", sans-serif;
+    font-weight: 400; font-size: 19px; letter-spacing: 0.5px;
+    text-transform: uppercase; color: #fff;
+    border-bottom: 1px solid #262626; padding-bottom: 12px; margin-bottom: 14px;
+  }
+  section.block h2 .num { color: #c8102e; }
+  section.block h3 {
+    font-family: Arial, sans-serif; font-weight: bold;
+    font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+    color: #c9a227; margin: 16px 0 8px;
+  }
+  section.block p { color: #bbb; font-size: 14px; margin-bottom: 8px; }
+  section.block strong { color: #fff; }
+  ul { list-style: none; margin-top: 6px; }
+  ul li { position: relative; padding: 4px 0 4px 18px; color: #bbb; font-size: 14px; }
+  ul li::before { content: ""; position: absolute; left: 0; top: 13px; width: 8px; height: 2px; background: #c8102e; }
+  ol.steps { list-style: none; counter-reset: step; margin-top: 6px; }
+  ol.steps li { counter-increment: step; display: flex; gap: 12px; align-items: flex-start; padding: 6px 0; color: #bbb; font-size: 14px; }
+  ol.steps li::before {
+    content: counter(step); font-family: "Impact", sans-serif; font-size: 15px; color: #c9a227;
+    border: 1px solid rgba(201,162,39,.5); width: 26px; height: 26px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  th, td { border: 1px solid #262626; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #1a1a1a; color: #c9a227; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; }
+  td { color: #bbb; }
+  td:first-child { color: #fff; font-weight: bold; }
+  blockquote.quote {
+    border-left: 3px solid #c9a227; background: #111;
+    padding: 22px 26px; margin-top: 8px;
+  }
+  blockquote.quote p { font-style: italic; font-size: 15px; color: #fff; }
+  blockquote.quote cite {
+    display: block; margin-top: 8px; font-style: normal;
+    letter-spacing: 1.5px; font-size: 12px; text-transform: uppercase; color: #c9a227;
+  }
+  footer.foot {
+    border-top: 1px solid #262626; margin-top: 20px; padding-top: 16px;
+    display: flex; justify-content: space-between; color: #666; font-size: 12px;
+  }
+  footer.foot .semper { color: #c9a227; letter-spacing: 1px; text-transform: uppercase; }
+  .pagebreak { break-before: page; }
+  @media print {
+    .no-break { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="cover">
+    <div class="emblem">USMCF<br/>ESCUDO</div>
+    <h1>Documento Maestro y Portal Oficial</h1>
+    <p>U.S. Marine Corps Force — Blackhawk Rescue Mission 5</p>
+    <div class="sub">“No seleccionamos a quienes nunca fallan. Seleccionamos a quienes mantienen la misión por encima del ego, aprenden de sus errores y continúan advancing.”</div>
+  </header>
+
+  <nav class="toc no-break">
+    <h2>Contenido</h2>
+    <ol>
+      <li>Información General y Bienvenida</li>
+      <li>Normas de Conducta, Reglamento y Sanciones</li>
+      <li>Proceso Completo de Verificación y Enlistamiento</li>
+      <li>Economía, Registro de Puntos y Salarios</li>
+      <li>Configuración Oficial de Uniforme y Equipo (BRM5)</li>
+      <li>Armería Oficial y Reglamento por División</li>
+      <li>Requisitos de Carga y Despliegues Especiales</li>
+      <li>Guía Técnica y Acceso a Servidores Privados</li>
+      <li>Horarios Oficiales de Actividades</li>
+      <li>Canales Oficiales y Redes Sociales</li>
+    </ol>
+  </nav>
+
+  <section class="block no-break">
+    <h2><span class="num">01</span>Información General y Bienvenida</h2>
+    <p>¡Bienvenido a la Comunidad de Rol del U.S. Marine Corps Force (USMCF)! Nuestra comunidad está diseñada para ofrecer una experiencia inmersiva, realista y altamente disciplinada donde podrás simular la vida y operaciones del Cuerpo de Marines de los Estados Unidos en <strong>Blackhawk Rescue Mission 5</strong>.</p>
+    <h3>¿Qué puedes esperar?</h3>
+    <ul>
+      <li><strong>Roles y Simulación:</strong> Vive la vida de un Marine desde el entrenamiento básico hasta misiones de combate realistas.</li>
+      <li><strong>Entrenamiento y Desarrollo:</strong> Sesiones simuladas que replican situaciones reales para mejorar habilidades tácticas, estratégicas y de liderazgo.</li>
+      <li><strong>Operaciones y Misiones:</strong> Misiones dinámicas que abarcan desde operaciones de rescate hasta patrullas tácticas.</li>
+      <li><strong>Comunidad y Camaradería:</strong> Conexión con otros entusiastas del realismo militar para alcanzar objetivos comunes.</li>
+      <li><strong>Historia y Tradición:</strong> Eventos especiales y ceremonias virtuales basadas en las tradiciones del USMC.</li>
+    </ul>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">02</span>Normas de Conducta, Reglamento y Sanciones</h2>
+    <h3>Normas de la Comunidad</h3>
+    <ul>
+      <li><strong>Respeto y Conducta:</strong> Trato cortés en todo momento. No se tolera el comportamiento inapropiado o irrespetuoso.</li>
+      <li><strong>Compromiso con el Realismo:</strong> Obligatoriedad de investigar y respetar procedimientos y protocolos militares reales.</li>
+      <li><strong>Colaboración y Comunicación:</strong> La coordinación breve y clara es fundamental para el éxito en misión.</li>
+      <li><strong>Cadena de Mando:</strong> Respeto estricto a las decisiones de instructores, suboficiales y Alto Mando.</li>
+    </ul>
+    <h3>Control Disciplinario y Sanciones</h3>
+    <ul>
+      <li><strong>Ausencias:</strong> Tienen que ser justificadas con anticipación; las faltas injustificadas a eventos oficiales conllevan llamadas de atención o degradación.</li>
+      <li><strong>Sanciones de Equipo/Disciplina:</strong> Uso inadecuado de chalecos, uniformes o armas fuera de la división asignada genera sanciones directas registradas en el canal oficial de sanciones.</li>
+    </ul>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">03</span>Proceso Completo de Verificación y Enlistamiento</h2>
+    <p>Para unirte y formar parte del equipo, debes seguir estos <strong>7 pasos</strong>:</p>
+    <ol class="steps">
+      <li><span><strong>Investigación y Comprensión:</strong> Familiarización con la estructura, tradiciones y valores de los Marines.</span></li>
+      <li><span><strong>Requisitos y Expectativas:</strong> Cumplimiento con la disciplina militar, compromiso con el realismo y participación activa.</span></li>
+      <li><span><strong>Contacto con la Comunidad:</strong> Ingreso al Discord oficial para solicitar orientación de enlistamiento.</span></li>
+      <li><span><strong>Registro y Verificación:</strong> Formulario de aplicación con datos del usuario y experiencia previa.</span></li>
+      <li><span><strong>Entrenamiento Inicial (TRS):</strong> Aprendizaje de protocolos militares, comunicaciones de radio y maniobras tácticas con los Drill Instructors.</span></li>
+      <li><span><strong>Asignación de Rol:</strong> Graduación e integración a una unidad o escuadra específica.</span></li>
+      <li><span><strong>Desarrollo Continuo:</strong> Participación activa en operaciones y mejora constante dentro del escalafón.</span></li>
+    </ol>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">04</span>Economía, Registro de Puntos y Salarios</h2>
+    <ul>
+      <li><strong>Sistema de Puntos:</strong> Control y registro de puntos acumulados por asistencia a patrullas, entrenamientos y misiones.</li>
+      <li><strong>Registro de Salarios:</strong> Tablas periódicas de pago y reconocimiento económico/rango según la actividad y rol dentro de la facción.</li>
+    </ul>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">05</span>Configuración Oficial de Uniforme y Equipo (BRM5)</h2>
+    <p>Objetivo: realismo visual y disciplina táctica siguiendo el estándar del US Marine Corps.</p>
+    <h3>Uniforme</h3>
+    <ul>
+      <li><strong>Camuflaje:</strong> MCCUU (Patrón Desierto o Bosque).</li>
+      <li><strong>Colores Permitidos:</strong> Tan / Coyote Brown.</li>
+      <li><strong>Prohibido:</strong> Colores llamativos, accesorios de la Store no aprobados o ropa civil.</li>
+    </ul>
+    <h3>Chaleco Táctico (Longship V1 SAPI — Color Obligatorio: TAN)</h3>
+    <ul>
+      <li><strong>Peso Ligero (Sin mochila):</strong> Uso en Asalto / CQB / Incursión (Máxima movilidad).</li>
+      <li><strong>Peso Medio (Mochila con autorización):</strong> Uso en Patrulla / Reconocimiento. Carga: raciones, kit médico, binoculares, brújula.</li>
+      <li><strong>Peso Pesado / Carga Frontal:</strong> Permitido cargadores/munición, vendajes, torniquetes, herramientas de rol (multiusos/IFAK) y bolsas utilitarias (admin pouch).</li>
+      <li><strong>Propósito y Ubicación:</strong> Identificación de aliados, reducción de fuego amigo. Parche de la bandera de EE. UU. y parche de escuadra en el pecho derecho o centro del chaleco.</li>
+    </ul>
+    <h3>Casco y Accesorios Faciales</h3>
+    <ul>
+      <li><strong>Modelo Estándar:</strong> AEGIS Maritime Ballistic (Tan) + Ballistic Goggles (Tan) o Ballistic Glass.</li>
+      <li><strong>Excepción MICH 2000 (Gratis):</strong> Uso reservado exclusivamente para Artilleros de Vehículos, Machine Gunners y la División Logística (como identificador visual obligatorio).</li>
+      <li><strong>Modificación Facial:</strong> Barba permitida.</li>
+    </ul>
+    <h3>Accesorios Tácticos</h3>
+    <ul>
+      <li><strong>NVG (Visión Nocturna):</strong> Uso exclusivo en misiones nocturnas. Prohibido de día.</li>
+      <li><strong>Comms / Audífonos Tácticos:</strong> Autorizados para pilotos y operadores de radio.</li>
+      <li><strong>IR Strobe:</strong> Sugerido para formaciones y señalización nocturna.</li>
+    </ul>
+  </section>
+
+  <section class="block pagebreak">
+    <h2><span class="num">06</span>Armería Oficial y Reglamento por División</h2>
+    <p>El uso de armas fuera de la división o especialidad asignada está estrictamente prohibido.</p>
+    <table>
+      <tr>
+        <th>División</th>
+        <th>Armamento Autorizado</th>
+      </tr>
+      <tr>
+        <td>Infantería</td>
+        <td>RF416 A3 (fusil estándar moderno) · M16A4 (precisión media/larga) · M4 Carbine (alta movilidad) · Secundaria: M9A1 Beretta · CQC: Bayoneta M9 (estándar para toda la infantería). Miras M150 y cargadores USGI.</td>
+      </tr>
+      <tr>
+        <td>Logística</td>
+        <td>Soporte y defensa personal (no participa en asalto frontal salvo orden directa). RF416 A3 Ligera o M4A1 (Mira M150, Cargador USGI). M16A4 sólo en emergencias. Secundaria: M9A1 LOG.</td>
+      </tr>
+      <tr>
+        <td>Recon</td>
+        <td>Fusiles: RF416 A3 y M4A1 Carbine. Snipers: M24 SWS (Mira PM II), L115A3 (largo alcance), M110 SASS (semiautomático de precisión).</td>
+      </tr>
+      <tr>
+        <td>MARSOC (Fuerzas Especiales)</td>
+        <td>RF416 A5 (estándar) · SCAR-L (misiones especiales, máximo 1 por equipo) · RF417 (Tiradores Designados MARSOC) · Secundaria: M9A1 / Pistola Táctica.</td>
+      </tr>
+      <tr>
+        <td>Especialidades en Combate</td>
+        <td>Médico de Combate: Downrange Tomahawk (sólo rescate/acceso). Machine Gunner: M249 (Mira M150, cinta 5.56x45mm, bípode). Ingeniero de Combate: Escopeta M1014 + Halligan Bar.</td>
+      </tr>
+    </table>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">07</span>Requisitos de Carga y Despliegues Especiales (Loadouts)</h2>
+    <ul>
+      <li><strong>Despliegue Anfibio:</strong> Equipamiento impermeable/ligero y configuración optimizada para operaciones costeras e inmersión en el mapa Sea.</li>
+      <li><strong>Patrullas Nocturnas:</strong> Uso obligatorio de NVG, acopladores IR Strobe y supresores de destello o silenciadores bajo autorización.</li>
+      <li><strong>Mecánicas de Juego (BRM5):</strong> Aplicación de mecánicas de penetración de balística en coberturas y optimización de rendimiento en combates CQB.</li>
+    </ul>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">08</span>Guía Técnica y Acceso a Servidores Privados</h2>
+    <ul>
+      <li><strong>Configuración de Controles / Teclas:</strong> Guía visual de mapeo de teclas para radio comms, postura, inclinación y accesorios de cascos/armas.</li>
+      <li><strong>Ingreso a Servidores Privados:</strong> Pasos e instrucciones de enlace directo para ingresar al servidor privado de operaciones sin interferencia de servidores públicos.</li>
+    </ul>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">09</span>Horarios Oficiales de Actividades</h2>
+    <p>Hora Perú / GMT-5.</p>
+    <table>
+      <tr>
+        <th>Día</th>
+        <th>Hora</th>
+        <th>Actividad</th>
+      </tr>
+      <tr><td>Martes y Jueves</td><td>17:00 HRS</td><td>Patrullajes de rutina y reconocimientos.</td></tr>
+      <tr><td>Miércoles y Viernes</td><td>—</td><td>Entrenamientos oficiales, cursos de instrucción e instrucción de reclutas (TRS).</td></tr>
+      <tr><td>Sábados</td><td>17:30 HRS</td><td>Misión Principal de la Facción (Despliegues Masivos).</td></tr>
+      <tr><td>Domingos</td><td>17:30 HRS</td><td>Operaciones Especiales (MARSOC / RECON) y simulaciones de combate inter-facciones.</td></tr>
+    </table>
+  </section>
+
+  <section class="block no-break">
+    <h2><span class="num">10</span>Canales Oficiales y Redes Sociales</h2>
+    <table>
+      <tr><th>Plataforma</th><th>Enlace / Usuario</th></tr>
+      <tr><td>Gravatar / Web Oficial</td><td>gravatar.com/usmarinecorpsforce</td></tr>
+      <tr><td>YouTube</td><td>@u.s_marine_corps_force123</td></tr>
+      <tr><td>TikTok</td><td>@u.s_marine_corps_force</td></tr>
+      <tr><td>Instagram</td><td>Oficinas de prensa y galerías de la facción.</td></tr>
+    </table>
+  </section>
+
+  <blockquote class="quote no-break">
+    <p>“No seleccionamos a quienes nunca fallan. Seleccionamos a quienes mantienen la misión por encima del ego, aprenden de sus errores y continúan advancing.”</p>
+    <cite>— Alto Mando USMCF</cite>
+  </blockquote>
+
+  <footer class="foot">
+    <p>© 2026 USMCF — U.S. Marine Corps Force. Documento oficial.</p>
+    <p class="semper">Semper Fidelis.</p>
+  </footer>
+
+</div>
+</body>
+</html>
