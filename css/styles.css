@@ -1279,6 +1279,16 @@ img {
   color: var(--text-dim);
 }
 
+a.social-desc {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a.social-desc:hover {
+  color: var(--gold);
+}
+
 /* Cita final */
 .doc-quote {
   border-left: 3px solid var(--gold);
