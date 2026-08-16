@@ -68,22 +68,34 @@
     el.classList.add("reveal-rise");
   });
 
-  var heroVideo = document.getElementById("heroVideo");
-  if (heroVideo) {
-    heroVideo.addEventListener("click", function () {
-      if (heroVideo.querySelector("video")) {
-        return;
-      }
-      var video = document.createElement("video");
-      video.className = "hero-video";
-      video.src = "video/usmcf.mp4";
-      video.controls = true;
-      video.autoplay = true;
-      video.loop = true;
-      heroVideo.innerHTML = "";
-      heroVideo.appendChild(video);
-      video.play();
+  var heroVideo = document.querySelector(".hero-video");
+  var heroUnmute = document.getElementById("heroUnmute");
+
+  function enableSound() {
+    if (!heroVideo) {
+      return;
+    }
+    heroVideo.muted = false;
+    heroVideo.volume = 1;
+    if (heroVideo.paused) {
+      heroVideo.play();
+    }
+    if (heroUnmute) {
+      heroUnmute.classList.add("hidden");
+    }
+    document.removeEventListener("click", enableSound);
+    document.removeEventListener("keydown", enableSound);
+    document.removeEventListener("touchstart", enableSound);
+  }
+
+  if (heroUnmute) {
+    heroUnmute.addEventListener("click", function (event) {
+      event.stopPropagation();
+      enableSound();
     });
+    document.addEventListener("click", enableSound);
+    document.addEventListener("keydown", enableSound);
+    document.addEventListener("touchstart", enableSound);
   }
 
   if ("IntersectionObserver" in window && targets.length) {
