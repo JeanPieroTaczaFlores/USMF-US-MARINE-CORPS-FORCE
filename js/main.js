@@ -68,6 +68,24 @@
     el.classList.add("reveal-rise");
   });
 
+  var heroVideo = document.getElementById("heroVideo");
+  if (heroVideo) {
+    heroVideo.addEventListener("click", function () {
+      if (heroVideo.querySelector("video")) {
+        return;
+      }
+      var video = document.createElement("video");
+      video.className = "hero-video";
+      video.src = "video/usmcf.mp4";
+      video.controls = true;
+      video.autoplay = true;
+      video.loop = true;
+      heroVideo.innerHTML = "";
+      heroVideo.appendChild(video);
+      video.play();
+    });
+  }
+
   if ("IntersectionObserver" in window && targets.length) {
     var io = new IntersectionObserver(
       function (entries) {
