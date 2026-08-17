@@ -39,9 +39,14 @@
         <a href="recursos.html" class="nav-link">RECURSOS</a>
         <a href="documento.html" class="nav-link">DOCUMENTO</a>
         <a href="contacto.html" class="nav-link">CONTACTO</a>
+        <a href="tienda.html" class="nav-link">TIENDA</a>
+        <a href="opiniones.html" class="nav-link">OPINIONES</a>
       </nav>
 
-      <a href="reclutamiento.html" class="btn btn-solid btn-cta">ÚNETE AHORA &gt;</a>
+      <div class="nav-auth">
+        <a href="login.html" class="btn btn-ghost btn-login-nav">INICIAR SESIÓN</a>
+        <a href="register.html" class="btn btn-solid btn-register-nav">REGÍSTRATE</a>
+      </div>
     </div>
   </header>
 
@@ -137,6 +142,15 @@
     </div>
   </section>
 
+  <!-- ============ MISIONES DINÁMICAS ============ -->
+  <section class="quick" id="misiones-dinamicas" style="display:none;">
+    <div class="container">
+      <h2 class="section-title">MISIONES DISPONIBLES</h2>
+      <p style="color:var(--text-dim);margin-bottom:1.5rem;">Misiones activas de la facción. Inscríbete para ganar puntos y dinero.</p>
+      <div class="quick-grid" id="dynamicMissions"></div>
+    </div>
+  </section>
+
   <!-- ============ CTA DISCORD ============ -->
   <section class="discord-cta">
     <div class="container discord-cta-inner">
@@ -202,5 +216,61 @@
   </a>
 
   <script src="js/main.js"></script>
+  <script src="js/local-auth.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/missions.js"></script>
+  <script>
+    (async function () {
+      var profile = await getMyProfile();
+      if (!profile || profile.estado !== "activo") return;
+
+      var section = document.getElementById("misiones-dinamicas");
+      var grid = document.getElementById("dynamicMissions");
+      section.style.display = "block";
+
+      var missions = await USMCF.Missions.list({ estado: "activa" });
+      var scheduled = await USMCF.Missions.list({ estado: "programada" });
+      missions = missions.concat(scheduled);
+
+      if (missions.length === 0) {
+        grid.innerHTML = '<p style="color:var(--text-dim);padding:2rem;">No hay misiones disponibles ahora.</p>';
+        return;
+      }
+
+      grid.innerHTML = missions.map(function (m) {
+        var fecha = new Date(m.fecha).toLocaleDateString("es-PE", { weekday:"short", month:"short", day:"numeric" });
+        var hora = new Date(m.fecha).toLocaleTimeString("es-PE", { hour:"2-digit", minute:"2-digit" });
+        var estadoColor = m.estado === "activa" ? "var(--green)" : "var(--gold)";
+        return '<div class="quick-card" style="position:relative;">' +
+          '<div class="quick-content" style="padding:1.5rem;">' +
+          '<span style="position:absolute;top:1rem;right:1rem;font-size:0.65rem;padding:0.2rem 0.5rem;border-radius:3px;background:' + estadoColor + ';color:#000;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">' + m.estado + '</span>' +
+          '<h3 class="quick-title">' + m.titulo + '</h3>' +
+          '<p class="quick-desc">' + m.descripcion + '</p>' +
+          '<div style="display:flex;gap:1rem;margin:0.8rem 0;font-size:0.8rem;color:var(--text-dim);">' +
+          '<span>&#128197; ' + fecha + '</span>' +
+          '<span>&#128336; ' + hora + '</span>' +
+          '<span style="color:var(--gold);">&#9733; ' + m.recompensa_puntos + ' pts</span>' +
+          '<span style="color:var(--green);">&#128176; ' + m.recompensa_dinero + ' coins</span>' +
+          '</div>' +
+          '<button class="btn btn-solid" style="font-size:0.78rem;padding:0.5rem 1rem;" onclick="joinMission(\'' + m.id + '\', this)">INSCRIBIRSE</button>' +
+          '</div></div>';
+      }).join("");
+    })();
+
+    async function joinMission(id, btn) {
+      var profile = await getMyProfile();
+      btn.disabled = true;
+      btn.textContent = "INSCRIBIENDO...";
+      var result = await USMCF.Missions.join(id, profile.id);
+      if (result.error) {
+        alert(result.error);
+        btn.disabled = false;
+        btn.textContent = "INSCRIBIRSE";
+      } else {
+        btn.textContent = "INSCRITO ✓";
+        btn.style.background = "var(--green)";
+      }
+    }
+  </script>
 </body>
 </html>

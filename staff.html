@@ -10,38 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/auth.css" />
-  <style>
-    .staff-header { display:flex;justify-content:space-between;align-items:center;padding:1rem 2rem;background:var(--auth-card);border-bottom:1px solid var(--auth-border); }
-    .staff-body { max-width:1400px;margin:0 auto;padding:1.5rem 2rem 3rem; }
-    .staff-title { font-family:var(--font-display);font-size:1.6rem;text-transform:uppercase;color:var(--auth-text);margin-bottom:1.5rem; }
-    .tabs { display:flex;gap:0;border-bottom:2px solid var(--auth-border);margin-bottom:1.5rem; }
-    .tab { padding:0.7rem 1.4rem;font-family:var(--font-cond);font-size:0.82rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--auth-text-dim);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s; }
-    .tab.active { color:var(--auth-gold);border-bottom-color:var(--auth-gold); }
-    .tab:hover { color:var(--auth-text); }
-    .panel { display:none; }
-    .panel.active { display:block; }
-    .table-wrap { overflow-x:auto;background:var(--auth-card);border:1px solid var(--auth-border);border-radius:10px; }
-    table { width:100%;border-collapse:collapse; }
-    th,td { padding:0.7rem 1rem;text-align:left;font-size:0.88rem;border-bottom:1px solid var(--auth-border); }
-    th { font-family:var(--font-cond);font-size:0.75rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--auth-text-dim);background:rgba(255,255,255,0.03); }
-    td { color:var(--auth-text); }
-    tr:hover td { background:rgba(255,255,255,0.02); }
-    .badge { display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-family:var(--font-cond);font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase; }
-    .badge-pendiente { background:rgba(212,168,67,0.15);color:var(--auth-gold); }
-    .badge-activo { background:rgba(34,197,94,0.15);color:var(--auth-success); }
-    .badge-inactivo { background:rgba(239,68,68,0.15);color:var(--auth-error); }
-    .btn-sm { padding:0.35rem 0.8rem;border:none;border-radius:5px;font-family:var(--font-cond);font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all 0.15s; }
-    .btn-accept { background:rgba(34,197,94,0.2);color:var(--auth-success);border:1px solid rgba(34,197,94,0.3); }
-    .btn-accept:hover { background:var(--auth-success);color:#fff; }
-    .btn-reject { background:rgba(239,68,68,0.2);color:var(--auth-error);border:1px solid rgba(239,68,68,0.3); }
-    .btn-reject:hover { background:var(--auth-error);color:#fff; }
-    .search-bar { width:100%;padding:0.7rem 1rem;background:var(--auth-input-bg);border:1px solid var(--auth-input-border);border-radius:8px;color:var(--auth-text);font-family:var(--font-body);font-size:0.9rem;margin-bottom:1rem;outline:none; }
-    .search-bar:focus { border-color:var(--auth-input-focus); }
-    .stats-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem; }
-    .stat-card { background:var(--auth-card);border:1px solid var(--auth-border);border-radius:10px;padding:1.2rem;text-align:center; }
-    .stat-value { font-family:var(--font-display);font-size:2rem;color:var(--auth-text); }
-    .stat-label { font-family:var(--font-cond);font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--auth-text-dim);margin-top:0.3rem; }
-  </style>
+  <link rel="stylesheet" href="css/admin.css" />
 </head>
 <body style="background:var(--auth-bg);">
   <header class="staff-header">
@@ -55,7 +24,7 @@
     </div>
   </header>
 
-  <main class="staff-body">
+  <main class="admin-body">
     <h1 class="staff-title">PANEL DE STAFF</h1>
 
     <div class="stats-grid">
@@ -68,58 +37,54 @@
       <button class="tab active" data-panel="solicitudes">SOLICITUDES</button>
       <button class="tab" data-panel="usuarios">USUARIOS</button>
       <button class="tab" data-panel="misiones">MISIONES</button>
+      <button class="tab" data-panel="opiniones">OPINIONES</button>
     </div>
 
-    <!-- PANEL SOLICITUDES -->
     <div class="panel active" id="panel-solicitudes">
       <div class="table-wrap">
-        <table>
-          <thead><tr><th>Nombre</th><th>Roblox</th><th>Email</th><th>Fecha</th><th>Acciones</th></tr></thead>
-          <tbody id="requestsTable"></tbody>
-        </table>
+        <table><thead><tr><th>Nombre</th><th>Roblox</th><th>Email</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <tbody id="requestsTable"></tbody></table>
       </div>
       <p id="noRequests" style="text-align:center;color:var(--auth-text-dim);padding:2rem;display:none;">No hay solicitudes pendientes.</p>
     </div>
 
-    <!-- PANEL USUARIOS (solo lectura) -->
     <div class="panel" id="panel-usuarios">
-      <input type="text" class="search-bar" id="searchUsers" placeholder="Buscar por nombre, usuario o rango..." />
+      <input type="text" class="search-bar" id="searchUsers" placeholder="Buscar..." />
       <div class="table-wrap">
-        <table>
-          <thead><tr><th>Nombre</th><th>Roblox</th><th>Rango</th><th>Puntos</th><th>Dinero</th><th>Rol</th><th>Estado</th></tr></thead>
-          <tbody id="usersTable"></tbody>
-        </table>
+        <table><thead><tr><th>Nombre</th><th>Roblox</th><th>Rango</th><th>Pts</th><th>Coins</th><th>Rol</th><th>Estado</th></tr></thead>
+        <tbody id="usersTable"></tbody></table>
       </div>
     </div>
 
-    <!-- PANEL MISIONES -->
     <div class="panel" id="panel-misiones">
       <div class="table-wrap">
-        <table>
-          <thead><tr><th>Título</th><th>Fecha</th><th>Puntos</th><th>Dinero</th><th>Estado</th></tr></thead>
-          <tbody id="missionsTable"></tbody>
-        </table>
+        <table><thead><tr><th>Título</th><th>Fecha</th><th>Pts</th><th>Coins</th><th>Estado</th></tr></thead>
+        <tbody id="missionsTable"></tbody></table>
       </div>
+    </div>
+
+    <div class="panel" id="panel-opiniones">
+      <div class="table-wrap">
+        <table><thead><tr><th>Fecha</th><th>Opinión</th></tr></thead>
+        <tbody id="opinionsTable"></tbody></table>
+      </div>
+      <p id="noOpinions" style="text-align:center;color:var(--auth-text-dim);padding:2rem;display:none;">No hay opiniones.</p>
     </div>
   </main>
 
-  <a href="https://discord.gg/jNXA6AQ4Y" class="float-discord" target="_blank" rel="noopener" aria-label="Únete al Discord de USMCF">
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-  </a>
+  <a href="https://discord.gg/jNXA6AQ4Y" class="float-discord" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></a>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/local-auth.js"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/opinions.js"></script>
   <script>
     (async function () {
       var profile = await getMyProfile();
-      if (!profile || (profile.rol !== "staff" && profile.rol !== "admin" && profile.rol !== "super_admin")) {
-        window.location.href = "login.html"; return;
-      }
-      if (profile.estado === "pendiente") { window.location.href = "pendiente.html"; return; }
+      if (!profile || (profile.rol !== "staff" && profile.rol !== "admin" && profile.rol !== "super_admin")) { window.location.href = "login.html"; return; }
       if (profile.rol === "admin" || profile.rol === "super_admin") { window.location.href = "admin.html"; return; }
-
       document.getElementById("staffName").textContent = profile.nombre + " (STAFF)";
 
       document.querySelectorAll(".tab").forEach(function (t) {
@@ -131,104 +96,56 @@
         });
       });
 
-      await loadRequests();
-      await loadUsers();
-      await loadMissions();
+      document.getElementById("searchUsers").addEventListener("input", async function (e) {
+        var q = e.target.value.toLowerCase();
+        var r = await supabase.from("profiles").select("*");
+        var filtered = (r.data || []).filter(function (u) { return (u.nombre + u.usuario_roblox + u.rango).toLowerCase().indexOf(q) !== -1; });
+        renderUsers(filtered);
+      });
+
+      await Promise.all([loadRequests(), loadUsers(), loadMissions(), loadOpinions()]);
     })();
 
     async function loadRequests() {
-      var result = await supabase.from("profiles").select("*").eq("estado", "pendiente").order("created_at");
-      var requests = result.data || [];
-      document.getElementById("statPendientes").textContent = requests.length;
-      var tbody = document.getElementById("requestsTable");
-      if (requests.length === 0) {
-        document.getElementById("noRequests").style.display = "block";
-        tbody.innerHTML = "";
-        return;
-      }
-      tbody.innerHTML = requests.map(function (u) {
-        var fecha = new Date(u.created_at).toLocaleDateString("es-PE");
-        return '<tr>' +
-          '<td>' + u.nombre + '</td>' +
-          '<td>' + u.usuario_roblox + '</td>' +
-          '<td>' + u.email + '</td>' +
-          '<td>' + fecha + '</td>' +
-          '<td>' +
-          '<button class="btn-sm btn-accept" onclick="approveUser(\'' + u.id + '\')">APROBAR</button> ' +
-          '<button class="btn-sm btn-reject" onclick="rejectUser(\'' + u.id + '\')">RECHAZAR</button>' +
-          '</td></tr>';
+      var r = await supabase.from("profiles").select("*").eq("estado", "pendiente").order("created_at");
+      var reqs = r.data || [];
+      document.getElementById("statPendientes").textContent = reqs.length;
+      if (reqs.length === 0) { document.getElementById("noRequests").style.display = "block"; document.getElementById("requestsTable").innerHTML = ""; return; }
+      document.getElementById("noRequests").style.display = "none";
+      document.getElementById("requestsTable").innerHTML = reqs.map(function (u) {
+        return '<tr><td>' + u.nombre + '</td><td>' + u.usuario_roblox + '</td><td>' + u.email + '</td><td>' + new Date(u.created_at).toLocaleDateString("es-PE") + '</td><td><button class="btn-sm btn-accept" onclick="approve(\'' + u.id + '\')">APROBAR</button> <button class="btn-sm btn-reject" onclick="reject(\'' + u.id + '\')">RECHAZAR</button></td></tr>';
       }).join("");
     }
-
-    async function approveUser(id) {
-      await supabase.from("profiles").update({ estado: "activo", rango: "Soldado", dinero: 500, puntos: 100 }).eq("id", id);
-      await loadRequests();
-      await loadUsers();
-    }
-
-    async function rejectUser(id) {
-      if (!confirm("¿Rechazar y eliminar este usuario?")) return;
-      await supabase.from("profiles").delete().eq("id", id);
-      await loadRequests();
-      await loadUsers();
-    }
+    async function approve(id) { await supabase.from("profiles").update({ estado: "activo", rango: "Soldado", dinero: 500, puntos: 100 }).eq("id", id); await Promise.all([loadUsers(), loadRequests()]); }
+    async function reject(id) { if (!confirm("¿Rechazar?")) return; await supabase.from("profiles").delete().eq("id", id); await Promise.all([loadUsers(), loadRequests()]); }
 
     async function loadUsers() {
-      var result = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-      var users = result.data || [];
-      document.getElementById("statTotal").textContent = users.length;
-      var tbody = document.getElementById("usersTable");
-      tbody.innerHTML = users.map(function (u) {
-        return '<tr>' +
-          '<td>' + u.nombre + '</td>' +
-          '<td>' + u.usuario_roblox + '</td>' +
-          '<td>' + u.rango + '</td>' +
-          '<td>' + u.puntos + '</td>' +
-          '<td>' + u.dinero + '</td>' +
-          '<td><span class="badge badge-' + (u.rol === "super_admin" || u.rol === "admin" ? "inactivo" : u.rol === "staff" ? "pendiente" : "activo") + '">' + u.rol + '</span></td>' +
-          '<td><span class="badge badge-' + u.estado + '">' + u.estado + '</span></td>' +
-          '</tr>';
+      var r = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+      document.getElementById("statTotal").textContent = (r.data || []).length;
+      renderUsers(r.data || []);
+    }
+    function renderUsers(users) {
+      document.getElementById("usersTable").innerHTML = users.map(function (u) {
+        return '<tr><td>' + u.nombre + '</td><td>' + u.usuario_roblox + '</td><td>' + u.rango + '</td><td>' + u.puntos + '</td><td>' + u.dinero + '</td><td><span class="badge badge-' + (u.rol === "staff" ? "pendiente" : "activo") + '">' + u.rol + '</span></td><td><span class="badge badge-' + u.estado + '">' + u.estado + '</span></td></tr>';
       }).join("");
     }
 
     async function loadMissions() {
-      var result = await supabase.from("missions").select("*").order("fecha", { ascending: false });
-      var missions = result.data || [];
+      var missions = await USMCF.Missions.list();
       document.getElementById("statMisiones").textContent = missions.length;
-      var tbody = document.getElementById("missionsTable");
-      tbody.innerHTML = missions.map(function (m) {
-        var fecha = new Date(m.fecha).toLocaleDateString("es-PE");
-        return '<tr>' +
-          '<td>' + m.titulo + '</td>' +
-          '<td>' + fecha + '</td>' +
-          '<td>' + m.recompensa_puntos + '</td>' +
-          '<td>' + m.recompensa_dinero + '</td>' +
-          '<td><span class="badge badge-' + (m.estado === "terminada" ? "activo" : m.estado === "activa" ? "pendiente" : "inactivo") + '">' + m.estado + '</span></td>' +
-          '</tr>';
+      document.getElementById("missionsTable").innerHTML = missions.map(function (m) {
+        return '<tr><td>' + m.titulo + '</td><td>' + new Date(m.fecha).toLocaleDateString("es-PE") + '</td><td>' + m.recompensa_puntos + '</td><td>' + m.recompensa_dinero + '</td><td><span class="badge badge-' + (m.estado === "activa" ? "pendiente" : m.estado === "terminada" ? "activo" : "inactivo") + '">' + m.estado + '</span></td></tr>';
       }).join("");
     }
 
-    document.getElementById("searchUsers").addEventListener("input", async function (e) {
-      var q = e.target.value.toLowerCase();
-      var result = await supabase.from("profiles").select("*");
-      var filtered = (result.data || []).filter(function (u) {
-        return u.nombre.toLowerCase().indexOf(q) !== -1 ||
-               u.usuario_roblox.toLowerCase().indexOf(q) !== -1 ||
-               u.rango.toLowerCase().indexOf(q) !== -1;
-      });
-      var tbody = document.getElementById("usersTable");
-      tbody.innerHTML = filtered.map(function (u) {
-        return '<tr>' +
-          '<td>' + u.nombre + '</td>' +
-          '<td>' + u.usuario_roblox + '</td>' +
-          '<td>' + u.rango + '</td>' +
-          '<td>' + u.puntos + '</td>' +
-          '<td>' + u.dinero + '</td>' +
-          '<td><span class="badge badge-' + (u.rol === "super_admin" || u.rol === "admin" ? "inactivo" : u.rol === "staff" ? "pendiente" : "activo") + '">' + u.rol + '</span></td>' +
-          '<td><span class="badge badge-' + u.estado + '">' + u.estado + '</span></td>' +
-          '</tr>';
+    async function loadOpinions() {
+      var opinions = await USMCF.Opinions.list();
+      if (opinions.length === 0) { document.getElementById("noOpinions").style.display = "block"; return; }
+      document.getElementById("noOpinions").style.display = "none";
+      document.getElementById("opinionsTable").innerHTML = opinions.map(function (o) {
+        return '<tr><td>' + new Date(o.created_at).toLocaleDateString("es-PE") + '</td><td>' + o.texto + '</td></tr>';
       }).join("");
-    });
+    }
   </script>
 </body>
 </html>
