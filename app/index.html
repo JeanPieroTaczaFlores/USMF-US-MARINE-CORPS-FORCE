@@ -1,13 +1,52 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>USMCF — US Marine Corps Force</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>USMCF — US Marine Corps Force</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'base-950':'#0a0e14','base-900':'#0f1318','base-800':'#151a21','base-700':'#1c222b',
+            'base-600':'#252d38','base-500':'#3a4556','base-400':'#5a6a7e','base-300':'#8896a8',
+            'base-200':'#b8c4d0','base-100':'#e2e8f0',
+            'accent':'#c9a227','accent-hover':'#d4b23c',
+            'danger':'#dc2626','success':'#16a34a','warning':'#d97706',
+          },
+          fontFamily: { sans:['Inter','system-ui','sans-serif'], display:['Oswald','system-ui','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#0a0e14;color:#b8c4d0;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0f1318}::-webkit-scrollbar-thumb{background:#252d38;border-radius:3px}
+    ::selection{background:rgba(201,162,39,.12);color:#c9a227}
+    .spinner{width:40px;height:40px;border:2px solid #c9a227;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .fade-in{animation:fadeIn .2s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(201,162,39,.4)!important}
+    .modal-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(10,14,20,.8);backdrop-filter:blur(4px)}
+    .modal-box{width:100%;background:#0f1318;border:1px solid rgba(28,34,43,.6);border-radius:1rem;padding:1.5rem;max-height:90vh;overflow-y:auto}
+    .table-wrap{overflow-x:auto;border-radius:.75rem;border:1px solid rgba(28,34,43,.4)}
+    .table-wrap table{width:100%;font-size:.875rem}
+    .table-wrap th{padding:.75rem 1rem;text-align:left;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#5a6a7e;background:rgba(21,26,33,.3);border-bottom:1px solid rgba(28,34,43,.4)}
+    .table-wrap td{padding:.75rem 1rem;border-bottom:1px solid rgba(28,34,43,.2)}
+    .table-wrap tr:hover{background:rgba(21,26,33,.3)}
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="modal-root"></div>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>
