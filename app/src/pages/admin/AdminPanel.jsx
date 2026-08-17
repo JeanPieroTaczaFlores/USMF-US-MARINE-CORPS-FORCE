@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import PanelLayout from '../../components/PanelLayout'
 import { StatCard, Badge, Tabs, SearchInput, EmptyState } from '../../components/ui'
-import { Users, Clock, CheckCircle, Target, ShoppingBag, MessageSquare, Plus, Pencil, Gift, Trash2, X } from 'lucide-react'
+import { Users, Clock, CheckCircle, Target, ShoppingBag, MessageSquare, Plus, Pencil, Gift, Trash2, X, Save, Shield, Crown, UserCog, Coins } from 'lucide-react'
 
 export default function AdminPanel() {
   const [tab, setTab] = useState('usuarios')
@@ -12,16 +12,18 @@ export default function AdminPanel() {
   const [missions, setMissions] = useState([])
   const [shopItems, setShopItems] = useState([])
   const [opinions, setOpinions] = useState([])
+  const [roles, setRoles] = useState([])
   const [search, setSearch] = useState('')
 
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
-    const [u, m, s, o] = await Promise.all([
+    const [u, m, s, o, r] = await Promise.all([
       supabase.from('usuarios').select('*').order('created_at', { ascending: false }),
       supabase.from('misiones').select('*').order('created_at', { ascending: false }),
       supabase.from('tienda_items').select('*').order('created_at', { ascending: false }),
       supabase.from('opiniones').select('*, usuarios(nombre, usuario_roblox, puntos, dinero)').order('created_at', { ascending: false }),
+      supabase.from('roles').select('*').order('created_at', { ascending: false }),
     ])
     const allUsers = u.data || []
     setUsers(allUsers)
@@ -37,6 +39,7 @@ export default function AdminPanel() {
     setMissions(m.data || [])
     setShopItems(s.data || [])
     setOpinions(o.data || [])
+    setRoles(r.data || [])
   }
 
   const tabList = [
@@ -45,10 +48,11 @@ export default function AdminPanel() {
     { id: 'misiones', label: 'MISIONES', count: stats.misiones },
     { id: 'tienda', label: 'TIENDA', count: stats.items },
     { id: 'opiniones', label: 'OPINIONES', count: stats.opiniones },
+    { id: 'roles', label: 'ROLES', count: roles.length },
   ]
 
   const filteredUsers = search
-    ? users.filter(u => (u.nombre + u.usuario_roblox + u.rango).toLowerCase().includes(search.toLowerCase()))
+    ? users.filter(u => (u.nombre + u.usuario_roblox + u.rango + u.rol + u.email).toLowerCase().includes(search.toLowerCase()))
     : users
 
   return (
@@ -64,28 +68,35 @@ export default function AdminPanel() {
 
       <Tabs tabs={tabList} active={tab} onChange={setTab} />
 
-      {tab === 'usuarios' && <UsuariosTab users={filteredUsers} search={search} setSearch={setSearch} onRefresh={loadAll} />}
+      {tab === 'usuarios' && <UsuariosTab users={filteredUsers} search={search} setSearch={setSearch} onRefresh={loadAll} roles={roles} />}
       {tab === 'solicitudes' && <SolicitudesTab requests={requests} onRefresh={loadAll} />}
       {tab === 'misiones' && <MisionesTab missions={missions} onRefresh={loadAll} />}
       {tab === 'tienda' && <TiendaTab items={shopItems} onRefresh={loadAll} />}
       {tab === 'opiniones' && <OpinionesTab opinions={opinions} onRefresh={loadAll} />}
+      {tab === 'roles' && <RolesTab roles={roles} onRefresh={loadAll} />}
     </PanelLayout>
   )
 }
 
-function UsuariosTab({ users, search, setSearch, onRefresh }) {
+function UsuariosTab({ users, search, setSearch, onRefresh, roles }) {
   const [showCreate, setShowCreate] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [grantingUser, setGrantingUser] = useState(null)
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-4">
-        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre, usuario o rango..." />
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre, usuario, rango o rol..." />
         <button onClick={() => setShowCreate(true)} className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold tracking-wider uppercase bg-accent/10 text-accent border border-accent/20 rounded-lg hover:bg-accent hover:text-base-950 transition-colors cursor-pointer">
           <Plus className="w-3.5 h-3.5" /> NUEVO USUARIO
         </button>
       </div>
 
-      {showCreate && <CreateUserForm onDone={() => { setShowCreate(false); onRefresh() }} />}
+      {showCreate && <CreateUserForm onDone={() => { setShowCreate(false); onRefresh() }} roles={roles} />}
+
+      {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSaved={() => { setEditingUser(null); onRefresh() }} roles={roles} />}
+
+      {grantingUser && <GrantResourcesModal user={grantingUser} onClose={() => setGrantingUser(null)} onSaved={() => { setGrantingUser(null); onRefresh() }} />}
 
       <div className="overflow-x-auto rounded-xl border border-base-700/40">
         <table className="w-full text-sm">
@@ -98,7 +109,7 @@ function UsuariosTab({ users, search, setSearch, onRefresh }) {
           </thead>
           <tbody>
             {users.map(u => (
-              <UserRow key={u.id} user={u} onRefresh={onRefresh} />
+              <UserRow key={u.id} user={u} onRefresh={onRefresh} onEdit={() => setEditingUser(u)} onGrant={() => setGrantingUser(u)} roles={roles} />
             ))}
             {users.length === 0 && (
               <tr><td colSpan={9}><EmptyState icon={Users} title="No se encontraron usuarios" /></td></tr>
@@ -110,8 +121,8 @@ function UsuariosTab({ users, search, setSearch, onRefresh }) {
   )
 }
 
-function CreateUserForm({ onDone }) {
-  const [form, setForm] = useState({ nombre: '', roblox: '', email: '', password: '', rol: 'usuario', puntos: 0, dinero: 0 })
+function CreateUserForm({ onDone, roles }) {
+  const [form, setForm] = useState({ nombre: '', roblox: '', email: '', password: '', rango: 'Soldado', rol: 'usuario', puntos: 0, dinero: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -140,6 +151,7 @@ function CreateUserForm({ onDone }) {
       await supabase.from('usuarios').update({
         nombre: form.nombre,
         usuario_roblox: form.roblox || 'SinUsuario',
+        rango: form.rango,
         rol: form.rol,
         estado: 'activo',
         puntos: form.puntos,
@@ -164,15 +176,18 @@ function CreateUserForm({ onDone }) {
         <input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="Email *" className="px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200" />
         <input type="password" value={form.password} onChange={e => update('password', e.target.value)} placeholder="Contraseña *" className="px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200" />
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
+        <select value={form.rango} onChange={e => update('rango', e.target.value)} className="px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200">
+          {RANGOS_LIST.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
+        </select>
         <select value={form.rol} onChange={e => update('rol', e.target.value)} className="px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200">
           <option value="usuario">USUARIO</option>
           <option value="staff">STAFF</option>
           <option value="admin">ADMIN</option>
           <option value="super_admin">SUPER ADMIN</option>
         </select>
-        <input type="number" value={form.puntos} onChange={e => update('puntos', parseInt(e.target.value) || 0)} placeholder="Puntos iniciales" className="px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200" />
-        <input type="number" value={form.dinero} onChange={e => update('dinero', parseInt(e.target.value) || 0)} placeholder="Dinero inicial" className="px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200" />
+        <input type="number" value={form.puntos} onChange={e => update('puntos', parseInt(e.target.value) || 0)} placeholder="Puntos" className="px-3 py-2 bg-base-900 border border-accent/30 rounded-lg text-sm text-accent" />
+        <input type="number" value={form.dinero} onChange={e => update('dinero', parseInt(e.target.value) || 0)} placeholder="Dinero" className="px-3 py-2 bg-base-900 border border-success/30 rounded-lg text-sm text-success" />
       </div>
       <button onClick={create} disabled={loading} className="px-5 py-2 bg-accent text-base-950 font-semibold text-xs tracking-wider uppercase rounded-lg cursor-pointer disabled:opacity-50">
         {loading ? 'CREANDO...' : 'CREAR USUARIO'}
@@ -181,98 +196,224 @@ function CreateUserForm({ onDone }) {
   )
 }
 
-function UserRow({ user: u, onRefresh }) {
-  const [editing, setEditing] = useState(false)
-  const [rango, setRango] = useState(u.rango)
-  const [rol, setRol] = useState(u.rol)
-  const [puntos, setPuntos] = useState(u.puntos || 0)
-  const [dinero, setDinero] = useState(u.dinero || 0)
-  const [estado, setEstado] = useState(u.estado)
+function EditUserModal({ user, onClose, onSaved, roles }) {
+  const [form, setForm] = useState({
+    nombre: user.nombre || '',
+    usuario_roblox: user.usuario_roblox || '',
+    rango: user.rango || 'Soldado',
+    puntos: user.puntos || 0,
+    dinero: user.dinero || 0,
+    rol: user.rol || 'usuario',
+    estado: user.estado || 'activo',
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const roleVariant = u.rol === 'super_admin' || u.rol === 'admin' ? 'danger' : u.rol === 'staff' ? 'warning' : 'default'
-  const stateVariant = u.estado === 'activo' ? 'success' : u.estado === 'pendiente' ? 'warning' : 'danger'
-  const isRecent = u.last_login && (Date.now() - new Date(u.last_login).getTime() < 3600000)
-  const activityColor = !u.last_login ? 'text-danger' : isRecent ? 'text-success' : 'text-base-400'
+  function update(key, val) { setForm(f => ({ ...f, [key]: val })) }
 
   async function save() {
-    await supabase.from('usuarios').update({ rango, rol, puntos: parseInt(puntos) || 0, dinero: parseInt(dinero) || 0, estado }).eq('id', u.id)
-    setEditing(false)
-    onRefresh()
+    if (!form.nombre) { setError('El nombre es obligatorio.'); return }
+    setLoading(true)
+    setError('')
+
+    const { error: err } = await supabase.from('usuarios').update({
+      nombre: form.nombre,
+      usuario_roblox: form.usuario_roblox,
+      rango: form.rango,
+      puntos: parseInt(form.puntos) || 0,
+      dinero: parseInt(form.dinero) || 0,
+      rol: form.rol,
+      estado: form.estado,
+    }).eq('id', user.id)
+
+    if (err) {
+      setError(err.message)
+      setLoading(false)
+      return
+    }
+
+    setLoading(false)
+    onSaved()
   }
 
-  function cancelEdit() {
-    setRango(u.rango)
-    setRol(u.rol)
-    setPuntos(u.puntos || 0)
-    setDinero(u.dinero || 0)
-    setEstado(u.estado)
-    setEditing(false)
-  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-base-950/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg bg-base-900 border border-base-700/60 rounded-2xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <UserCog className="w-5 h-5 text-accent" />
+            <span className="text-sm font-semibold text-base-100 uppercase tracking-wider">Editar Usuario</span>
+          </div>
+          <button onClick={onClose} className="text-base-500 hover:text-base-200 cursor-pointer"><X className="w-5 h-5" /></button>
+        </div>
+
+        {error && <div className="px-3 py-2 rounded-lg bg-danger-muted border border-danger-border text-danger text-xs">{error}</div>}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Nombre</label>
+            <input value={form.nombre} onChange={e => update('nombre', e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-base-700/50 rounded-lg text-sm text-base-200" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Roblox</label>
+            <input value={form.usuario_roblox} onChange={e => update('usuario_roblox', e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-base-700/50 rounded-lg text-sm text-base-200" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Rango</label>
+          <select value={form.rango} onChange={e => update('rango', e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-base-700/50 rounded-lg text-sm text-base-200">
+            {RANGOS_LIST.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Puntos</label>
+            <input type="number" value={form.puntos} onChange={e => update('puntos', e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-accent/30 rounded-lg text-sm text-accent font-semibold" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Dinero (Coins)</label>
+            <input type="number" value={form.dinero} onChange={e => update('dinero', e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-success/30 rounded-lg text-sm text-success font-semibold" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Rol</label>
+            <select value={form.rol} onChange={e => update('rol', e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-base-700/50 rounded-lg text-sm text-base-200">
+              <option value="usuario">USUARIO</option>
+              <option value="staff">STAFF</option>
+              <option value="admin">ADMIN</option>
+              <option value="super_admin">SUPER ADMIN</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Estado</label>
+            <select value={form.estado} onChange={e => update('estado', e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-base-700/50 rounded-lg text-sm text-base-200">
+              <option value="activo">ACTIVO</option>
+              <option value="pendiente">PENDIENTE</option>
+              <option value="baneado">BANEADO</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <button onClick={save} disabled={loading} className="flex items-center gap-2 px-5 py-2 bg-accent text-base-950 font-semibold text-xs tracking-wider uppercase rounded-lg cursor-pointer disabled:opacity-50">
+            <Save className="w-3.5 h-3.5" /> {loading ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
+          </button>
+          <button onClick={onClose} className="px-5 py-2 bg-base-700/50 text-base-400 font-semibold text-xs tracking-wider uppercase rounded-lg cursor-pointer hover:text-base-200">CANCELAR</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GrantResourcesModal({ user, onClose, onSaved }) {
+  const [puntos, setPuntos] = useState(0)
+  const [dinero, setDinero] = useState(0)
+  const [razon, setRazon] = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function grant() {
-    const pts = parseInt(prompt('Puntos a dar:')) || 0
-    const money = parseInt(prompt('Dinero a dar:')) || 0
-    const razon = prompt('Razón:') || 'Asignado por admin'
-    if (pts || money) {
-      await supabase.from('usuarios').update({ puntos: (u.puntos || 0) + pts, dinero: (u.dinero || 0) + money }).eq('id', u.id)
-      await supabase.from('movimientos').insert({ usuario_id: u.id, tipo: 'ingreso', monto: pts || money, moneda: pts ? 'puntos' : 'coins', descripcion: razon })
-      onRefresh()
+    const pts = parseInt(puntos) || 0
+    const money = parseInt(dinero) || 0
+    if (!pts && !money) return
+    setLoading(true)
+
+    await supabase.from('usuarios').update({
+      puntos: (user.puntos || 0) + pts,
+      dinero: (user.dinero || 0) + money,
+    }).eq('id', user.id)
+
+    if (pts) {
+      await supabase.from('movimientos').insert({
+        usuario_id: user.id, tipo: 'ingreso', monto: pts, moneda: 'puntos',
+        descripcion: razon || 'Asignado por admin',
+      })
     }
+    if (money) {
+      await supabase.from('movimientos').insert({
+        usuario_id: user.id, tipo: 'ingreso', monto: money, moneda: 'coins',
+        descripcion: razon || 'Asignado por admin',
+      })
+    }
+
+    setLoading(false)
+    onSaved()
   }
 
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-base-950/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md bg-base-900 border border-base-700/60 rounded-2xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Gift className="w-5 h-5 text-success" />
+            <span className="text-sm font-semibold text-base-100 uppercase tracking-wider">Dar Recursos</span>
+          </div>
+          <button onClick={onClose} className="text-base-500 hover:text-base-200 cursor-pointer"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-3 bg-base-800/50 rounded-lg border border-base-700/40">
+          <p className="text-xs text-base-400 uppercase tracking-wider">Destinatario</p>
+          <p className="text-sm text-base-100 font-medium">{user.nombre} <span className="text-base-400">({user.usuario_roblox})</span></p>
+          <div className="flex gap-4 mt-1">
+            <span className="text-xs text-accent">Pts: {user.puntos || 0}</span>
+            <span className="text-xs text-success">Coins: {user.dinero || 0}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Puntos a dar</label>
+            <input type="number" value={puntos} onChange={e => setPuntos(e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-accent/30 rounded-lg text-sm text-accent font-semibold" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Coins a dar</label>
+            <input type="number" value={dinero} onChange={e => setDinero(e.target.value)} className="w-full px-3 py-2 bg-base-800 border border-success/30 rounded-lg text-sm text-success font-semibold" />
+          </div>
+        </div>
+
+        <input value={razon} onChange={e => setRazon(e.target.value)} placeholder="Razón (opcional)" className="w-full px-3 py-2 bg-base-800 border border-base-700/50 rounded-lg text-sm text-base-200" />
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={grant} disabled={loading} className="flex items-center gap-2 px-5 py-2 bg-success text-white font-semibold text-xs tracking-wider uppercase rounded-lg cursor-pointer disabled:opacity-50">
+            <Gift className="w-3.5 h-3.5" /> {loading ? 'ENVIANDO...' : 'ENVIAR RECURSOS'}
+          </button>
+          <button onClick={onClose} className="px-5 py-2 bg-base-700/50 text-base-400 font-semibold text-xs tracking-wider uppercase rounded-lg cursor-pointer hover:text-base-200">CANCELAR</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UserRow({ user: u, onRefresh, onEdit, onGrant }) {
   async function remove() {
     if (!confirm(`¿Eliminar usuario ${u.nombre}? Esto borra su cuenta permanentemente.`)) return
     await supabase.from('usuarios').delete().eq('id', u.id)
     onRefresh()
   }
 
+  const roleVariant = u.rol === 'super_admin' || u.rol === 'admin' ? 'danger' : u.rol === 'staff' ? 'warning' : 'default'
+  const stateVariant = u.estado === 'activo' ? 'success' : u.estado === 'pendiente' ? 'warning' : 'danger'
+  const isRecent = u.last_login && (Date.now() - new Date(u.last_login).getTime() < 3600000)
+  const activityColor = !u.last_login ? 'text-danger' : isRecent ? 'text-success' : 'text-base-400'
+
   return (
     <tr className="border-b border-base-700/20 hover:bg-base-800/30 transition-colors">
       <td className="px-4 py-3 text-base-200 font-medium">{u.nombre}</td>
       <td className="px-4 py-3 text-base-300">{u.usuario_roblox}</td>
-      <td className="px-4 py-3">
-        {editing ? <input value={rango} onChange={e => setRango(e.target.value)} className="w-36 px-2 py-1 bg-base-900 border border-base-600 rounded text-xs text-base-200" /> : <span className="text-base-300 text-xs">{u.rango}</span>}
-      </td>
-      <td className="px-4 py-3">
-        {editing ? <input type="number" value={puntos} onChange={e => setPuntos(e.target.value)} className="w-20 px-2 py-1 bg-base-900 border border-accent/30 rounded text-xs text-accent" /> : <span className="text-accent text-xs font-semibold">{u.puntos}</span>}
-      </td>
-      <td className="px-4 py-3">
-        {editing ? <input type="number" value={dinero} onChange={e => setDinero(e.target.value)} className="w-20 px-2 py-1 bg-base-900 border border-success/30 rounded text-xs text-success" /> : <span className="text-success text-xs font-semibold">{u.dinero}</span>}
-      </td>
-      <td className="px-4 py-3">
-        {editing ? (
-          <select value={rol} onChange={e => setRol(e.target.value)} className="px-2 py-1 bg-base-900 border border-base-600 rounded text-xs text-base-200">
-            <option value="usuario">USUARIO</option>
-            <option value="staff">STAFF</option>
-            <option value="admin">ADMIN</option>
-            <option value="super_admin">SUPER ADMIN</option>
-          </select>
-        ) : <Badge variant={roleVariant}>{u.rol}</Badge>}
-      </td>
-      <td className="px-4 py-3">
-        {editing ? (
-          <select value={estado} onChange={e => setEstado(e.target.value)} className="px-2 py-1 bg-base-900 border border-base-600 rounded text-xs text-base-200">
-            <option value="activo">ACTIVO</option>
-            <option value="pendiente">PENDIENTE</option>
-            <option value="baneado">BANEADO</option>
-          </select>
-        ) : <Badge variant={stateVariant}>{u.estado}</Badge>}
-      </td>
+      <td className="px-4 py-3 text-base-300 text-xs">{u.rango}</td>
+      <td className="px-4 py-3 text-accent text-xs font-semibold">{u.puntos || 0}</td>
+      <td className="px-4 py-3 text-success text-xs font-semibold">{u.dinero || 0}</td>
+      <td className="px-4 py-3"><Badge variant={roleVariant}>{u.rol}</Badge></td>
+      <td className="px-4 py-3"><Badge variant={stateVariant}>{u.estado}</Badge></td>
       <td className={`px-4 py-3 text-xs ${activityColor}`}>{!u.last_login ? 'Nunca' : timeAgo(u.last_login)}</td>
       <td className="px-4 py-3">
         <div className="flex gap-1">
-          {editing ? (
-            <>
-              <button onClick={save} className="px-2 py-1 text-[10px] font-semibold uppercase bg-accent text-base-950 rounded cursor-pointer">OK</button>
-              <button onClick={cancelEdit} className="px-2 py-1 text-[10px] font-semibold uppercase bg-base-700/50 text-base-400 rounded cursor-pointer">X</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setEditing(true)} title="Editar" className="p-1.5 text-base-500 hover:text-accent transition-colors cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
-              <button onClick={grant} title="Dar recursos" className="p-1.5 text-base-500 hover:text-success transition-colors cursor-pointer"><Gift className="w-3.5 h-3.5" /></button>
-              <button onClick={remove} title="Eliminar" className="p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
-            </>
-          )}
+          <button onClick={onEdit} title="Editar" className="p-1.5 text-base-500 hover:text-accent transition-colors cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+          <button onClick={onGrant} title="Dar recursos" className="p-1.5 text-base-500 hover:text-success transition-colors cursor-pointer"><Gift className="w-3.5 h-3.5" /></button>
+          <button onClick={remove} title="Eliminar" className="p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </td>
     </tr>
@@ -287,6 +428,86 @@ function timeAgo(dateStr) {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h`
   return `${Math.floor(hrs / 24)}d`
+}
+
+function RolesTab({ roles, onRefresh }) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState({ nombre: '', descripcion: '', color: 'default' })
+
+  async function createRole() {
+    if (!form.nombre) return
+    await supabase.from('roles').insert({ nombre: form.nombre, descripcion: form.descripcion, color: form.color })
+    setForm({ nombre: '', descripcion: '', color: 'default' })
+    setShowCreate(false)
+    onRefresh()
+  }
+
+  async function removeRole(id, nombre) {
+    if (!confirm(`¿Eliminar el rol "${nombre}"?`)) return
+    await supabase.from('roles').delete().eq('id', id)
+    onRefresh()
+  }
+
+  const COLORS = ['default', 'accent', 'success', 'warning', 'danger']
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-base-400">Gestiona los tipos de rol disponibles en el sistema. Los roles se asignan a los usuarios desde la pestaña de USUARIOS.</p>
+        <button onClick={() => setShowCreate(true)} className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold tracking-wider uppercase bg-accent/10 text-accent border border-accent/20 rounded-lg hover:bg-accent hover:text-base-950 transition-colors cursor-pointer">
+          <Plus className="w-3.5 h-3.5" /> NUEVO ROL
+        </button>
+      </div>
+
+      {showCreate && (
+        <div className="mb-6 p-5 bg-base-800/40 border border-accent/20 rounded-xl space-y-3">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-semibold text-base-200 uppercase tracking-wider">Crear Rol</span>
+            <button onClick={() => setShowCreate(false)} className="text-base-500 hover:text-base-200 cursor-pointer"><X className="w-4 h-4" /></button>
+          </div>
+          <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Nombre del rol" className="w-full px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200" />
+          <input value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Descripción" className="w-full px-3 py-2 bg-base-900 border border-base-700/50 rounded-lg text-sm text-base-200" />
+          <div>
+            <label className="block text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 mb-1">Color</label>
+            <div className="flex gap-2">
+              {COLORS.map(c => (
+                <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))} className={`px-3 py-1 text-xs font-semibold uppercase rounded border cursor-pointer transition-colors ${form.color === c ? 'ring-2 ring-accent' : ''} ${c === 'default' ? 'bg-base-600/30 text-base-300 border-base-600/40' : c === 'accent' ? 'bg-accent-muted text-accent border-accent-border' : c === 'success' ? 'bg-success-muted text-success border-success/20' : c === 'warning' ? 'bg-warning-muted text-warning border-warning/20' : 'bg-danger-muted text-danger border-danger-border'}`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button onClick={createRole} className="px-5 py-2 bg-accent text-base-950 font-semibold text-xs tracking-wider uppercase rounded-lg cursor-pointer">CREAR ROL</button>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-xl border border-base-700/40">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-base-700/40">
+              {['NOMBRE', 'DESCRIPCIÓN', 'COLOR', 'FECHA', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 bg-base-800/30">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {roles.map(r => (
+              <tr key={r.id} className="border-b border-base-700/20 hover:bg-base-800/30 transition-colors">
+                <td className="px-4 py-3 text-base-200 font-medium">{r.nombre}</td>
+                <td className="px-4 py-3 text-base-400 text-xs">{r.descripcion || '—'}</td>
+                <td className="px-4 py-3"><Badge variant={r.color || 'default'}>{r.color || 'default'}</Badge></td>
+                <td className="px-4 py-3 text-base-400 text-xs">{r.created_at ? new Date(r.created_at).toLocaleDateString('es-PE') : '—'}</td>
+                <td className="px-4 py-3">
+                  <button onClick={() => removeRole(r.id, r.nombre)} title="Eliminar rol" className="p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                </td>
+              </tr>
+            ))}
+            {roles.length === 0 && <tr><td colSpan={5}><EmptyState icon={Shield} title="No hay roles personalizados" description="Los roles por defecto son: USUARIO, STAFF, ADMIN, SUPER ADMIN" /></td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 function SolicitudesTab({ requests, onRefresh }) {
@@ -577,3 +798,13 @@ function OpinionesTab({ opinions, onRefresh }) {
     </div>
   )
 }
+
+const RANGOS_LIST = [
+  "Soldado", "Soldado 1ra Clase", "Cabo", "Cabo de Escuadra",
+  "Sargento de Escuadra", "Sargento de Pelotón", "Sargento de Compañía",
+  "Sargento Mayor de 3ra Clase", "Sargento Mayor de 2da Clase",
+  "Sargento Mayor de 1ra Clase", "Sargento Mayor", "Sargento Mayor Command",
+  "Teniente 2do", "Teniente 1ro", "Capitán", "Mayor",
+  "Teniente Coronel", "Coronel", "General de Brigada", "General de División",
+  "Teniente General", "General",
+]
