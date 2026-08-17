@@ -1,7 +1,4 @@
 {
-  "outputDirectory": "app",
-  "installCommand": "echo noop",
-  "buildCommand": "echo noop",
   "framework": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
