@@ -91,7 +91,7 @@ function UsuariosTab({ users, search, setSearch, onRefresh }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-base-700/40">
-              {['NOMBRE', 'ROBLOX', 'RANGO', 'PUNTOS', 'DINERO', 'ROL', 'ESTADO', 'ACTIVIDAD', ''].map(h => (
+              {['NOMBRE', 'ROBLOX', 'RANGO', 'PUNTOS', 'DINERO', 'ROL', 'ESTADO', 'ACTIVIDAD', 'ACCIONES'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 bg-base-800/30">{h}</th>
               ))}
             </tr>
@@ -209,6 +209,17 @@ function UserRow({ user: u, onRefresh }) {
     setEditing(false)
   }
 
+  async function grant() {
+    const pts = parseInt(prompt('Puntos a dar:')) || 0
+    const money = parseInt(prompt('Dinero a dar:')) || 0
+    const razon = prompt('Razón:') || 'Asignado por admin'
+    if (pts || money) {
+      await supabase.from('usuarios').update({ puntos: (u.puntos || 0) + pts, dinero: (u.dinero || 0) + money }).eq('id', u.id)
+      await supabase.from('movimientos').insert({ usuario_id: u.id, tipo: 'ingreso', monto: pts || money, moneda: pts ? 'puntos' : 'coins', descripcion: razon })
+      onRefresh()
+    }
+  }
+
   async function remove() {
     if (!confirm(`¿Eliminar usuario ${u.nombre}? Esto borra su cuenta permanentemente.`)) return
     await supabase.from('usuarios').delete().eq('id', u.id)
@@ -256,9 +267,12 @@ function UserRow({ user: u, onRefresh }) {
               <button onClick={cancelEdit} className="px-2 py-1 text-[10px] font-semibold uppercase bg-base-700/50 text-base-400 rounded cursor-pointer">X</button>
             </>
           ) : (
-            <button onClick={() => setEditing(true)} className="p-1.5 text-base-500 hover:text-accent transition-colors cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+            <>
+              <button onClick={() => setEditing(true)} title="Editar" className="p-1.5 text-base-500 hover:text-accent transition-colors cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+              <button onClick={grant} title="Dar recursos" className="p-1.5 text-base-500 hover:text-success transition-colors cursor-pointer"><Gift className="w-3.5 h-3.5" /></button>
+              <button onClick={remove} title="Eliminar" className="p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+            </>
           )}
-          <button onClick={remove} className="p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </td>
     </tr>
