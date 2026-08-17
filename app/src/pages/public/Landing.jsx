@@ -35,7 +35,7 @@ export default function Landing() {
         <div className="mt-16 grid grid-cols-3 gap-6 text-center">
           {[
             { title: 'MISIONES', desc: 'Opera en equipos tácticos' },
-            { title: 'TIENDA', desc: 'Equipamiento exclusivo' },
+            { title: 'OPINIONES', desc: 'Comparte tu feedback' },
             { title: 'RANGOS', desc: 'Sistema jerárquico real' },
           ].map(f => (
             <div key={f.title} className="p-4 bg-base-800/30 border border-base-700/30 rounded-xl">

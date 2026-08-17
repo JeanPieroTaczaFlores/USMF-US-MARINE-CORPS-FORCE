@@ -33,7 +33,6 @@ export default function Misiones() {
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/app/" className="text-xs text-base-400 hover:text-accent transition-colors tracking-wider uppercase">INICIO</Link>
-            <Link to="/app/tienda" className="text-xs text-base-400 hover:text-accent transition-colors tracking-wider uppercase">TIENDA</Link>
             <Link to="/app/opiniones" className="text-xs text-base-400 hover:text-accent transition-colors tracking-wider uppercase">OPINIONES</Link>
           </div>
         </div>
