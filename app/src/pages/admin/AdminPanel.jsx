@@ -21,7 +21,7 @@ export default function AdminPanel() {
       supabase.from('usuarios').select('*').order('created_at', { ascending: false }),
       supabase.from('misiones').select('*').order('created_at', { ascending: false }),
       supabase.from('tienda_items').select('*').order('created_at', { ascending: false }),
-      supabase.from('opiniones').select('*').order('created_at', { ascending: false }),
+      supabase.from('opiniones').select('*, usuarios(nombre, usuario_roblox, puntos, dinero)').order('created_at', { ascending: false }),
     ])
     const allUsers = u.data || []
     setUsers(allUsers)
@@ -185,6 +185,9 @@ function UserRow({ user: u, onRefresh }) {
   const [editing, setEditing] = useState(false)
   const [rango, setRango] = useState(u.rango)
   const [rol, setRol] = useState(u.rol)
+  const [puntos, setPuntos] = useState(u.puntos || 0)
+  const [dinero, setDinero] = useState(u.dinero || 0)
+  const [estado, setEstado] = useState(u.estado)
 
   const roleVariant = u.rol === 'super_admin' || u.rol === 'admin' ? 'danger' : u.rol === 'staff' ? 'warning' : 'default'
   const stateVariant = u.estado === 'activo' ? 'success' : u.estado === 'pendiente' ? 'warning' : 'danger'
@@ -192,21 +195,18 @@ function UserRow({ user: u, onRefresh }) {
   const activityColor = !u.last_login ? 'text-danger' : isRecent ? 'text-success' : 'text-base-400'
 
   async function save() {
-    await supabase.from('usuarios').update({ rango, rol }).eq('id', u.id)
+    await supabase.from('usuarios').update({ rango, rol, puntos: parseInt(puntos) || 0, dinero: parseInt(dinero) || 0, estado }).eq('id', u.id)
     setEditing(false)
     onRefresh()
   }
 
-  async function grant() {
-    const pts = parseInt(prompt('Puntos a dar:')) || 0
-    const money = parseInt(prompt('Dinero a dar:')) || 0
-    const razon = prompt('Razón:') || 'Asignado por admin'
-    if (pts || money) {
-      const { dinero, puntos } = u
-      await supabase.from('usuarios').update({ puntos: (puntos || 0) + pts, dinero: (dinero || 0) + money }).eq('id', u.id)
-      await supabase.from('movimientos').insert({ usuario_id: u.id, tipo: 'ingreso', monto: pts || money, moneda: pts ? 'puntos' : 'coins', descripcion: razon })
-      onRefresh()
-    }
+  function cancelEdit() {
+    setRango(u.rango)
+    setRol(u.rol)
+    setPuntos(u.puntos || 0)
+    setDinero(u.dinero || 0)
+    setEstado(u.estado)
+    setEditing(false)
   }
 
   async function remove() {
@@ -222,8 +222,12 @@ function UserRow({ user: u, onRefresh }) {
       <td className="px-4 py-3">
         {editing ? <input value={rango} onChange={e => setRango(e.target.value)} className="w-36 px-2 py-1 bg-base-900 border border-base-600 rounded text-xs text-base-200" /> : <span className="text-base-300 text-xs">{u.rango}</span>}
       </td>
-      <td className="px-4 py-3 text-accent text-xs font-semibold">{u.puntos}</td>
-      <td className="px-4 py-3 text-success text-xs font-semibold">{u.dinero}</td>
+      <td className="px-4 py-3">
+        {editing ? <input type="number" value={puntos} onChange={e => setPuntos(e.target.value)} className="w-20 px-2 py-1 bg-base-900 border border-accent/30 rounded text-xs text-accent" /> : <span className="text-accent text-xs font-semibold">{u.puntos}</span>}
+      </td>
+      <td className="px-4 py-3">
+        {editing ? <input type="number" value={dinero} onChange={e => setDinero(e.target.value)} className="w-20 px-2 py-1 bg-base-900 border border-success/30 rounded text-xs text-success" /> : <span className="text-success text-xs font-semibold">{u.dinero}</span>}
+      </td>
       <td className="px-4 py-3">
         {editing ? (
           <select value={rol} onChange={e => setRol(e.target.value)} className="px-2 py-1 bg-base-900 border border-base-600 rounded text-xs text-base-200">
@@ -234,16 +238,26 @@ function UserRow({ user: u, onRefresh }) {
           </select>
         ) : <Badge variant={roleVariant}>{u.rol}</Badge>}
       </td>
-      <td className="px-4 py-3"><Badge variant={stateVariant}>{u.estado}</Badge></td>
+      <td className="px-4 py-3">
+        {editing ? (
+          <select value={estado} onChange={e => setEstado(e.target.value)} className="px-2 py-1 bg-base-900 border border-base-600 rounded text-xs text-base-200">
+            <option value="activo">ACTIVO</option>
+            <option value="pendiente">PENDIENTE</option>
+            <option value="baneado">BANEADO</option>
+          </select>
+        ) : <Badge variant={stateVariant}>{u.estado}</Badge>}
+      </td>
       <td className={`px-4 py-3 text-xs ${activityColor}`}>{!u.last_login ? 'Nunca' : timeAgo(u.last_login)}</td>
       <td className="px-4 py-3">
         <div className="flex gap-1">
           {editing ? (
-            <button onClick={save} className="px-2 py-1 text-[10px] font-semibold uppercase bg-accent text-base-950 rounded cursor-pointer">OK</button>
+            <>
+              <button onClick={save} className="px-2 py-1 text-[10px] font-semibold uppercase bg-accent text-base-950 rounded cursor-pointer">OK</button>
+              <button onClick={cancelEdit} className="px-2 py-1 text-[10px] font-semibold uppercase bg-base-700/50 text-base-400 rounded cursor-pointer">X</button>
+            </>
           ) : (
             <button onClick={() => setEditing(true)} className="p-1.5 text-base-500 hover:text-accent transition-colors cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
           )}
-          <button onClick={grant} className="p-1.5 text-base-500 hover:text-accent transition-colors cursor-pointer"><Gift className="w-3.5 h-3.5" /></button>
           <button onClick={remove} className="p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </td>
@@ -280,7 +294,7 @@ function SolicitudesTab({ requests, onRefresh }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-base-700/40">
-            {['NOMBRE', 'ROBLOX', 'EMAIL', 'FECHA', ''].map(h => (
+            {['NOMBRE', 'ROBLOX', 'EMAIL', 'PUNTOS', 'DINERO', 'FECHA', ''].map(h => (
               <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 bg-base-800/30">{h}</th>
             ))}
           </tr>
@@ -291,6 +305,8 @@ function SolicitudesTab({ requests, onRefresh }) {
               <td className="px-4 py-3 text-base-200">{u.nombre}</td>
               <td className="px-4 py-3 text-base-300">{u.usuario_roblox}</td>
               <td className="px-4 py-3 text-base-400">{u.email}</td>
+              <td className="px-4 py-3 text-accent text-xs font-semibold">{u.puntos || 0}</td>
+              <td className="px-4 py-3 text-success text-xs font-semibold">{u.dinero || 0}</td>
               <td className="px-4 py-3 text-base-400 text-xs">{new Date(u.created_at).toLocaleDateString('es-PE')}</td>
               <td className="px-4 py-3">
                 <div className="flex gap-2">
@@ -519,16 +535,31 @@ function OpinionesTab({ opinions, onRefresh }) {
   if (opinions.length === 0) return <EmptyState icon={MessageSquare} title="No hay opiniones" />
 
   return (
-    <div className="space-y-3">
-      {opinions.map(o => (
-        <div key={o.id} className="flex items-start justify-between gap-4 p-4 bg-base-800/40 border border-base-700/30 rounded-xl">
-          <div className="flex-1">
-            <p className="text-sm text-base-200 leading-relaxed">"{o.contenido}"</p>
-            <p className="text-xs text-base-500 mt-1">{new Date(o.created_at).toLocaleDateString('es-PE', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
-          </div>
-          <button onClick={() => remove(o.id)} className="shrink-0 p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-4 h-4" /></button>
-        </div>
-      ))}
+    <div className="overflow-x-auto rounded-xl border border-base-700/40">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-base-700/40">
+            {['AUTOR', 'ROBLOX', 'PUNTOS', 'DINERO', 'OPINIÓN', 'FECHA', ''].map(h => (
+              <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold tracking-[0.12em] uppercase text-base-400 bg-base-800/30">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {opinions.map(o => (
+            <tr key={o.id} className="border-b border-base-700/20 hover:bg-base-800/30 transition-colors">
+              <td className="px-4 py-3 text-base-200 font-medium">{o.usuarios?.nombre || '—'}</td>
+              <td className="px-4 py-3 text-base-400 text-xs">{o.usuarios?.usuario_roblox || '—'}</td>
+              <td className="px-4 py-3 text-accent text-xs font-semibold">{o.usuarios?.puntos ?? 0}</td>
+              <td className="px-4 py-3 text-success text-xs font-semibold">{o.usuarios?.dinero ?? 0}</td>
+              <td className="px-4 py-3 text-base-300 text-xs max-w-[300px] truncate">"{o.contenido}"</td>
+              <td className="px-4 py-3 text-base-400 text-xs">{new Date(o.created_at).toLocaleDateString('es-PE')}</td>
+              <td className="px-4 py-3">
+                <button onClick={() => remove(o.id)} className="p-1.5 text-base-500 hover:text-danger transition-colors cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
