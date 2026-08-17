@@ -278,6 +278,51 @@ img {
   font-size: 0.85rem;
 }
 
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+}
+
+.btn-login-nav {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  border-radius: 6px;
+  text-decoration: none;
+  font-family: var(--font-cond);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+.btn-login-nav:hover {
+  background: var(--gold);
+  color: var(--bg);
+}
+
+.btn-register-nav {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.75rem;
+  background: var(--red);
+  color: #fff;
+  border: 1px solid var(--red);
+  border-radius: 6px;
+  text-decoration: none;
+  font-family: var(--font-cond);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+.btn-register-nav:hover {
+  background: #a00d24;
+  border-color: #a00d24;
+}
+
 .nav-toggle {
   display: none;
   flex-direction: column;
@@ -437,6 +482,64 @@ img {
   flex-wrap: wrap;
   gap: 1rem;
   margin-top: 2.2rem;
+}
+
+.join-process {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.2rem 1.5rem;
+  backdrop-filter: blur(8px);
+}
+
+.join-process-title {
+  font-family: var(--font-cond);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.8rem;
+}
+
+.join-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.join-step {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.join-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--font-cond);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.join-step-text {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.btn-join-cta {
+  display: inline-block;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.85rem;
 }
 
 .hero-watermark {
@@ -1159,6 +1262,10 @@ img {
   }
 
   .btn-cta {
+    display: none;
+  }
+
+  .nav-auth {
     display: none;
   }
 

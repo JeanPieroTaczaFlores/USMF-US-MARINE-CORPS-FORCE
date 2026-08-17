@@ -8,6 +8,7 @@
 
   var DB_KEY = "usmcf_db";
   var SESSION_KEY = "usmcf_session";
+  var PW_KEY = "usmcf_passwords";
 
   // --- Helpers ---
   function uid() {
@@ -17,13 +18,34 @@
     });
   }
 
-  function getDB() {
-    try { return JSON.parse(localStorage.getItem(DB_KEY)) || initDB(); }
-    catch (e) { return initDB(); }
+  function getPasswords() {
+    try { return JSON.parse(localStorage.getItem(PW_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function savePasswords(pw) {
+    localStorage.setItem(PW_KEY, JSON.stringify(pw));
+  }
+
+  function getSession() {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY)); }
+    catch (e) { return null; }
+  }
+  function setSession(user) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  }
+  function clearSession() {
+    localStorage.removeItem(SESSION_KEY);
   }
 
   function saveDB(db) {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
+  }
+
+  function getDB() {
+    var db;
+    try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
+    if (!db || !db.profiles) db = initDB();
+    return db;
   }
 
   function initDB() {
@@ -35,7 +57,6 @@
       notifications: []
     };
 
-    // Usuarios de prueba precargados
     var now = new Date().toISOString();
     var adminId = uid();
     var staffId = uid();
@@ -62,7 +83,6 @@
       }
     );
 
-    // Misiones de prueba
     db.missions.push(
       {
         id: uid(), titulo: "Patrulla Fronteriza Norte",
@@ -91,29 +111,23 @@
     return db;
   }
 
-  // --- Passwords store (separate from DB) ---
-  var PW_KEY = "usmcf_passwords";
-  function getPasswords() {
-    try { return JSON.parse(localStorage.getItem(PW_KEY)) || {}; }
-    catch (e) { return {}; }
+  // Forzar contraseñas de prueba SOLO si no existen aún
+  var testPasswords = {
+    "admin@usmcf.com": "Admin123!",
+    "staff@usmcf.com": "Staff123!",
+    "cliente@usmcf.com": "Cliente123!"
+  };
+  var pw = getPasswords();
+  var changed = false;
+  for (var email in testPasswords) {
+    if (!pw[email]) {
+      pw[email] = testPasswords[email];
+      changed = true;
+    }
   }
-  function savePasswords(pw) {
-    localStorage.setItem(PW_KEY, JSON.stringify(pw));
-  }
+  if (changed) savePasswords(pw);
 
-  // --- Session helpers ---
-  function getSession() {
-    try { return JSON.parse(localStorage.getItem(SESSION_KEY)); }
-    catch (e) { return null; }
-  }
-  function setSession(user) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  }
-  function clearSession() {
-    localStorage.removeItem(SESSION_KEY);
-  }
-
-  // --- Query Builder (mimics Supabase .from() chain) ---
+  // --- Query Builder ---
   function QueryBuilder(table) {
     this._table = table;
     this._filters = [];
@@ -121,49 +135,40 @@
     this._orderAsc = true;
     this._limitN = null;
     this._single = false;
-    this._selectFields = null;
-    this._op = null; // "select", "insert", "update", "delete"
+    this._op = null;
   }
 
   QueryBuilder.prototype.select = function (fields) {
     this._op = "select";
-    this._selectFields = fields || "*";
     return this;
   };
-
   QueryBuilder.prototype.insert = function (data) {
     this._op = "insert";
     this._insertData = data;
     return this;
   };
-
   QueryBuilder.prototype.update = function (data) {
     this._op = "update";
     this._updateData = data;
     return this;
   };
-
   QueryBuilder.prototype.delete = function () {
     this._op = "delete";
     return this;
   };
-
   QueryBuilder.prototype.eq = function (col, val) {
-    this._filters.push({ col: col, op: "eq", val: val });
+    this._filters.push({ col: col, val: val });
     return this;
   };
-
   QueryBuilder.prototype.order = function (col, opts) {
     this._orderCol = col;
     this._orderAsc = opts && opts.ascending !== undefined ? opts.ascending : true;
     return this;
   };
-
   QueryBuilder.prototype.limit = function (n) {
     this._limitN = n;
     return this;
   };
-
   QueryBuilder.prototype.single = function () {
     this._single = true;
     return this;
@@ -172,29 +177,22 @@
   QueryBuilder.prototype._exec = function () {
     var db = getDB();
     var rows = db[this._table] || [];
+    var self = this;
 
-    // Apply operation
     if (this._op === "insert") {
       var item = this._insertData;
-      var self = this;
-      if (Array.isArray(item)) {
-        item.forEach(function (it) {
-          if (!it.id) it.id = uid();
-          if (!it.created_at) it.created_at = new Date().toISOString();
-          db[self._table].push(it);
-        });
-      } else {
-        if (!item.id) item.id = uid();
-        if (!item.created_at) item.created_at = new Date().toISOString();
-        db[this._table].push(item);
-      }
+      if (!Array.isArray(item)) item = [item];
+      item.forEach(function (it) {
+        if (!it.id) it.id = uid();
+        if (!it.created_at) it.created_at = new Date().toISOString();
+        db[self._table].push(it);
+      });
       saveDB(db);
-      return { data: item, error: null };
+      return { data: this._insertData, error: null };
     }
 
     if (this._op === "update") {
       var updated = [];
-      var self = this;
       db[this._table] = rows.map(function (r) {
         if (self._filters.every(function (f) { return r[f.col] === f.val; })) {
           var merged = Object.assign({}, r, self._updateData);
@@ -209,9 +207,8 @@
 
     if (this._op === "delete") {
       var deleted = [];
-      var self2 = this;
       var remaining = rows.filter(function (r) {
-        var match = self2._filters.every(function (f) { return r[f.col] === f.val; });
+        var match = self._filters.every(function (f) { return r[f.col] === f.val; });
         if (match) deleted.push(r);
         return !match;
       });
@@ -222,11 +219,8 @@
 
     // SELECT
     var filtered = rows.filter(function (r) {
-      return this._filters.every(function (f) {
-        return r[f.col] === f.val;
-      });
-    }.bind(this));
-
+      return self._filters.every(function (f) { return r[f.col] === f.val; });
+    });
     if (this._orderCol) {
       var col = this._orderCol;
       var asc = this._orderAsc;
@@ -236,34 +230,22 @@
         return 0;
       });
     }
-
-    if (this._limitN !== null) {
-      filtered = filtered.slice(0, this._limitN);
-    }
-
+    if (this._limitN !== null) filtered = filtered.slice(0, this._limitN);
     if (this._single) {
       return { data: filtered[0] || null, error: filtered[0] ? null : { message: "Row not found" } };
     }
-
     return { data: filtered, error: null };
   };
 
-  // Make _exec async-compatible
-  var origExec = QueryBuilder.prototype._exec;
-  QueryBuilder.prototype._execAsync = function () {
-    var self = this;
-    return new Promise(function (resolve) {
-      setTimeout(function () { resolve(origExec.call(self)); }, 50);
-    });
-  };
-
-  // Override promise on QueryBuilder so `await query.eq().single()` works
   QueryBuilder.prototype.then = function (resolve, reject) {
-    return this._execAsync().then(resolve, reject);
+    var self = this;
+    return new Promise(function (res) {
+      setTimeout(function () { res(self._exec()); }, 30);
+    }).then(resolve, reject);
   };
 
   // --- Local Auth Client ---
-  var localClient = {
+  window.LocalSupabase = {
     auth: {
       getSession: async function () {
         var s = getSession();
@@ -277,35 +259,29 @@
         if (exists) {
           return { data: { user: null, session: null }, error: { message: "User already registered" } };
         }
-
         var meta = (opts.options && opts.options.data) || {};
         var id = uid();
-        var now = new Date().toISOString();
-
         var profile = {
           id: id, email: email, nombre: meta.nombre || "Sin nombre",
           usuario_roblox: meta.usuario_roblox || "SinUsuario",
           rango: "Soldado", rol: "usuario", estado: "pendiente",
-          puntos: 0, dinero: 0, created_at: now
+          puntos: 0, dinero: 0, created_at: new Date().toISOString()
         };
         db.profiles.push(profile);
         saveDB(db);
 
-        // Save password locally
         var passwords = getPasswords();
         passwords[email] = opts.password;
         savePasswords(passwords);
 
-        // Auto-login session
-        var sessionUser = { id: id, email: email };
-        setSession(sessionUser);
-
-        return { data: { user: sessionUser, session: sessionUser }, error: null };
+        setSession({ id: id, email: email });
+        return { data: { user: { id: id, email: email }, session: { id: id } }, error: null };
       },
 
       signInWithPassword: async function (opts) {
         var email = opts.email.toLowerCase().trim();
         var passwords = getPasswords();
+
         if (passwords[email] !== opts.password) {
           return { data: { user: null, session: null }, error: { message: "Invalid login credentials" } };
         }
@@ -316,9 +292,8 @@
           return { data: { user: null, session: null }, error: { message: "Usuario no encontrado." } };
         }
 
-        var sessionUser = { id: profile.id, email: profile.email };
-        setSession(sessionUser);
-        return { data: { user: sessionUser, session: sessionUser }, error: null };
+        setSession({ id: profile.id, email: profile.email });
+        return { data: { user: { id: profile.id, email: profile.email }, session: { id: profile.id } }, error: null };
       },
 
       signOut: async function () {
@@ -326,14 +301,9 @@
         return { error: null };
       },
 
-      resetPasswordForEmail: async function (email, opts) {
-        var passwords = getPasswords();
-        var db = getDB();
+      resetPasswordForEmail: async function (email) {
         var e = email.toLowerCase().trim();
-        if (!passwords[e] && !db.profiles.find(function (p) { return p.email === e; })) {
-          return { error: { message: "Correo no registrado." } };
-        }
-        // En modo local, "restablecemos" a "Reset123!"
+        var passwords = getPasswords();
         passwords[e] = "Reset123!";
         savePasswords(passwords);
         return { data: {}, error: null };
@@ -344,8 +314,5 @@
       return new QueryBuilder(table);
     }
   };
-
-  // --- Expose global ---
-  window.LocalSupabase = localClient;
 
 })();

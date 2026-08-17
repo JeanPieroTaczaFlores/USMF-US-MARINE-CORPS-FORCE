@@ -62,7 +62,7 @@
     if (!userResult.data) return;
     var profile = userResult.data;
 
-    // Redirigir según estado
+    // Solo redirigir desde páginas de auth si YA hay sesión activa
     var page = window.location.pathname.split("/").pop();
     var isAuthPage = ["login.html", "register.html", "recuperar.html", ""].indexOf(page) !== -1;
 
@@ -231,7 +231,7 @@
           return;
         }
 
-        showSuccess("Correo enviado. Revisa tu bandeja para restablecer tu contraseña.");
+        showSuccess("Contraseña restablecida. Tu nueva contraseña temporal es: Reset123! — Cámbiala después de iniciar sesión.");
         recoverForm.reset();
         setLoading(btn, false);
       } catch (err) {

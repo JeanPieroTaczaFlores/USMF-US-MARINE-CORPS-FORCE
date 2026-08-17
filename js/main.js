@@ -7,6 +7,8 @@
   var navToggle = document.getElementById("navToggle");
   var navMenu = document.getElementById("navMenu");
 
+  if (!navToggle || !navMenu) return;
+
   function closeMenu() {
     navMenu.classList.remove("open");
     navToggle.classList.remove("open");
