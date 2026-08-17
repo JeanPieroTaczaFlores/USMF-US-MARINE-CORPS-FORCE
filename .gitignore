@@ -2,6 +2,5 @@ guardar-sesion.json
 .vercel/
 *.exe
 node_modules/
-app/dist/
 .env
 .env.local
