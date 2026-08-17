@@ -19,22 +19,30 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else { setProfile(null); setLoading(false) }
+      if (session?.user) {
+        fetchProfile(session.user.id)
+        supabase.from('usuarios').update({ last_login: new Date().toISOString() }).eq('auth_id', session.user.id).then(() => {})
+      } else { setProfile(null); setLoading(false) }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   async function fetchProfile(userId) {
-    const { data } = await supabase.from('usuarios').select('*').eq('auth_id', userId).single()
+    const id = userId || user?.id
+    if (!id) { setLoading(false); return }
+    const { data } = await supabase.from('usuarios').select('*').eq('auth_id', id).single()
     setProfile(data)
     setLoading(false)
   }
 
   async function refreshProfile() {
-    if (!user) return
-    await fetchProfile(user.id)
+    const { data: { session } } = await supabase.auth.getSession()
+    const uid = session?.user?.id
+    if (uid) {
+      setUser(session.user)
+      await fetchProfile(uid)
+    }
   }
 
   return (

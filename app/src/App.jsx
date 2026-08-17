@@ -36,6 +36,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/pendiente" element={<Pending />} />
           <Route path="/recuperar" element={<Recover />} />
+          <Route path="/redirect" element={<RoleRedirect />} />
 
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['super_admin', 'admin']}>

@@ -27,8 +27,7 @@ export default function Login() {
 
     await refreshProfile()
     setLoading(false)
-    // Profile redirect handled by ProtectedRoute / AuthContext
-    window.location.href = '/dashboard'
+    navigate('/redirect', { replace: true })
   }
 
   return (
