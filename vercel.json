@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd app && npm install --force && npm run build && rm -f index.html",
+  "buildCommand": "cd app && rm -rf dist && npm install --force && npm run build && rm -f index.html",
   "outputDirectory": ".",
   "installCommand": "cd app && npm install --force",
   "framework": null,
