@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Shield, LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -15,14 +15,10 @@ export default function PanelLayout({ children, title }) {
     <div className="min-h-screen bg-base-950">
       <header className="sticky top-0 z-50 border-b border-base-700/50 bg-base-900/80 backdrop-blur-md">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-accent" />
-            </div>
-            <span className="font-display text-sm font-semibold tracking-[0.15em] uppercase text-base-100">
-              USMCF
-            </span>
-          </div>
+          <Link to="/app/" className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-accent" />
+            <span className="font-display text-sm font-semibold tracking-[0.15em] uppercase text-base-100">USMCF</span>
+          </Link>
 
           <div className="flex items-center gap-4">
             <span className="text-xs text-base-400 hidden sm:block">

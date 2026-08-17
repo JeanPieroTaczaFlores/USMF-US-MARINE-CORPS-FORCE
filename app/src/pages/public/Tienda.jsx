@@ -1,17 +1,20 @@
 import { Shield, Crosshair, Shirt, Award } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export default function Tienda() {
   return (
     <div className="min-h-screen bg-base-950">
       <nav className="sticky top-0 z-50 border-b border-base-700/50 bg-base-900/80 backdrop-blur-md">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-accent" />
-            </div>
+          <Link to="/app/" className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-accent" />
             <span className="font-display text-sm font-semibold tracking-[0.15em] uppercase text-base-100">USMCF</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/app/" className="text-xs text-base-400 hover:text-accent transition-colors tracking-wider uppercase">INICIO</Link>
+            <Link to="/app/tienda" className="text-xs text-accent font-semibold tracking-wider uppercase">TIENDA</Link>
+            <Link to="/app/opiniones" className="text-xs text-base-400 hover:text-accent transition-colors tracking-wider uppercase">OPINIONES</Link>
           </div>
-          <a href="/" className="text-xs text-base-400 hover:text-accent transition-colors tracking-wider uppercase">INICIO</a>
         </div>
       </nav>
 
