@@ -1,5 +1,7 @@
 {
+  "buildCommand": "cd app && npm install --force && npm run build && rm -f index.html",
   "outputDirectory": ".",
+  "installCommand": "cd app && npm install --force",
   "framework": null,
   "rewrites": [
     { "source": "/app/assets/(.*)", "destination": "/app/dist/assets/$1" },
