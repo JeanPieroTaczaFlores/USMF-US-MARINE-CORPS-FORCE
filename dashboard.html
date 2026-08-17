@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USMCF — Mi Panel</title>
+  <link rel="icon" type="image/png" href="img/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <style>
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+    .dash-card {
+      background: var(--auth-card);
+      border: 1px solid var(--auth-border);
+      border-radius: 12px;
+      padding: 1.8rem;
+      transition: border-color 0.2s ease;
+    }
+    .dash-card:hover { border-color: rgba(200, 16, 46, 0.3); }
+    .dash-card-label { font-family: var(--font-cond); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--auth-text-dim); margin-bottom: 0.4rem; }
+    .dash-card-value { font-family: var(--font-display); font-size: 2.2rem; color: var(--auth-text); }
+    .dash-card-sub { font-size: 0.85rem; color: var(--auth-text-dim); margin-top: 0.3rem; }
+    .dash-card.accent { border-left: 4px solid var(--auth-red); }
+    .dash-card.gold { border-left: 4px solid var(--auth-gold); }
+    .dash-card.green { border-left: 4px solid var(--auth-success); }
+    .dash-header { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 2rem; background: var(--auth-card); border-bottom: 1px solid var(--auth-border); margin-bottom: 2rem; }
+    .dash-header-brand { display: flex; align-items: center; gap: 0.8rem; }
+    .dash-header-brand img { width: 36px; height: 36px; border-radius: 8px; }
+    .dash-header-brand span { font-family: var(--font-cond); font-size: 0.9rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; }
+    .dash-body { max-width: 1200px; margin: 0 auto; padding: 0 2rem 3rem; }
+    .dash-welcome { font-family: var(--font-display); font-size: 1.8rem; text-transform: uppercase; color: var(--auth-text); margin-bottom: 0.3rem; }
+    .dash-welcome-sub { color: var(--auth-text-dim); font-size: 0.92rem; }
+    .dash-section-title { font-family: var(--font-cond); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--auth-gold); margin: 2rem 0 0.8rem; border-left: 3px solid var(--auth-red); padding-left: 0.8rem; }
+    .btn-logout { background: transparent; border: 1px solid var(--auth-border); color: var(--auth-text-dim); padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease; font-family: var(--font-cond); letter-spacing: 0.08em; }
+    .btn-logout:hover { border-color: var(--auth-error); color: var(--auth-error); }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font-cond); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+    .badge-active { background: rgba(34, 197, 94, 0.15); color: var(--auth-success); }
+    .badge-admin { background: rgba(200, 16, 46, 0.15); color: var(--auth-red); }
+    .badge-staff { background: rgba(212, 168, 67, 0.15); color: var(--auth-gold); }
+    .badge-user { background: rgba(255, 255, 255, 0.08); color: var(--auth-text-dim); }
+  </style>
+</head>
+<body style="background:var(--auth-bg);">
+  <header class="dash-header">
+    <div class="dash-header-brand">
+      <img src="img/logo.png" alt="USMCF" />
+      <span>USMCF</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">CERRAR SESIÓN</button>
+  </header>
+
+  <main class="dash-body">
+    <p class="dash-welcome" id="welcomeName">Cargando...</p>
+    <p class="dash-welcome-sub" id="welcomeSub"></p>
+
+    <div class="dash-grid">
+      <div class="dash-card accent">
+        <div class="dash-card-label">RANGO</div>
+        <div class="dash-card-value" id="dashRango">—</div>
+        <div class="dash-card-sub" id="dashSalario">Salario semanal: — coins</div>
+      </div>
+      <div class="dash-card gold">
+        <div class="dash-card-label">DINERO</div>
+        <div class="dash-card-value" id="dashDinero">—</div>
+        <div class="dash-card-sub">Coins disponibles</div>
+      </div>
+      <div class="dash-card green">
+        <div class="dash-card-label">PUNTOS</div>
+        <div class="dash-card-value" id="dashPuntos">—</div>
+        <div class="dash-card-sub">Puntos acumulados</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-label">USUARIO DE ROBLOX</div>
+        <div class="dash-card-value" id="dashRoblox" style="font-size:1.4rem;">—</div>
+        <div class="dash-card-sub" id="dashRol">Rol: —</div>
+      </div>
+    </div>
+
+    <div class="dash-section-title">HISTORIAL RECIENTE</div>
+    <div id="dashHistory" style="color:var(--auth-text-dim);font-size:0.9rem;">Cargando historial...</div>
+
+    <div class="dash-section-title">TIENDA</div>
+    <div class="dash-card" style="text-align:center;padding:2.5rem;">
+      <p style="color:var(--auth-gold);font-family:var(--font-display);font-size:1.3rem;text-transform:uppercase;">MUY PRONTO</p>
+      <p style="color:var(--auth-text-dim);font-size:0.88rem;margin-top:0.4rem;">La tienda de la facción estará disponible próximamente.</p>
+    </div>
+  </main>
+
+  <a href="https://discord.gg/jNXA6AQ4Y" class="float-discord" target="_blank" rel="noopener" aria-label="Únete al Discord de USMCF">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+  </a>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (async function () {
+      var profile = await getMyProfile();
+      if (!profile) { window.location.href = "login.html"; return; }
+      if (profile.estado === "pendiente") { window.location.href = "pendiente.html"; return; }
+
+      document.getElementById("welcomeName").textContent = "Bienvenido, " + profile.nombre;
+      document.getElementById("welcomeSub").innerHTML =
+        "Usuario: " + profile.usuario_roblox +
+        ' &nbsp; <span class="badge badge-' + (profile.estado === "activo" ? "active" : "") + '">' + profile.estado.toUpperCase() + '</span>' +
+        ' <span class="badge badge-' + (profile.rol === "admin" || profile.rol === "super_admin" ? "admin" : profile.rol === "staff" ? "staff" : "user") + '">' + profile.rol.toUpperCase() + '</span>';
+
+      document.getElementById("dashRango").textContent = profile.rango;
+      document.getElementById("dashDinero").textContent = profile.dinero.toLocaleString() + " coins";
+      document.getElementById("dashPuntos").textContent = profile.puntos.toLocaleString();
+      document.getElementById("dashRoblox").textContent = profile.usuario_roblox;
+      document.getElementById("dashRol").textContent = "Rol: " + profile.rol;
+
+      // Buscar salario del rango
+      var r = RANGOS.find(function (x) { return x.rango === profile.rango; });
+      if (r) document.getElementById("dashSalario").textContent = "Salario semanal: " + r.salario + " coins";
+
+      // Cargar historial
+      var tx = await supabase
+        .from("transactions")
+        .select("tipo, descripcion, monto_dinero, monto_puntos, created_at")
+        .eq("user_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      var histEl = document.getElementById("dashHistory");
+      if (tx.data && tx.data.length) {
+        histEl.innerHTML = tx.data.map(function (t) {
+          var fecha = new Date(t.created_at).toLocaleDateString("es-PE");
+          var monto = t.monto_dinero > 0 ? "+" + t.monto_dinero + " coins" : t.monto_puntos > 0 ? "+" + t.monto_puntos + " pts" : "";
+          return '<div style="padding:0.6rem 0;border-bottom:1px solid var(--auth-border);display:flex;justify-content:space-between;"><span>' + t.descripcion + '</span><span style="color:var(--auth-success);">' + monto + ' <small style="color:var(--auth-text-dim);">' + fecha + '</small></span></div>';
+        }).join("");
+      } else {
+        histEl.textContent = "Sin movimientos aún.";
+      }
+    })();
+  </script>
+</body>
+</html>
