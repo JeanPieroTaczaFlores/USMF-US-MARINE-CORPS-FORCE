@@ -45,6 +45,16 @@
     var db;
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
+    // Auto-reparar tablas faltantes
+    var defaults = { missions: [], missions_participants: [], transactions: [], opinions: [], notifications: [], shop_items: [], user_inventory: [] };
+    for (var key in defaults) {
+      if (!db[key]) db[key] = defaults[key];
+    }
+    // Auto-reparar campo last_login
+    db.profiles.forEach(function (p) {
+      if (!p.last_login) p.last_login = p.created_at || new Date().toISOString();
+    });
+    saveDB(db);
     return db;
   }
 
@@ -268,7 +278,7 @@
           id: id, email: email, nombre: meta.nombre || "Sin nombre",
           usuario_roblox: meta.usuario_roblox || "SinUsuario",
           rango: "Soldado", rol: "usuario", estado: "pendiente",
-          puntos: 0, dinero: 0, created_at: new Date().toISOString()
+          puntos: 0, dinero: 0, last_login: new Date().toISOString(), created_at: new Date().toISOString()
         };
         db.profiles.push(profile);
         saveDB(db);
