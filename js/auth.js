@@ -119,6 +119,9 @@
 
         var profile = profileResult.data;
 
+        // Registrar último login
+        await supabase.from("profiles").update({ last_login: new Date().toISOString() }).eq("id", result.data.user.id);
+
         if (profile.estado === "pendiente") {
           window.location.href = "pendiente.html";
         } else if (profile.estado === "inactivo") {

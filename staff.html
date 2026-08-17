@@ -51,7 +51,7 @@
     <div class="panel" id="panel-usuarios">
       <input type="text" class="search-bar" id="searchUsers" placeholder="Buscar..." />
       <div class="table-wrap">
-        <table><thead><tr><th>Nombre</th><th>Roblox</th><th>Rango</th><th>Pts</th><th>Coins</th><th>Rol</th><th>Estado</th></tr></thead>
+        <table><thead><tr><th>Nombre</th><th>Roblox</th><th>Rango</th><th>Pts</th><th>Coins</th><th>Rol</th><th>Estado</th><th>Actividad</th></tr></thead>
         <tbody id="usersTable"></tbody></table>
       </div>
     </div>
@@ -126,8 +126,20 @@
     }
     function renderUsers(users) {
       document.getElementById("usersTable").innerHTML = users.map(function (u) {
-        return '<tr><td>' + u.nombre + '</td><td>' + u.usuario_roblox + '</td><td>' + u.rango + '</td><td>' + u.puntos + '</td><td>' + u.dinero + '</td><td><span class="badge badge-' + (u.rol === "staff" ? "pendiente" : "activo") + '">' + u.rol + '</span></td><td><span class="badge badge-' + u.estado + '">' + u.estado + '</span></td></tr>';
+        var lastLogin = u.last_login ? timeAgo(u.last_login) : "Nunca";
+        var activityColor = u.last_login ? (Date.now() - new Date(u.last_login).getTime() < 3600000 ? "var(--auth-success)" : "var(--auth-text-dim)") : "var(--auth-error)";
+        return '<tr><td>' + u.nombre + '</td><td>' + u.usuario_roblox + '</td><td>' + u.rango + '</td><td>' + u.puntos + '</td><td>' + u.dinero + '</td><td><span class="badge badge-' + (u.rol === "staff" ? "pendiente" : "activo") + '">' + u.rol + '</span></td><td><span class="badge badge-' + u.estado + '">' + u.estado + '</span></td><td style="color:' + activityColor + ';font-size:0.8rem;">' + lastLogin + '</td></tr>';
       }).join("");
+    }
+    function timeAgo(dateStr) {
+      var diff = Date.now() - new Date(dateStr).getTime();
+      var mins = Math.floor(diff / 60000);
+      if (mins < 1) return "Ahora";
+      if (mins < 60) return mins + "min";
+      var hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + "h";
+      var days = Math.floor(hrs / 24);
+      return days + "d";
     }
 
     async function loadMissions() {

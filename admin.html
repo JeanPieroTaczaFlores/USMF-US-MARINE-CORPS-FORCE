@@ -48,7 +48,7 @@
     <div class="panel active" id="panel-usuarios">
       <input type="text" class="search-bar" id="searchUsers" placeholder="Buscar por nombre, usuario o rango..." />
       <div class="table-wrap">
-        <table><thead><tr><th>Nombre</th><th>Roblox</th><th>Rango</th><th>Pts</th><th>Coins</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <table><thead><tr><th>Nombre</th><th>Roblox</th><th>Rango</th><th>Pts</th><th>Coins</th><th>Rol</th><th>Estado</th><th>Actividad</th><th>Acciones</th></tr></thead>
         <tbody id="usersTable"></tbody></table>
       </div>
     </div>
@@ -75,7 +75,7 @@
     <div class="panel" id="panel-tienda">
       <button class="btn-sm btn-edit" id="btnNewItem">+ NUEVO ITEM</button>
       <div class="table-wrap" style="margin-top:1rem;">
-        <table><thead><tr><th>Nombre</th><th>Tipo</th><th>Precio Coins</th><th>Precio Pts</th><th>Stock</th><th>Acciones</th></tr></thead>
+        <table><thead><tr><th>Imagen</th><th>Nombre</th><th>Tipo</th><th>Precio Coins</th><th>Precio Pts</th><th>Stock</th><th>Disponible</th><th>Acciones</th></tr></thead>
         <tbody id="shopTable"></tbody></table>
       </div>
     </div>
@@ -135,8 +135,20 @@
     function renderUsers(users) {
       document.getElementById("usersTable").innerHTML = users.map(function (u) {
         var rc = u.rol === "super_admin" || u.rol === "admin" ? "inactivo" : u.rol === "staff" ? "pendiente" : "activo";
-        return '<tr><td>' + u.nombre + '</td><td>' + u.usuario_roblox + '</td><td>' + u.rango + '</td><td>' + u.puntos + '</td><td>' + u.dinero + '</td><td><span class="badge badge-' + rc + '">' + u.rol + '</span></td><td><span class="badge badge-' + u.estado + '">' + u.estado + '</span></td><td><button class="btn-sm btn-edit" onclick="editUser(\'' + u.id + '\')">EDITAR</button> <button class="btn-sm btn-accept" onclick="grantUser(\'' + u.id + '\')">DAR RECURSOS</button></td></tr>';
+        var lastLogin = u.last_login ? timeAgo(u.last_login) : "Nunca";
+        var activityColor = u.last_login ? (Date.now() - new Date(u.last_login).getTime() < 3600000 ? "var(--auth-success)" : "var(--auth-text-dim)") : "var(--auth-error)";
+        return '<tr><td>' + u.nombre + '</td><td>' + u.usuario_roblox + '</td><td>' + u.rango + '</td><td>' + u.puntos + '</td><td>' + u.dinero + '</td><td><span class="badge badge-' + rc + '">' + u.rol + '</span></td><td><span class="badge badge-' + u.estado + '">' + u.estado + '</span></td><td style="color:' + activityColor + ';font-size:0.8rem;">' + lastLogin + '</td><td><button class="btn-sm btn-edit" onclick="editUser(\'' + u.id + '\')">EDITAR</button> <button class="btn-sm btn-accept" onclick="grantUser(\'' + u.id + '\')">DAR RECURSOS</button></td></tr>';
       }).join("");
+    }
+    function timeAgo(dateStr) {
+      var diff = Date.now() - new Date(dateStr).getTime();
+      var mins = Math.floor(diff / 60000);
+      if (mins < 1) return "Ahora";
+      if (mins < 60) return mins + "min";
+      var hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + "h";
+      var days = Math.floor(hrs / 24);
+      return days + "d";
     }
     async function editUser(id) {
       var rango = prompt("Nuevo rango:");
@@ -228,7 +240,9 @@
       var items = await USMCF.Shop.listAll();
       document.getElementById("statItems").textContent = items.length;
       document.getElementById("shopTable").innerHTML = items.map(function (it) {
-        return '<tr><td>' + it.nombre + '</td><td>' + it.tipo + '</td><td>' + it.precio_dinero + '</td><td>' + it.precio_puntos + '</td><td>' + (it.stock >= 0 ? it.stock : "∞") + '</td><td><button class="btn-sm btn-reject" onclick="deleteItem(\'' + it.id + '\')">ELIMINAR</button></td></tr>';
+        var imgPreview = it.imagen_url ? '<img src="' + it.imagen_url + '" style="width:40px;height:40px;border-radius:4px;object-fit:cover;" onerror="this.style.display=\'none\'">' : '<span style="color:var(--auth-text-dim);font-size:0.75rem;">Sin img</span>';
+        var dispBadge = it.disponible ? '<span class="badge badge-activo">Sí</span>' : '<span class="badge badge-inactivo">No</span>';
+        return '<tr><td>' + imgPreview + '</td><td>' + it.nombre + '</td><td>' + it.tipo + '</td><td>' + it.precio_dinero + '</td><td>' + it.precio_puntos + '</td><td>' + (it.stock >= 0 ? it.stock : "∞") + '</td><td>' + dispBadge + '</td><td><button class="btn-sm btn-reject" onclick="deleteItem(\'' + it.id + '\')">ELIMINAR</button></td></tr>';
       }).join("");
     }
     async function createShopItem() {
@@ -239,7 +253,8 @@
       var pd = parseInt(prompt("Precio en coins (0 si usa puntos):")) || 0;
       var pp = parseInt(prompt("Precio en puntos (0 si usa coins):")) || 0;
       var s = parseInt(prompt("Stock (-1 = ilimitado):"));
-      await USMCF.Shop.createItem({ nombre: n, descripcion: d || "", tipo: t, precio_dinero: pd, precio_puntos: pp, stock: s });
+      var img = prompt("URL de imagen (deja vacío si no tiene):") || "";
+      await USMCF.Shop.createItem({ nombre: n, descripcion: d || "", tipo: t, precio_dinero: pd, precio_puntos: pp, stock: s, imagen_url: img });
       await loadShop();
     }
     async function deleteItem(id) {

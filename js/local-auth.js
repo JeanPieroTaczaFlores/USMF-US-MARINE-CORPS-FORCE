@@ -52,9 +52,12 @@
     var db = {
       profiles: [],
       missions: [],
+      missions_participants: [],
       transactions: [],
       opinions: [],
-      notifications: []
+      notifications: [],
+      shop_items: [],
+      user_inventory: []
     };
 
     var now = new Date().toISOString();
@@ -67,19 +70,19 @@
         id: adminId, email: "admin@usmcf.com", nombre: "Comandante USMCF",
         usuario_roblox: "AdminUSMCF", rango: "General", rol: "super_admin",
         estado: "activo", puntos: 10000, dinero: 50000,
-        created_at: now
+        last_login: now, created_at: now
       },
       {
         id: staffId, email: "staff@usmcf.com", nombre: "Sargento Mayor",
         usuario_roblox: "StaffUSMCF", rango: "Sargento Mayor de 1ra Clase",
         rol: "staff", estado: "activo", puntos: 5000, dinero: 15000,
-        created_at: now
+        last_login: now, created_at: now
       },
       {
         id: clienteId, email: "cliente@usmcf.com", nombre: "Recluta Test",
         usuario_roblox: "ClienteTest", rango: "Soldado",
         rol: "usuario", estado: "activo", puntos: 100, dinero: 500,
-        created_at: now
+        last_login: now, created_at: now
       }
     );
 
