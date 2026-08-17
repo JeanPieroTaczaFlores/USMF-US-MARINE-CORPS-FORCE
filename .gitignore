@@ -4,3 +4,4 @@ guardar-sesion.json
 node_modules/
 .env
 .env.local
+app/index.html
