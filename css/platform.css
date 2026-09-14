@@ -192,6 +192,11 @@
 .admin-form { display:grid; gap:.65rem; margin-bottom:1.2rem; }
 .admin-form input,.admin-form textarea,.admin-form select { width:100%; border:1px solid #313731; background:#0c0f0d; color:#fff; padding:.75rem .8rem; font:inherit; outline:0; }
 .admin-form input:focus,.admin-form textarea:focus,.admin-form select:focus { border-color:var(--platform-gold); }
+.field-control { display:grid; gap:.38rem; min-width:0; }
+.field-control > span,.profile-editor label > span,.member-management label > span { color:var(--platform-gold-soft); font:800 .64rem "Inter",sans-serif; letter-spacing:.1em; }
+.field-control > small { color:#7f877f; font:500 .68rem/1.4 "Inter",sans-serif; }
+.admin-search { margin:0 0 1rem; }
+.admin-search input { width:100%; border:1px solid #313731; background:#0c0f0d; color:#fff; padding:.75rem .8rem; font:inherit; }
 
 .mission-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:.8rem; margin-bottom:1rem; }
 .mission-summary article { border:1px solid var(--platform-line); background:#101411; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
@@ -238,12 +243,20 @@
 .attendance-row small { display:block; color:#7f877f; margin-top:.2rem; font-size:.64rem; }
 .attendance-row button:disabled { opacity:.4; cursor:not-allowed; }
 .mission-blocker { color:#d6ad66; background:#2b2113; border-left:3px solid #b78330; padding:.65rem; font-size:.72rem; }
-.member-management { max-width:520px; }
-.member-management input { width:88px; border:1px solid #363c36; background:#0d100e; color:#fff; padding:.45rem; font:600 .7rem "Inter",sans-serif; }
+.member-management { width:180px; display:grid; gap:.5rem; }
+.member-management label { display:grid; gap:.3rem; }
+.member-management input { width:100%; border:1px solid #363c36; background:#0d100e; color:#fff; padding:.55rem; font:600 .75rem "Inter",sans-serif; }
+.member-management small { color:#737a73; font-size:.65rem; }
 .profile-editor { width:100%; margin-top:.7rem; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; }
+.profile-editor label { display:grid; gap:.28rem; }
 .profile-editor input,.profile-editor select { min-width:0; width:100%; border:1px solid #343a34; background:#0b0e0c; color:#d9ddd8; padding:.5rem; font:600 .68rem "Inter",sans-serif; }
 .profile-editor .wide { grid-column:1/-1; }
 .profile-editor button { border:1px solid #64502f; background:#1d1810; color:var(--platform-gold-soft); padding:.55rem; cursor:pointer; font:700 .64rem "Inter",sans-serif; }
+.member-dossier { margin-top:.75rem; border-top:1px solid #2b302b; padding-top:.65rem; }
+.member-dossier summary { color:var(--platform-gold-soft); cursor:pointer; font:800 .65rem "Inter",sans-serif; letter-spacing:.06em; }
+.dossier-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.55rem; margin-top:.65rem; }
+.dossier-grid > div { background:#0c0f0d; border:1px solid #292e29; padding:.65rem; }
+.dossier-grid p { color:#9aa19a; font:500 .68rem/1.55 "Inter",sans-serif; margin:.35rem 0 0; }
 .training-card { grid-column:1/-1; }
 .training-queue { display:grid; gap:.55rem; margin-top:1rem; }
 .training-row { border:1px solid #303630; background:#0d100e; padding:.85rem; display:grid; grid-template-columns:minmax(180px,1fr) auto; gap:.75rem; align-items:center; }
@@ -286,5 +299,6 @@
   .service-number { text-align:left; }
   .balance-pill { width:100%; }
   .summary-hero::after { font-size:3.8rem; }
-  .profile-editor,.training-row { grid-template-columns:1fr; }
+  .profile-editor,.training-row,.dossier-grid { grid-template-columns:1fr; }
+  .member-management { width:100%; }
 }

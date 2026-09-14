@@ -10,6 +10,9 @@
     transactions: [],
     adminProfiles: [],
     adminItems: [],
+    adminInventory: [],
+    adminOrders: [],
+    adminTransactions: [],
     missions: [],
     missionParticipants: [],
     discordEvents: [],
@@ -17,7 +20,8 @@
     cart: [],
     storeCategory: "todos",
     libraryCategory: "todos",
-    libraryQuery: ""
+    libraryQuery: "",
+    adminQuery: ""
   };
 
   var libraryEntries = [
@@ -36,7 +40,7 @@
   ];
 
   function $(id) { return document.getElementById(id); }
-  function money(value) { return Number(value || 0).toLocaleString("es-PE") + " ¢"; }
+  function money(value) { return new Intl.NumberFormat("es-PE", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(value || 0)); }
   function points(value) { return Number(value || 0).toLocaleString("es-PE") + " pts"; }
   function dateText(value) {
     if (!value) return "Sin registro";
@@ -107,6 +111,8 @@
       $("logoutBtn").classList.remove("hidden");
       if (!isSupabaseConfigured) $("demoAccess").classList.remove("hidden");
       hydrateIdentity();
+      var accessResult = await supabase.rpc("record_platform_login");
+      if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
       await verifySalary();
       await loadPlatformData();
       if (state.profile.estado !== "activo") {
@@ -200,11 +206,17 @@
     var results = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("shop_items").select("*").order("created_at", { ascending: false }),
-      supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false })
+      supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false }),
+      supabase.from("user_inventory").select("*").order("comprado_at", { ascending: false }),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("transactions").select("*").order("created_at", { ascending: false })
     ]);
     state.adminProfiles = results[0].data || [];
     state.adminItems = results[1].data || [];
     state.trainingAssignments = results[2].data || [];
+    state.adminInventory = results[3].data || [];
+    state.adminOrders = results[4].data || [];
+    state.adminTransactions = results[5].data || [];
     renderAdmin();
     renderMissions();
   }
@@ -385,7 +397,7 @@
       var startButton = mission.estado === "programada" ? '<button type="button" data-start-mission="' + escapeHtml(mission.id) + '">LANZAR MISIÓN</button>' : '';
       var finishButton = mission.estado === "activa" ? '<button type="button" class="finish-mission" data-finish-mission="' + escapeHtml(mission.id) + '" ' + (pending || !participants.length ? "disabled" : "") + '>TERMINAR Y ENTREGAR RECOMPENSAS</button>' : '';
       var confirmAll = mission.estado === "activa" && pending ? '<button type="button" data-confirm-all="' + escapeHtml(mission.id) + '">CONFIRMAR TODOS LOS PENDIENTES</button>' : '';
-      return '<details class="mission-admin-card" ' + (mission.estado === "activa" ? "open" : "") + '><summary><span><strong>' + escapeHtml(mission.titulo) + '</strong><small>' + escapeHtml(missionStatusLabel(mission.estado)) + ' · ' + participants.length + ' participantes</small></span><span>' + pending + ' por revisar</span></summary><div class="mission-admin-body"><div class="mission-command-actions"><button type="button" data-edit-mission="' + escapeHtml(mission.id) + '">EDITAR</button>' + startButton + confirmAll + finishButton + '</div><div class="attendance-list">' + participantRows + '</div>' + (mission.estado === "activa" && pending ? '<p class="mission-blocker">Debes confirmar o marcar ausente a cada participante antes de cerrar.</p>' : '') + '</div></details>';
+      return '<details class="mission-admin-card" ' + (mission.estado === "activa" ? "open" : "") + '><summary><span><strong>' + escapeHtml(mission.titulo) + '</strong><small>' + escapeHtml(missionStatusLabel(mission.estado)) + ' · ' + participants.length + ' participantes · Premio: ' + escapeHtml(points(mission.recompensa_puntos)) + ' + ' + escapeHtml(money(mission.recompensa_dinero)) + '</small></span><span>' + pending + ' por revisar</span></summary><div class="mission-admin-body"><div class="mission-command-actions"><button type="button" data-edit-mission="' + escapeHtml(mission.id) + '">EDITAR DATOS Y RECOMPENSAS</button>' + startButton + confirmAll + finishButton + '</div><div class="attendance-list">' + participantRows + '</div>' + (mission.estado === "activa" && pending ? '<p class="mission-blocker">Debes confirmar o marcar ausente a cada participante antes de cerrar.</p>' : '') + '</div></details>';
     }).join("") : '<p class="empty-state">Crea la primera misión desde el formulario.</p>';
   }
 
@@ -488,13 +500,24 @@
 
   function renderAdmin() {
     if (!isStaff()) return;
-    $("adminProfiles").innerHTML = state.adminProfiles.length ? state.adminProfiles.map(function (profile) {
+    var query = state.adminQuery.trim().toLowerCase();
+    var visibleProfiles = state.adminProfiles.filter(function (profile) {
+      return !query || [profile.nombre, profile.usuario_roblox, profile.email, profile.rango, profile.rol, profile.estado].join(" ").toLowerCase().indexOf(query) !== -1;
+    });
+    $("adminProfiles").innerHTML = visibleProfiles.length ? visibleProfiles.map(function (profile) {
       var rankOptions = (window.RANGOS || []).map(function (rank) { return '<option value="' + escapeHtml(rank.rango) + '" ' + (rank.rango === profile.rango ? "selected" : "") + '>' + escapeHtml(rank.rango) + '</option>'; }).join("");
       var roleOptions = [["usuario", "Miembro"], ["staff", "Staff"], ["admin", "Administrador"], ["super_admin", "Alto Mando"]].map(function (entry) { return '<option value="' + entry[0] + '" ' + (profile.rol === entry[0] ? "selected" : "") + '>' + entry[1] + '</option>'; }).join("");
       var statusOptions = [["pendiente", "Pendiente"], ["activo", "Activo"], ["suspendido", "Suspendido"]].map(function (entry) { return '<option value="' + entry[0] + '" ' + (profile.estado === entry[0] ? "selected" : "") + '>' + entry[1] + '</option>'; }).join("");
-      var editor = canManageUsers() ? '<div class="profile-editor"><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" aria-label="Nombre de ' + escapeHtml(profile.nombre) + '" /><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" aria-label="Roblox de ' + escapeHtml(profile.nombre) + '" /><input class="wide" type="email" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" aria-label="Correo de ' + escapeHtml(profile.nombre) + '" /><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '" aria-label="Rol de ' + escapeHtml(profile.nombre) + '">' + roleOptions + '</select><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '" aria-label="Estado de ' + escapeHtml(profile.nombre) + '">' + statusOptions + '</select><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '" aria-label="Rango de ' + escapeHtml(profile.nombre) + '">' + rankOptions + '</select><button type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR PERFIL</button></div>' : '';
-      return '<div class="admin-person"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + ' · ' + escapeHtml(profile.rango) + '</small><small>' + escapeHtml(points(profile.puntos)) + ' · ' + escapeHtml(money(profile.dinero)) + '</small>' + editor + '</div><div class="admin-actions member-management"><input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" aria-label="Ajuste de puntos para ' + escapeHtml(profile.nombre) + '" title="Puntos: usa negativo para descontar" /><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" aria-label="Ajuste de saldo para ' + escapeHtml(profile.nombre) + '" title="Saldo: usa negativo para descontar" /><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">PUBLICAR AJUSTE</button></div></div>';
-    }).join("") : '<p class="empty-state">No hay perfiles registrados.</p>';
+      var inventory = state.adminInventory.filter(function (row) { return String(row.user_id) === String(profile.id); });
+      var orders = state.adminOrders.filter(function (row) { return String(row.user_id) === String(profile.id); });
+      var transactions = state.adminTransactions.filter(function (row) { return String(row.user_id) === String(profile.id); }).slice(0, 5);
+      var inventoryText = inventory.length ? inventory.map(function (row) { var item = state.adminItems.find(function (candidate) { return String(candidate.id) === String(row.item_id); }); return escapeHtml((item && item.nombre) || "Implemento") + " ×" + Number(row.cantidad || 1); }).join(" · ") : "Sin implementos asignados";
+      var invoiceText = orders.length ? orders.map(function (order) { return escapeHtml(order.invoice_number) + " — " + escapeHtml(money(order.total_dinero)) + (order.total_puntos ? " + " + escapeHtml(points(order.total_puntos)) : ""); }).join("<br>") : "Sin facturas";
+      var movementText = transactions.length ? transactions.map(function (row) { return escapeHtml(row.descripcion) + " — " + escapeHtml(money(row.monto_dinero)) + " / " + escapeHtml(points(row.monto_puntos)); }).join("<br>") : "Sin movimientos";
+      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button></div>' : '';
+      var dossier = '<details class="member-dossier"><summary>VER INVENTARIO, FACTURAS Y MOVIMIENTOS</summary><div class="dossier-grid"><div><strong>INVENTARIO</strong><p>' + inventoryText + '</p></div><div><strong>FACTURAS</strong><p>' + invoiceText + '</p></div><div><strong>ÚLTIMOS MOVIMIENTOS</strong><p>' + movementText + '</p></div></div></details>';
+      return '<div class="admin-person"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + ' · ' + escapeHtml(profile.rango) + '</small><small>' + escapeHtml(points(profile.puntos)) + ' · ' + escapeHtml(money(profile.dinero)) + ' · Último ingreso: ' + escapeHtml(dateText(profile.last_login)) + '</small>' + editor + dossier + '</div><div class="admin-actions member-management"><label><span>SUMAR/RESTAR PUNTOS</span><input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" /></label><label><span>SUMAR/RESTAR USD</span><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" /></label><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">APLICAR AJUSTE</button><small>Usa números negativos para descontar.</small></div></div>';
+    }).join("") : '<p class="empty-state">No hay usuarios que coincidan con la búsqueda.</p>';
     renderTrainingQueue();
     $("adminCatalog").innerHTML = state.adminItems.length ? state.adminItems.map(function (item) {
       return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(item.tipo) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button></div></div>';
@@ -533,6 +556,16 @@
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     setMessage("appMessage", "Perfil, permisos y rango actualizados.", "success");
     await loadPlatformData();
+  }
+
+  async function resetMemberPassword(profileId) {
+    var input = document.querySelector('[data-new-password-for="' + profileId + '"]');
+    var password = input ? input.value : "";
+    if (password.length < 8) return setMessage("appMessage", "La nueva contraseña debe tener al menos 8 caracteres.", "error");
+    var result = await supabase.functions.invoke("admin-users", { body: { action: "reset_password", user_id: profileId, password: password } });
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    input.value = "";
+    setMessage("appMessage", "Contraseña cambiada por Administración.", "success");
   }
 
   async function trainingAction(name, assignmentId, message) {
@@ -633,6 +666,7 @@
     $("missionForm").addEventListener("submit", saveMission);
     $("cancelMissionEdit").addEventListener("click", resetMissionForm);
     $("librarySearch").addEventListener("input", function (event) { state.libraryQuery = event.target.value; renderLibrary(); });
+    $("adminUserSearch").addEventListener("input", function (event) { state.adminQuery = event.target.value; renderAdmin(); });
     document.addEventListener("click", function (event) {
       var nav = event.target.closest("[data-view], [data-go]");
       if (nav) switchView(nav.dataset.view || nav.dataset.go);
@@ -660,6 +694,8 @@
       if (adjustMemberButton) adjustMember(adjustMemberButton.dataset.adjustMember);
       var saveProfileButton = event.target.closest("[data-save-profile]");
       if (saveProfileButton) saveProfile(saveProfileButton.dataset.saveProfile);
+      var resetPasswordButton = event.target.closest("[data-reset-password]");
+      if (resetPasswordButton) resetMemberPassword(resetPasswordButton.dataset.resetPassword);
       var takeTrainingButton = event.target.closest("[data-take-training]");
       if (takeTrainingButton) trainingAction("take_training", takeTrainingButton.dataset.takeTraining, "Entrenamiento tomado. Ya figuras como instructor responsable.");
       var finishTrainingButton = event.target.closest("[data-finish-training]");

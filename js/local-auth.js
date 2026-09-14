@@ -406,6 +406,15 @@
             saveDB(db);
             return { data: { updated: true }, error: null };
           }
+          if (body.action === "reset_password") {
+            var passwordTarget = db.profiles.find(function (row) { return String(row.id) === String(body.user_id); });
+            if (!passwordTarget) return { data: null, error: { message: "Usuario no encontrado." } };
+            if (String(body.password || "").length < 8) return { data: null, error: { message: "La contraseña debe tener al menos 8 caracteres." } };
+            var passwordStore = getPasswords();
+            passwordStore[passwordTarget.email] = String(body.password);
+            savePasswords(passwordStore);
+            return { data: { password_updated: true }, error: null };
+          }
         }
         return { data: null, error: { message: "Función local no disponible." } };
       }
@@ -417,6 +426,15 @@
       if (!session) return { data: null, error: { message: "Debes iniciar sesión." } };
       var profile = db.profiles.find(function (p) { return p.id === session.id; });
       if (!profile) return { data: null, error: { message: "Perfil no encontrado." } };
+
+      if (name === "record_platform_login") {
+        var loginTime = new Date().toISOString();
+        profile.last_login = loginTime;
+        var loginEvent = { id: uid(), tipo: "platform_login", titulo: "Ingreso a la plataforma", mensaje: profile.nombre + " (" + profile.usuario_roblox + ") ingresó a la Plataforma USMCF.", mission_id: null, user_id: profile.id, estado: "pendiente", created_at: loginTime };
+        db.discord_events.push(loginEvent);
+        saveDB(db);
+        return { data: { event_id: loginEvent.id }, error: null };
+      }
 
       if (name === "pay_my_salary") {
         var salary = (window.RANGOS || []).find(function (r) { return r.rango === profile.rango; });

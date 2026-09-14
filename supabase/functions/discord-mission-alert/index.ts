@@ -27,14 +27,16 @@ Deno.serve(async (request) => {
       ? Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")
       : event.tipo.startsWith("points_")
         ? Deno.env.get("DISCORD_POINTS_WEBHOOK_URL")
-        : Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL");
+        : event.tipo === "platform_login"
+          ? Deno.env.get("DISCORD_ACCESS_WEBHOOK_URL") || Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL")
+          : Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL");
     if (!webhookUrl) throw new Error(`Discord webhook is not configured for ${event.tipo}`);
 
     const discordResponse = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        username: "USMCF Mission Control",
+        username: "USMCF Command Bot",
         embeds: [{ title: event.titulo, description: event.mensaje, color: 0xd9a441, footer: { text: `Evento ${event.id}` }, timestamp: event.created_at }]
       })
     });

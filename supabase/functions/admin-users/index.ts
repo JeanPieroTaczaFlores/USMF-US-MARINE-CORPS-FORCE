@@ -46,6 +46,15 @@ Deno.serve(async (request) => {
       if (updateError) return json({ error: updateError.message }, 400);
       return json({ updated: true });
     }
+    if (body.action === "reset_password") {
+      if (!body.user_id || String(body.password || "").length < 8) return json({ error: "User and an 8-character password are required" }, 400);
+      const { data: target } = await admin.from("profiles").select("rol").eq("id", body.user_id).single();
+      if (!target) return json({ error: "User not found" }, 404);
+      if (target.rol === "super_admin" && actor.rol !== "super_admin") return json({ error: "Only Alto Mando can modify Alto Mando" }, 403);
+      const { error: passwordError } = await admin.auth.admin.updateUserById(body.user_id, { password: String(body.password) });
+      if (passwordError) return json({ error: passwordError.message }, 400);
+      return json({ password_updated: true });
+    }
     return json({ error: "Unsupported action" }, 400);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
