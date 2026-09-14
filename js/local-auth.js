@@ -50,6 +50,7 @@
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
+    seedAdditionalDemoPersonnel(db);
     if (db.missions_participants && db.missions_participants.length) {
       db.mission_participants = db.mission_participants.concat(db.missions_participants.filter(function (legacy) {
         return !db.mission_participants.some(function (current) { return current.id === legacy.id; });
@@ -148,6 +149,31 @@
     items.forEach(function (item) {
       db.shop_items.push(Object.assign({ id: uid(), disponible: true, imagen_url: "", created_at: new Date().toISOString() }, item));
     });
+  }
+
+  function seedAdditionalDemoPersonnel(db) {
+    var now = new Date().toISOString();
+    var demoPersonnel = [
+      { email: "diego.salazar@usmcf.com", nombre: "Cabo Diego Salazar", usuario_roblox: "DiegoSalazarUSMC", rango: "Cabo", rol: "usuario", estado: "activo", puntos: 850, dinero: 2400 },
+      { email: "mateo.ruiz@usmcf.com", nombre: "Soldado Mateo Ruiz", usuario_roblox: "MateoRuizUSMC", rango: "Soldado", rol: "usuario", estado: "activo", puntos: 320, dinero: 900 },
+      { email: "lucia.vega@usmcf.com", nombre: "Soldado Lucía Vega", usuario_roblox: "LuciaVegaUSMC", rango: "Soldado de Primera", rol: "usuario", estado: "activo", puntos: 470, dinero: 1300 },
+      { email: "tomas.leon@usmcf.com", nombre: "Recluta Tomás León", usuario_roblox: "TomasLeonUSMC", rango: "Recluta", rol: "usuario", estado: "pendiente", puntos: 0, dinero: 0, training: true },
+      { email: "valeria.cruz@usmcf.com", nombre: "Recluta Valeria Cruz", usuario_roblox: "ValeriaCruzUSMC", rango: "Recluta", rol: "usuario", estado: "pendiente", puntos: 0, dinero: 0, training: true },
+      { email: "reyes.staff@usmcf.com", nombre: "Instructor Reyes", usuario_roblox: "ReyesStaffUSMC", rango: "Sargento", rol: "staff", estado: "activo", puntos: 2100, dinero: 6200 },
+      { email: "torres.staff@usmcf.com", nombre: "Sargento Ana Torres", usuario_roblox: "AnaTorresUSMC", rango: "Sargento de Artillería", rol: "staff", estado: "activo", puntos: 3400, dinero: 9800 }
+    ];
+    var passwords = getPasswords();
+    demoPersonnel.forEach(function (person, index) {
+      var existing = db.profiles.find(function (profile) { return profile.email === person.email; });
+      if (!existing) {
+        existing = Object.assign({ id: uid(), last_login: now, created_at: new Date(Date.now() - (index + 1) * 3600000).toISOString(), ultimo_salario: null }, person);
+        delete existing.training;
+        db.profiles.push(existing);
+        if (person.training) db.training_assignments.push({ id: uid(), user_id: existing.id, trainer_id: null, estado: "asignado", assigned_at: now, started_at: null, completed_at: null });
+      }
+      if (!passwords[person.email]) passwords[person.email] = "Demo123!";
+    });
+    savePasswords(passwords);
   }
 
   // Forzar contraseñas de prueba SOLO si no existen aún
