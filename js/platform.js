@@ -13,6 +13,7 @@
     missions: [],
     missionParticipants: [],
     discordEvents: [],
+    trainingAssignments: [],
     cart: [],
     storeCategory: "todos",
     libraryCategory: "todos",
@@ -138,10 +139,15 @@
     $("summaryPayDate").textContent = next <= new Date() ? "En proceso" : dateText(next);
     $("adminNav").classList.toggle("hidden", !isStaff());
     $("missionCommand").classList.toggle("hidden", !isStaff());
+    $("adminUserForm").classList.toggle("hidden", !canManageUsers());
   }
 
   function isStaff() {
     return state.profile && ["staff", "admin", "super_admin"].indexOf(state.profile.rol) !== -1;
+  }
+
+  function canManageUsers() {
+    return state.profile && ["admin", "super_admin"].indexOf(state.profile.rol) !== -1;
   }
 
   async function verifySalary() {
@@ -167,7 +173,8 @@
       supabase.from("orders").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("missions").select("*").order("fecha", { ascending: true }),
       supabase.from("mission_participants").select("*").order("joined_at", { ascending: true }),
-      supabase.from("discord_events").select("*").order("created_at", { ascending: false }).limit(12)
+      supabase.from("discord_events").select("*").order("created_at", { ascending: false }).limit(12),
+      supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false })
     ]);
     state.transactions = results[0].data || [];
     state.items = results[1].data || [];
@@ -176,6 +183,7 @@
     state.missions = results[4].data || [];
     state.missionParticipants = results[5].data || [];
     state.discordEvents = results[6].data || [];
+    state.trainingAssignments = results[7].data || [];
     state.profile = await getProfile(userId);
     hydrateIdentity();
     renderTransactions();
@@ -183,6 +191,7 @@
     renderInventory();
     renderInvoices();
     renderMissions();
+    renderOnboarding();
     $("summaryItems").textContent = state.inventory.reduce(function (sum, row) { return sum + Number(row.cantidad || 1); }, 0);
     if (isStaff()) await loadAdminData();
   }
@@ -190,10 +199,12 @@
   async function loadAdminData() {
     var results = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("shop_items").select("*").order("created_at", { ascending: false })
+      supabase.from("shop_items").select("*").order("created_at", { ascending: false }),
+      supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false })
     ]);
     state.adminProfiles = results[0].data || [];
     state.adminItems = results[1].data || [];
+    state.trainingAssignments = results[2].data || [];
     renderAdmin();
     renderMissions();
   }
@@ -203,6 +214,16 @@
     $("recentTransactions").innerHTML = recent.length ? recent.map(transactionRow).join("") : '<p class="empty-state">Todavía no hay movimientos.</p>';
     var salaries = state.transactions.filter(function (row) { return row.tipo === "salario"; });
     $("salaryHistory").innerHTML = salaries.length ? salaries.map(transactionRow).join("") : '<p class="empty-state">Tu primer pago aparecerá aquí.</p>';
+  }
+
+  function renderOnboarding() {
+    var assignment = state.trainingAssignments.find(function (row) { return String(row.user_id) === String(state.user.id); });
+    var visible = assignment && assignment.estado !== "finalizado";
+    $("onboardingBanner").classList.toggle("hidden", !visible);
+    if (!visible) return;
+    var trainer = state.adminProfiles.find(function (row) { return String(row.id) === String(assignment.trainer_id); });
+    $("onboardingStatus").textContent = String(assignment.estado || "asignado").replace("_", " ").toUpperCase();
+    $("onboardingTrainer").textContent = trainer ? "Instructor responsable: " + trainer.nombre : "Esperando que Staff o Administración tome el entrenamiento.";
   }
 
   function transactionRow(row) {
@@ -461,6 +482,7 @@
     var result = await supabase.rpc("adjust_member_balance", { p_user_id: profileId, p_points: pointsDelta, p_money: moneyDelta, p_reason: "Ajuste manual de mando" });
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     setMessage("appMessage", "Puntos y saldo actualizados con registro de auditoría.", "success");
+    if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
     await loadPlatformData();
   }
 
@@ -468,11 +490,57 @@
     if (!isStaff()) return;
     $("adminProfiles").innerHTML = state.adminProfiles.length ? state.adminProfiles.map(function (profile) {
       var rankOptions = (window.RANGOS || []).map(function (rank) { return '<option value="' + escapeHtml(rank.rango) + '" ' + (rank.rango === profile.rango ? "selected" : "") + '>' + escapeHtml(rank.rango) + '</option>'; }).join("");
-      return '<div class="admin-person"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + '</small><small>' + escapeHtml(points(profile.puntos)) + ' · ' + escapeHtml(money(profile.dinero)) + '</small></div><div class="admin-actions member-management"><select data-rank="' + escapeHtml(profile.id) + '" aria-label="Rango de ' + escapeHtml(profile.nombre) + '">' + rankOptions + '</select>' + (profile.estado !== "activo" ? '<button type="button" data-approve="' + escapeHtml(profile.id) + '">APROBAR</button>' : "") + '<input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" aria-label="Ajuste de puntos para ' + escapeHtml(profile.nombre) + '" title="Puntos: usa negativo para descontar" /><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" aria-label="Ajuste de saldo para ' + escapeHtml(profile.nombre) + '" title="Saldo: usa negativo para descontar" /><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">AJUSTAR</button></div></div>';
+      var roleOptions = [["usuario", "Miembro"], ["staff", "Staff"], ["admin", "Administrador"], ["super_admin", "Alto Mando"]].map(function (entry) { return '<option value="' + entry[0] + '" ' + (profile.rol === entry[0] ? "selected" : "") + '>' + entry[1] + '</option>'; }).join("");
+      var statusOptions = [["pendiente", "Pendiente"], ["activo", "Activo"], ["suspendido", "Suspendido"]].map(function (entry) { return '<option value="' + entry[0] + '" ' + (profile.estado === entry[0] ? "selected" : "") + '>' + entry[1] + '</option>'; }).join("");
+      var editor = canManageUsers() ? '<div class="profile-editor"><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" aria-label="Nombre de ' + escapeHtml(profile.nombre) + '" /><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" aria-label="Roblox de ' + escapeHtml(profile.nombre) + '" /><input class="wide" type="email" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" aria-label="Correo de ' + escapeHtml(profile.nombre) + '" /><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '" aria-label="Rol de ' + escapeHtml(profile.nombre) + '">' + roleOptions + '</select><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '" aria-label="Estado de ' + escapeHtml(profile.nombre) + '">' + statusOptions + '</select><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '" aria-label="Rango de ' + escapeHtml(profile.nombre) + '">' + rankOptions + '</select><button type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR PERFIL</button></div>' : '';
+      return '<div class="admin-person"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + ' · ' + escapeHtml(profile.rango) + '</small><small>' + escapeHtml(points(profile.puntos)) + ' · ' + escapeHtml(money(profile.dinero)) + '</small>' + editor + '</div><div class="admin-actions member-management"><input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" aria-label="Ajuste de puntos para ' + escapeHtml(profile.nombre) + '" title="Puntos: usa negativo para descontar" /><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" aria-label="Ajuste de saldo para ' + escapeHtml(profile.nombre) + '" title="Saldo: usa negativo para descontar" /><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">PUBLICAR AJUSTE</button></div></div>';
     }).join("") : '<p class="empty-state">No hay perfiles registrados.</p>';
+    renderTrainingQueue();
     $("adminCatalog").innerHTML = state.adminItems.length ? state.adminItems.map(function (item) {
       return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(item.tipo) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
+  }
+
+  function renderTrainingQueue() {
+    var pending = state.trainingAssignments.filter(function (row) { return row.estado !== "finalizado"; }).length;
+    $("trainingPendingCount").textContent = pending + (pending === 1 ? " PENDIENTE" : " PENDIENTES");
+    $("trainingQueue").innerHTML = state.trainingAssignments.length ? state.trainingAssignments.map(function (assignment) {
+      var recruit = state.adminProfiles.find(function (row) { return String(row.id) === String(assignment.user_id); });
+      var trainer = state.adminProfiles.find(function (row) { return String(row.id) === String(assignment.trainer_id); });
+      var canFinish = assignment.estado === "en_curso" && (canManageUsers() || String(assignment.trainer_id) === String(state.user.id));
+      var actions = assignment.estado === "asignado" ? '<button type="button" data-take-training="' + escapeHtml(assignment.id) + '">TOMAR ENTRENAMIENTO</button>' : canFinish ? '<button type="button" data-finish-training="' + escapeHtml(assignment.id) + '">FINALIZAR Y GRADUAR</button>' : '';
+      return '<div class="training-row"><div><strong>' + escapeHtml(recruit ? recruit.nombre : "Recluta") + '</strong><small>Entrenamiento Básico TRS · Roblox: ' + escapeHtml(recruit ? recruit.usuario_roblox : "Pendiente") + '</small><small>Instructor: ' + escapeHtml(trainer ? trainer.nombre : "Sin asignar") + '</small><span class="training-status">' + escapeHtml(String(assignment.estado || "asignado").replace("_", " ").toUpperCase()) + '</span></div><div class="admin-actions">' + actions + '</div></div>';
+    }).join("") : '<p class="empty-state">No hay entrenamientos asignados.</p>';
+  }
+
+  async function createAdminUser(event) {
+    event.preventDefault();
+    var button = $("createUserBtn");
+    setBusy(button, true, "CREANDO…");
+    var result = await supabase.functions.invoke("admin-users", { body: { action: "create", email: $("newUserEmail").value.trim(), password: $("newUserPassword").value, nombre: $("newUserName").value.trim(), usuario_roblox: $("newUserRoblox").value.trim(), rol: $("newUserRole").value } });
+    setBusy(button, false);
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    $("adminUserForm").reset();
+    setMessage("appMessage", "Usuario creado como Recluta. El Entrenamiento Básico TRS fue asignado automáticamente.", "success");
+    if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
+    await loadAdminData();
+  }
+
+  async function saveProfile(profileId) {
+    var payload = { action: "update", user_id: profileId };
+    document.querySelectorAll('[data-profile-id="' + profileId + '"]').forEach(function (field) { payload[field.dataset.profileField] = field.value; });
+    var result = await supabase.functions.invoke("admin-users", { body: payload });
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", "Perfil, permisos y rango actualizados.", "success");
+    await loadPlatformData();
+  }
+
+  async function trainingAction(name, assignmentId, message) {
+    var result = await supabase.rpc(name, { p_assignment_id: assignmentId });
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", message, "success");
+    if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
+    await loadPlatformData();
   }
 
   async function publishItem(event) {
@@ -561,6 +629,7 @@
     $("cartBackdrop").addEventListener("click", closeCart);
     $("checkoutBtn").addEventListener("click", checkout);
     $("adminItemForm").addEventListener("submit", publishItem);
+    $("adminUserForm").addEventListener("submit", createAdminUser);
     $("missionForm").addEventListener("submit", saveMission);
     $("cancelMissionEdit").addEventListener("click", resetMissionForm);
     $("librarySearch").addEventListener("input", function (event) { state.libraryQuery = event.target.value; renderLibrary(); });
@@ -589,6 +658,12 @@
       if (finishMissionButton) missionRpc("finish_mission", { p_mission_id: finishMissionButton.dataset.finishMission }, "Misión terminada. Recompensas entregadas a los asistentes confirmados.");
       var adjustMemberButton = event.target.closest("[data-adjust-member]");
       if (adjustMemberButton) adjustMember(adjustMemberButton.dataset.adjustMember);
+      var saveProfileButton = event.target.closest("[data-save-profile]");
+      if (saveProfileButton) saveProfile(saveProfileButton.dataset.saveProfile);
+      var takeTrainingButton = event.target.closest("[data-take-training]");
+      if (takeTrainingButton) trainingAction("take_training", takeTrainingButton.dataset.takeTraining, "Entrenamiento tomado. Ya figuras como instructor responsable.");
+      var finishTrainingButton = event.target.closest("[data-finish-training]");
+      if (finishTrainingButton) trainingAction("finish_training", finishTrainingButton.dataset.finishTraining, "Entrenamiento finalizado. El recluta fue activado y ascendido automáticamente a Soldado.");
       var storeFilter = event.target.closest("[data-category]");
       if (storeFilter) {
         state.storeCategory = storeFilter.dataset.category;

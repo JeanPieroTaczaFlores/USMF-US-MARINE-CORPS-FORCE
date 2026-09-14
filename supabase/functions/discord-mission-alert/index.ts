@@ -9,8 +9,6 @@ Deno.serve(async (request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const webhookUrl = Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL");
-    if (!webhookUrl) throw new Error("DISCORD_MISSIONS_WEBHOOK_URL is not configured");
 
     const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
     const { data: authData, error: authError } = await caller.auth.getUser();
@@ -24,6 +22,13 @@ Deno.serve(async (request) => {
     const staff = ["staff", "admin", "super_admin"].includes(callerProfile?.rol || "");
     if (event.user_id !== authData.user.id && !staff) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
     if (event.estado === "enviado") return new Response(JSON.stringify({ delivered: true, duplicate: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+
+    const webhookUrl = event.tipo.startsWith("training_")
+      ? Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")
+      : event.tipo.startsWith("points_")
+        ? Deno.env.get("DISCORD_POINTS_WEBHOOK_URL")
+        : Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL");
+    if (!webhookUrl) throw new Error(`Discord webhook is not configured for ${event.tipo}`);
 
     const discordResponse = await fetch(webhookUrl, {
       method: "POST",

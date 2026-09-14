@@ -46,7 +46,7 @@
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], mission_participants: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
+    var defaults = { missions: [], mission_participants: [], training_assignments: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
@@ -71,6 +71,7 @@
       profiles: [],
       missions: [],
       mission_participants: [],
+      training_assignments: [],
       transactions: [],
       opinions: [],
       notifications: [],
@@ -302,10 +303,13 @@
         var profile = {
           id: id, email: email, nombre: meta.nombre || "Sin nombre",
           usuario_roblox: meta.usuario_roblox || "SinUsuario",
-          rango: "Soldado", rol: "usuario", estado: "pendiente",
+          rango: "Recluta", rol: "usuario", estado: "pendiente",
           puntos: 0, dinero: 0, last_login: new Date().toISOString(), created_at: new Date().toISOString()
         };
         db.profiles.push(profile);
+        var assignment = { id: uid(), user_id: id, trainer_id: null, estado: "asignado", assigned_at: new Date().toISOString(), started_at: null, completed_at: null };
+        db.training_assignments.push(assignment);
+        db.discord_events.push({ id: uid(), tipo: "training_assigned", titulo: "Nuevo recluta", mensaje: profile.nombre + " recibió el Entrenamiento Básico TRS.", mission_id: null, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() });
         saveDB(db);
 
         var passwords = getPasswords();
@@ -358,15 +362,52 @@
 
     functions: {
       invoke: async function (name, opts) {
-        if (name !== "discord-mission-alert") return { data: null, error: { message: "Función local no disponible." } };
         var db = getDB();
-        var eventId = opts && opts.body && opts.body.event_id;
-        var event = db.discord_events.find(function (row) { return String(row.id) === String(eventId); });
-        if (!event) return { data: null, error: { message: "Alerta no encontrada." } };
-        event.estado = "simulado";
-        event.sent_at = new Date().toISOString();
-        saveDB(db);
-        return { data: { delivered: true, local: true }, error: null };
+        var body = (opts && opts.body) || {};
+        if (name === "discord-mission-alert") {
+          var event = db.discord_events.find(function (row) { return String(row.id) === String(body.event_id); });
+          if (!event) return { data: null, error: { message: "Alerta no encontrada." } };
+          event.estado = "simulado";
+          event.sent_at = new Date().toISOString();
+          saveDB(db);
+          return { data: { delivered: true, local: true }, error: null };
+        }
+        if (name === "admin-users") {
+          var session = getSession();
+          var actor = session && db.profiles.find(function (row) { return String(row.id) === String(session.id); });
+          if (!actor || ["admin", "super_admin"].indexOf(actor.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Administración." } };
+          if (body.action === "create") {
+            var email = String(body.email || "").toLowerCase().trim();
+            if (db.profiles.some(function (row) { return row.email === email; })) return { data: null, error: { message: "Ese correo ya tiene una cuenta." } };
+            var newId = uid();
+            var now = new Date().toISOString();
+            var newProfile = { id: newId, email: email, nombre: body.nombre || "Sin nombre", usuario_roblox: body.usuario_roblox || "SinUsuario", rango: "Recluta", rol: body.rol || "usuario", estado: "pendiente", puntos: 0, dinero: 0, last_login: now, created_at: now };
+            db.profiles.push(newProfile);
+            db.training_assignments.push({ id: uid(), user_id: newId, trainer_id: null, estado: "asignado", assigned_at: now, started_at: null, completed_at: null });
+            var createEvent = { id: uid(), tipo: "training_assigned", titulo: "Nuevo recluta", mensaje: newProfile.nombre + " recibió el Entrenamiento Básico TRS.", mission_id: null, user_id: newId, estado: "pendiente", created_at: now };
+            db.discord_events.push(createEvent);
+            var passwords = getPasswords();
+            passwords[email] = body.password;
+            savePasswords(passwords);
+            saveDB(db);
+            return { data: { user_id: newId, event_id: createEvent.id }, error: null };
+          }
+          if (body.action === "update") {
+            var targetProfile = db.profiles.find(function (row) { return String(row.id) === String(body.user_id); });
+            if (!targetProfile) return { data: null, error: { message: "Usuario no encontrado." } };
+            var oldEmail = targetProfile.email;
+            ["nombre", "usuario_roblox", "email", "rol", "estado", "rango"].forEach(function (field) { if (body[field] !== undefined) targetProfile[field] = body[field]; });
+            if (oldEmail !== targetProfile.email) {
+              var storedPasswords = getPasswords();
+              storedPasswords[targetProfile.email] = storedPasswords[oldEmail];
+              delete storedPasswords[oldEmail];
+              savePasswords(storedPasswords);
+            }
+            saveDB(db);
+            return { data: { updated: true }, error: null };
+          }
+        }
+        return { data: null, error: { message: "Función local no disponible." } };
       }
     },
 
@@ -469,6 +510,37 @@
         return { data: { finished: true }, error: null };
       }
 
+      if (name === "take_training") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var assignment = db.training_assignments.find(function (row) { return String(row.id) === String(args.p_assignment_id); });
+        if (!assignment || assignment.estado !== "asignado") return { data: null, error: { message: "El entrenamiento ya fue tomado o finalizado." } };
+        assignment.trainer_id = profile.id;
+        assignment.estado = "en_curso";
+        assignment.started_at = new Date().toISOString();
+        var recruit = db.profiles.find(function (row) { return String(row.id) === String(assignment.user_id); });
+        var trainingStartEvent = { id: uid(), tipo: "training_started", titulo: "Entrenamiento iniciado", mensaje: profile.nombre + " inició el Entrenamiento Básico TRS de " + (recruit ? recruit.nombre : "un recluta") + ".", mission_id: null, user_id: assignment.user_id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(trainingStartEvent);
+        saveDB(db);
+        return { data: { event_id: trainingStartEvent.id }, error: null };
+      }
+
+      if (name === "finish_training") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var finishedAssignment = db.training_assignments.find(function (row) { return String(row.id) === String(args.p_assignment_id); });
+        if (!finishedAssignment || finishedAssignment.estado !== "en_curso") return { data: null, error: { message: "El entrenamiento no está en curso." } };
+        if (String(finishedAssignment.trainer_id) !== String(profile.id) && ["admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Solo el instructor responsable o un administrador puede finalizarlo." } };
+        var graduated = db.profiles.find(function (row) { return String(row.id) === String(finishedAssignment.user_id); });
+        if (!graduated) return { data: null, error: { message: "Recluta no encontrado." } };
+        graduated.rango = "Soldado";
+        graduated.estado = "activo";
+        finishedAssignment.estado = "finalizado";
+        finishedAssignment.completed_at = new Date().toISOString();
+        var trainingFinishEvent = { id: uid(), tipo: "training_completed", titulo: "Entrenamiento finalizado", mensaje: graduated.nombre + " completó el TRS y recibió el rango SOLDADO.", mission_id: null, user_id: graduated.id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(trainingFinishEvent);
+        saveDB(db);
+        return { data: { event_id: trainingFinishEvent.id, rank: "Soldado" }, error: null };
+      }
+
       if (name === "adjust_member_balance") {
         if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
         var target = db.profiles.find(function (row) { return String(row.id) === String(args.p_user_id); });
@@ -479,8 +551,10 @@
         target.puntos += pointsDelta;
         target.dinero += moneyDelta;
         db.transactions.push({ id: uid(), user_id: target.id, tipo: "ajuste_mando", descripcion: args.p_reason || "Ajuste manual de mando", monto_puntos: pointsDelta, monto_dinero: moneyDelta, created_at: new Date().toISOString() });
+        var pointsEvent = { id: uid(), tipo: "points_adjusted", titulo: "Actualización de puntos", mensaje: profile.nombre + " ajustó a " + target.nombre + ": " + (pointsDelta >= 0 ? "+" : "") + pointsDelta + " puntos y " + (moneyDelta >= 0 ? "+" : "") + moneyDelta + " de saldo.", mission_id: null, user_id: target.id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(pointsEvent);
         saveDB(db);
-        return { data: { points: target.puntos, money: target.dinero }, error: null };
+        return { data: { points: target.puntos, money: target.dinero, event_id: pointsEvent.id }, error: null };
       }
 
       if (name === "checkout_cart") {

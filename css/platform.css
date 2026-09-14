@@ -240,6 +240,22 @@
 .mission-blocker { color:#d6ad66; background:#2b2113; border-left:3px solid #b78330; padding:.65rem; font-size:.72rem; }
 .member-management { max-width:520px; }
 .member-management input { width:88px; border:1px solid #363c36; background:#0d100e; color:#fff; padding:.45rem; font:600 .7rem "Inter",sans-serif; }
+.profile-editor { width:100%; margin-top:.7rem; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; }
+.profile-editor input,.profile-editor select { min-width:0; width:100%; border:1px solid #343a34; background:#0b0e0c; color:#d9ddd8; padding:.5rem; font:600 .68rem "Inter",sans-serif; }
+.profile-editor .wide { grid-column:1/-1; }
+.profile-editor button { border:1px solid #64502f; background:#1d1810; color:var(--platform-gold-soft); padding:.55rem; cursor:pointer; font:700 .64rem "Inter",sans-serif; }
+.training-card { grid-column:1/-1; }
+.training-queue { display:grid; gap:.55rem; margin-top:1rem; }
+.training-row { border:1px solid #303630; background:#0d100e; padding:.85rem; display:grid; grid-template-columns:minmax(180px,1fr) auto; gap:.75rem; align-items:center; }
+.training-row strong { color:#ecedea; }
+.training-row small { display:block; color:#838a83; margin-top:.2rem; font-size:.68rem; }
+.training-status { display:inline-block; margin-top:.45rem; color:#d7ae68; font:700 .6rem "Inter",sans-serif; letter-spacing:.08em; }
+.training-row .admin-actions button { min-width:120px; }
+.onboarding-banner { margin:1rem 0; border:1px solid #6b522b; border-left:4px solid var(--platform-gold); background:linear-gradient(90deg,#211a10,#111411); padding:1rem 1.15rem; display:flex; justify-content:space-between; gap:1rem; align-items:center; }
+.onboarding-banner span { color:#d2aa66; font:700 .62rem "Inter",sans-serif; letter-spacing:.12em; }
+.onboarding-banner h3 { margin:.3rem 0; color:#f1f2ed; font:1.3rem "Oswald",sans-serif; }
+.onboarding-banner p { margin:0; color:#8d948d; font-size:.75rem; }
+.onboarding-banner > strong { color:#17120b; background:var(--platform-gold-soft); padding:.45rem .6rem; font:700 .62rem "Inter",sans-serif; }
 
 @media (max-width: 1050px) {
   .metric-grid { grid-template-columns:repeat(2,1fr); }
@@ -270,4 +286,5 @@
   .service-number { text-align:left; }
   .balance-pill { width:100%; }
   .summary-hero::after { font-size:3.8rem; }
+  .profile-editor,.training-row { grid-template-columns:1fr; }
 }
