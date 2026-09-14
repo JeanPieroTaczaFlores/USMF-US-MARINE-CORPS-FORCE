@@ -46,9 +46,15 @@
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], missions_participants: [], transactions: [], opinions: [], notifications: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
+    var defaults = { missions: [], mission_participants: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
+    }
+    if (db.missions_participants && db.missions_participants.length) {
+      db.mission_participants = db.mission_participants.concat(db.missions_participants.filter(function (legacy) {
+        return !db.mission_participants.some(function (current) { return current.id === legacy.id; });
+      }));
+      delete db.missions_participants;
     }
     // Auto-reparar campo last_login
     db.profiles.forEach(function (p) {
@@ -64,10 +70,11 @@
     var db = {
       profiles: [],
       missions: [],
-      missions_participants: [],
+      mission_participants: [],
       transactions: [],
       opinions: [],
       notifications: [],
+      discord_events: [],
       shop_items: [],
       user_inventory: [],
       orders: [],
@@ -349,6 +356,20 @@
       return new QueryBuilder(table);
     },
 
+    functions: {
+      invoke: async function (name, opts) {
+        if (name !== "discord-mission-alert") return { data: null, error: { message: "Función local no disponible." } };
+        var db = getDB();
+        var eventId = opts && opts.body && opts.body.event_id;
+        var event = db.discord_events.find(function (row) { return String(row.id) === String(eventId); });
+        if (!event) return { data: null, error: { message: "Alerta no encontrada." } };
+        event.estado = "simulado";
+        event.sent_at = new Date().toISOString();
+        saveDB(db);
+        return { data: { delivered: true, local: true }, error: null };
+      }
+    },
+
     rpc: async function (name, args) {
       var db = getDB();
       var session = getSession();
@@ -368,6 +389,98 @@
         db.transactions.push({ id: uid(), user_id: profile.id, tipo: "salario", descripcion: "Salario semanal — " + profile.rango, monto_dinero: amount, monto_puntos: 0, created_at: new Date().toISOString() });
         saveDB(db);
         return { data: { paid: true, amount: amount, next_at: new Date(Date.now() + 7 * 86400000).toISOString() }, error: null };
+      }
+
+      if (name === "join_mission") {
+        var missionId = args && args.p_mission_id;
+        var mission = db.missions.find(function (row) { return String(row.id) === String(missionId); });
+        if (!mission || ["programada", "activa"].indexOf(mission.estado) === -1) return { data: null, error: { message: "La misión no admite nuevas inscripciones." } };
+        if (profile.estado !== "activo") return { data: null, error: { message: "Tu cuenta debe estar activa para unirte." } };
+        var duplicate = db.mission_participants.find(function (row) { return String(row.mission_id) === String(missionId) && String(row.user_id) === String(profile.id); });
+        if (duplicate) return { data: null, error: { message: "Ya estás inscrito en esta misión." } };
+        var participant = { id: uid(), mission_id: mission.id, user_id: profile.id, estado: mission.estado === "activa" ? "en_mision" : "inscrito", joined_at: new Date().toISOString(), reviewed_at: null, reviewed_by: null, rewarded_at: null };
+        db.mission_participants.push(participant);
+        var joinEvent = { id: uid(), tipo: "mission_join", titulo: "Marine en misión", mensaje: profile.nombre + " se unió a " + mission.titulo + (mission.estado === "activa" ? " y está EN MISIÓN." : "."), mission_id: mission.id, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(joinEvent);
+        saveDB(db);
+        return { data: { participant_id: participant.id, event_id: joinEvent.id }, error: null };
+      }
+
+      if (name === "leave_mission") {
+        var leaveMissionId = args && args.p_mission_id;
+        var leaveMission = db.missions.find(function (row) { return String(row.id) === String(leaveMissionId); });
+        if (!leaveMission || leaveMission.estado !== "programada") return { data: null, error: { message: "Solo puedes cancelar antes de que inicie la misión." } };
+        db.mission_participants = db.mission_participants.filter(function (row) { return !(String(row.mission_id) === String(leaveMissionId) && String(row.user_id) === String(profile.id)); });
+        saveDB(db);
+        return { data: { left: true }, error: null };
+      }
+
+      if (name === "start_mission") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var startMissionId = args && args.p_mission_id;
+        var startMission = db.missions.find(function (row) { return String(row.id) === String(startMissionId); });
+        if (!startMission || startMission.estado !== "programada") return { data: null, error: { message: "La misión no puede lanzarse en su estado actual." } };
+        startMission.estado = "activa";
+        startMission.started_at = new Date().toISOString();
+        var eventIds = [];
+        db.mission_participants.filter(function (row) { return String(row.mission_id) === String(startMission.id); }).forEach(function (participantRow) {
+          participantRow.estado = "en_mision";
+          var member = db.profiles.find(function (row) { return String(row.id) === String(participantRow.user_id); });
+          var startEvent = { id: uid(), tipo: "mission_started", titulo: "Despliegue iniciado", mensaje: (member ? member.nombre : "Miembro USMCF") + " está EN MISIÓN: " + startMission.titulo + ".", mission_id: startMission.id, user_id: participantRow.user_id, estado: "pendiente", created_at: new Date().toISOString() };
+          db.discord_events.push(startEvent);
+          eventIds.push(startEvent.id);
+        });
+        saveDB(db);
+        return { data: { event_ids: eventIds }, error: null };
+      }
+
+      if (name === "review_mission_participant") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var reviewStatus = args && args.p_status;
+        if (["confirmado", "ausente"].indexOf(reviewStatus) === -1) return { data: null, error: { message: "Estado de asistencia inválido." } };
+        var reviewed = db.mission_participants.find(function (row) { return String(row.id) === String(args.p_participant_id); });
+        if (!reviewed) return { data: null, error: { message: "Participante no encontrado." } };
+        reviewed.estado = reviewStatus;
+        reviewed.reviewed_at = new Date().toISOString();
+        reviewed.reviewed_by = profile.id;
+        saveDB(db);
+        return { data: { reviewed: true }, error: null };
+      }
+
+      if (name === "finish_mission") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var finishMissionId = args && args.p_mission_id;
+        var finishMission = db.missions.find(function (row) { return String(row.id) === String(finishMissionId); });
+        if (!finishMission || finishMission.estado !== "activa") return { data: null, error: { message: "Solo se puede terminar una misión activa." } };
+        var missionParticipants = db.mission_participants.filter(function (row) { return String(row.mission_id) === String(finishMission.id); });
+        if (!missionParticipants.length) return { data: null, error: { message: "La misión no tiene participantes." } };
+        if (missionParticipants.some(function (row) { return ["confirmado", "ausente"].indexOf(row.estado) === -1; })) return { data: null, error: { message: "Debes corroborar a todos los participantes antes de terminar." } };
+        missionParticipants.filter(function (row) { return row.estado === "confirmado" && !row.rewarded_at; }).forEach(function (row) {
+          var rewardedProfile = db.profiles.find(function (candidate) { return String(candidate.id) === String(row.user_id); });
+          if (!rewardedProfile) return;
+          rewardedProfile.puntos += Number(finishMission.recompensa_puntos || 0);
+          rewardedProfile.dinero += Number(finishMission.recompensa_dinero || 0);
+          row.rewarded_at = new Date().toISOString();
+          db.transactions.push({ id: uid(), user_id: rewardedProfile.id, tipo: "mision", descripcion: "Misión completada: " + finishMission.titulo, monto_puntos: Number(finishMission.recompensa_puntos || 0), monto_dinero: Number(finishMission.recompensa_dinero || 0), created_at: new Date().toISOString() });
+        });
+        finishMission.estado = "finalizada";
+        finishMission.finalizada_at = new Date().toISOString();
+        saveDB(db);
+        return { data: { finished: true }, error: null };
+      }
+
+      if (name === "adjust_member_balance") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var target = db.profiles.find(function (row) { return String(row.id) === String(args.p_user_id); });
+        if (!target) return { data: null, error: { message: "Miembro no encontrado." } };
+        var pointsDelta = Number(args.p_points || 0);
+        var moneyDelta = Number(args.p_money || 0);
+        if (target.puntos + pointsDelta < 0 || target.dinero + moneyDelta < 0) return { data: null, error: { message: "El ajuste dejaría un saldo negativo." } };
+        target.puntos += pointsDelta;
+        target.dinero += moneyDelta;
+        db.transactions.push({ id: uid(), user_id: target.id, tipo: "ajuste_mando", descripcion: args.p_reason || "Ajuste manual de mando", monto_puntos: pointsDelta, monto_dinero: moneyDelta, created_at: new Date().toISOString() });
+        saveDB(db);
+        return { data: { points: target.puntos, money: target.dinero }, error: null };
       }
 
       if (name === "checkout_cart") {

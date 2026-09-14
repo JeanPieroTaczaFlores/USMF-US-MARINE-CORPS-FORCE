@@ -90,8 +90,9 @@
           <button class="member-nav-btn" data-view="salario"><span>02</span> Mi salario</button>
           <button class="member-nav-btn" data-view="tienda"><span>03</span> Store</button>
           <button class="member-nav-btn" data-view="inventario"><span>04</span> Inventario y facturas</button>
-          <button class="member-nav-btn" data-view="biblioteca"><span>05</span> Biblioteca</button>
-          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>06</span> Administración</button>
+          <button class="member-nav-btn" data-view="misiones"><span>05</span> Misiones</button>
+          <button class="member-nav-btn" data-view="biblioteca"><span>06</span> Biblioteca</button>
+          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>07</span> Administración</button>
         </nav>
         <div class="sidebar-status"><span></span><div><strong>ESTADO OPERACIONAL</strong><small>Plataforma conectada</small></div></div>
       </aside>
@@ -145,6 +146,37 @@
           <div class="inventory-layout"><div><h3 class="subsection-title">MIS IMPLEMENTOS</h3><div id="inventoryGrid" class="inventory-grid"></div></div><div><h3 class="subsection-title">FACTURAS</h3><div id="invoiceList" class="invoice-list"></div></div></div>
         </section>
 
+        <section class="member-view" data-panel="misiones">
+          <div class="section-heading"><span class="section-tag">CENTRO DE OPERACIONES</span><h2>Misiones y despliegues</h2><p>Inscríbete, consulta tu estado y sigue la confirmación final de asistencia.</p></div>
+          <div class="mission-summary" id="missionSummary"></div>
+          <div class="mission-grid" id="missionGrid"></div>
+          <article class="platform-card discord-log-card">
+            <div class="card-heading"><div><span>DISCORD</span><h3>Bitácora de alertas</h3></div><span class="connection-badge" id="discordConnection">MODO LOCAL</span></div>
+            <p class="muted-copy">Cada inscripción o inicio de misión genera un evento para el canal operativo configurado.</p>
+            <div id="discordEventLog" class="activity-list"></div>
+          </article>
+
+          <section class="mission-command hidden" id="missionCommand">
+            <div class="section-heading"><span class="section-tag">CONTROL DE MANDO</span><h2>Crear y lanzar misión</h2><p>Disponible para Staff, Admin y Alto Mando.</p></div>
+            <div class="mission-command-layout">
+              <article class="platform-card">
+                <form id="missionForm" class="admin-form">
+                  <input id="missionId" type="hidden" />
+                  <input id="missionTitle" required placeholder="Nombre de la misión" />
+                  <textarea id="missionDescription" required rows="3" placeholder="Objetivo, instrucciones y punto de reunión"></textarea>
+                  <div class="form-row"><input id="missionDate" type="datetime-local" required aria-label="Fecha y hora" /><select id="missionStatus" aria-label="Estado inicial"><option value="programada">Programada</option><option value="activa">Lanzar ahora</option></select></div>
+                  <div class="form-row"><input id="missionRewardPoints" type="number" min="0" value="100" aria-label="Recompensa en puntos" placeholder="Puntos" /><input id="missionRewardMoney" type="number" min="0" value="0" aria-label="Recompensa en dinero" placeholder="Dinero" /></div>
+                  <div class="form-actions"><button class="platform-primary" type="submit" id="missionSubmitBtn">CREAR MISIÓN</button><button class="secondary-action hidden" type="button" id="cancelMissionEdit">CANCELAR EDICIÓN</button></div>
+                </form>
+              </article>
+              <article class="platform-card">
+                <div class="card-heading"><div><span>CONTROL DE ASISTENCIA</span><h3>Misiones administrables</h3></div></div>
+                <div id="missionAdminList" class="mission-admin-list"></div>
+              </article>
+            </div>
+          </section>
+        </section>
+
         <section class="member-view" data-panel="biblioteca">
           <div class="section-heading"><span class="section-tag">DOCTRINA Y EQUIPAMIENTO</span><h2>Biblioteca operativa</h2><p>La información básica que antes estaba dispersa en canales, ahora organizada por tema.</p></div>
           <div class="library-tools"><input id="librarySearch" type="search" placeholder="Buscar regla, arma, especialidad o manual…" aria-label="Buscar en la biblioteca" /><div class="library-filters"><button class="library-filter active" data-library="todos">TODO</button><button class="library-filter" data-library="reglas">REGLAS</button><button class="library-filter" data-library="armas">ARMAS</button><button class="library-filter" data-library="loadouts">LOADOUTS</button><button class="library-filter" data-library="manuales">MANUALES</button></div></div>
@@ -152,7 +184,7 @@
         </section>
 
         <section class="member-view" data-panel="administracion">
-          <div class="section-heading"><span class="section-tag">MANDO Y LOGÍSTICA</span><h2>Administración</h2><p>Aprueba miembros después del entrenamiento, asigna rangos y publica implementos sin salir de esta plataforma.</p></div>
+          <div class="section-heading"><span class="section-tag">MANDO Y LOGÍSTICA</span><h2>Administración</h2><p>Aprueba miembros, asigna rangos, ajusta puntos y administra implementos sin salir de esta plataforma.</p></div>
           <div class="admin-layout">
             <article class="platform-card">
               <div class="card-heading"><div><span>PERSONAL</span><h3>Solicitudes y miembros</h3></div></div>
