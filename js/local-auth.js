@@ -46,14 +46,16 @@
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], missions_participants: [], transactions: [], opinions: [], notifications: [], shop_items: [], user_inventory: [] };
+    var defaults = { missions: [], missions_participants: [], transactions: [], opinions: [], notifications: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
     // Auto-reparar campo last_login
     db.profiles.forEach(function (p) {
       if (!p.last_login) p.last_login = p.created_at || new Date().toISOString();
+      if (p.ultimo_salario === undefined) p.ultimo_salario = null;
     });
+    if (!db.shop_items.length) seedShop(db);
     saveDB(db);
     return db;
   }
@@ -67,7 +69,9 @@
       opinions: [],
       notifications: [],
       shop_items: [],
-      user_inventory: []
+      user_inventory: [],
+      orders: [],
+      order_items: []
     };
 
     var now = new Date().toISOString();
@@ -120,8 +124,22 @@
       }
     );
 
+    seedShop(db);
+
     saveDB(db);
     return db;
+  }
+
+  function seedShop(db) {
+    var items = [
+      { nombre: "Parche de unidad USMCF", descripcion: "Parche cosmético oficial para el uniforme autorizado.", tipo: "uniforme", precio_dinero: 120, precio_puntos: 0, stock: -1 },
+      { nombre: "Insignia de especialidad", descripcion: "Insignia cosmética para miembros con especialidad aprobada.", tipo: "insignia", precio_dinero: 180, precio_puntos: 0, stock: -1 },
+      { nombre: "Kit visual de operador", descripcion: "Conjunto cosmético sujeto a las normas de equipamiento de la unidad.", tipo: "equipo", precio_dinero: 300, precio_puntos: 0, stock: 20 },
+      { nombre: "Placa conmemorativa", descripcion: "Reconocimiento digital para el perfil del miembro.", tipo: "reconocimiento", precio_dinero: 0, precio_puntos: 250, stock: -1 }
+    ];
+    items.forEach(function (item) {
+      db.shop_items.push(Object.assign({ id: uid(), disponible: true, imagen_url: "", created_at: new Date().toISOString() }, item));
+    });
   }
 
   // Forzar contraseñas de prueba SOLO si no existen aún
@@ -320,11 +338,74 @@
         passwords[e] = "Reset123!";
         savePasswords(passwords);
         return { data: {}, error: null };
+      },
+
+      signInWithOAuth: async function () {
+        return { data: null, error: { message: "Discord estará disponible al conectar Supabase." } };
       }
     },
 
     from: function (table) {
       return new QueryBuilder(table);
+    },
+
+    rpc: async function (name, args) {
+      var db = getDB();
+      var session = getSession();
+      if (!session) return { data: null, error: { message: "Debes iniciar sesión." } };
+      var profile = db.profiles.find(function (p) { return p.id === session.id; });
+      if (!profile) return { data: null, error: { message: "Perfil no encontrado." } };
+
+      if (name === "pay_my_salary") {
+        var salary = (window.RANGOS || []).find(function (r) { return r.rango === profile.rango; });
+        var amount = salary ? salary.salario : 0;
+        var last = profile.ultimo_salario ? new Date(profile.ultimo_salario) : null;
+        if (last && (Date.now() - last.getTime()) < 7 * 86400000) {
+          return { data: { paid: false, amount: 0, next_at: new Date(last.getTime() + 7 * 86400000).toISOString() }, error: null };
+        }
+        profile.dinero += amount;
+        profile.ultimo_salario = new Date().toISOString();
+        db.transactions.push({ id: uid(), user_id: profile.id, tipo: "salario", descripcion: "Salario semanal — " + profile.rango, monto_dinero: amount, monto_puntos: 0, created_at: new Date().toISOString() });
+        saveDB(db);
+        return { data: { paid: true, amount: amount, next_at: new Date(Date.now() + 7 * 86400000).toISOString() }, error: null };
+      }
+
+      if (name === "checkout_cart") {
+        var cart = (args && args.p_items) || [];
+        if (!Array.isArray(cart) || !cart.length) return { data: null, error: { message: "El carrito está vacío." } };
+        var totalMoney = 0;
+        var totalPoints = 0;
+        var resolved = [];
+        for (var i = 0; i < cart.length; i++) {
+          var requested = cart[i];
+          var item = db.shop_items.find(function (candidate) { return String(candidate.id) === String(requested.item_id) && candidate.disponible; });
+          var quantity = Math.max(1, parseInt(requested.quantity, 10) || 1);
+          if (!item) return { data: null, error: { message: "Uno de los artículos ya no está disponible." } };
+          if (item.stock >= 0 && item.stock < quantity) return { data: null, error: { message: "Stock insuficiente para " + item.nombre + "." } };
+          totalMoney += item.precio_dinero * quantity;
+          totalPoints += item.precio_puntos * quantity;
+          resolved.push({ item: item, quantity: quantity });
+        }
+        if (profile.dinero < totalMoney || profile.puntos < totalPoints) return { data: null, error: { message: "Saldo insuficiente para completar la compra." } };
+        profile.dinero -= totalMoney;
+        profile.puntos -= totalPoints;
+        var orderId = uid();
+        var invoice = "USMCF-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + String(db.orders.length + 1).padStart(4, "0");
+        db.orders.push({ id: orderId, user_id: profile.id, invoice_number: invoice, total_dinero: totalMoney, total_puntos: totalPoints, estado: "pagada", created_at: new Date().toISOString() });
+        resolved.forEach(function (entry) {
+          var item = entry.item;
+          db.order_items.push({ id: uid(), order_id: orderId, item_id: item.id, nombre: item.nombre, quantity: entry.quantity, precio_dinero: item.precio_dinero, precio_puntos: item.precio_puntos });
+          var owned = db.user_inventory.find(function (row) { return row.user_id === profile.id && row.item_id === item.id; });
+          if (owned) owned.cantidad = (owned.cantidad || 1) + entry.quantity;
+          else db.user_inventory.push({ id: uid(), user_id: profile.id, item_id: item.id, cantidad: entry.quantity, comprado_at: new Date().toISOString() });
+          if (item.stock > 0) item.stock -= entry.quantity;
+        });
+        db.transactions.push({ id: uid(), user_id: profile.id, tipo: "compra", descripcion: "Factura " + invoice, monto_dinero: -totalMoney, monto_puntos: -totalPoints, created_at: new Date().toISOString() });
+        saveDB(db);
+        return { data: { order_id: orderId, invoice_number: invoice, total_dinero: totalMoney, total_puntos: totalPoints }, error: null };
+      }
+
+      return { data: null, error: { message: "Función local no disponible." } };
     }
   };
 

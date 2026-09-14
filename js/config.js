@@ -4,13 +4,13 @@
 // si no, usa localStorage (modo local para pruebas)
 // ============================================
 
-const SUPABASE_URL = "https://TU-PROYECTO.supabase.co";
-const SUPABASE_ANON_KEY = "TU-ANON-KEY-AQUI";
+const SUPABASE_URL = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseUrl) || "https://TU-PROYECTO.supabase.co";
+const SUPABASE_ANON_KEY = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseKey) || "TU-PUBLISHABLE-KEY-AQUI";
 
 // Detectar si Supabase está configurado
 var isSupabaseConfigured =
   SUPABASE_URL.indexOf("TU-PROYECTO") === -1 &&
-  SUPABASE_ANON_KEY.indexOf("TU-ANON-KEY") === -1;
+  SUPABASE_ANON_KEY.indexOf("TU-PUBLISHABLE-KEY") === -1;
 
 // Inicializar cliente (Supabase o localStorage)
 var supabase;
@@ -53,3 +53,5 @@ const RANGOS = [
 const RANGO_DEFAULT = 'Soldado';
 const DINERO_INICIAL = 500;
 const PUNTOS_INICIALES = 100;
+
+window.RANGOS = RANGOS;

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Plataforma de miembros USMCF: salario, tienda, inventario, facturas y biblioteca operativa." />
+  <link rel="icon" type="image/png" href="img/logo.png" />
+  <title>USMCF — Plataforma de miembros</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/platform.css" />
+</head>
+<body class="platform-body">
+  <header class="navbar platform-navbar" id="navbar">
+    <div class="container navbar-inner">
+      <a href="index.html" class="brand">
+        <img class="brand-logo" src="img/logo.png" alt="Logo escudo USMCF" />
+        <span class="brand-text">USMCF / <strong>PLATAFORMA</strong></span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
+      <nav class="nav-menu" id="navMenu">
+        <a href="index.html" class="nav-link">INICIO</a>
+        <a href="documento.html" class="nav-link">DOCUMENTO</a>
+        <a href="rangos.html" class="nav-link">RANGOS</a>
+        <a href="plataforma.html" class="nav-link active">PLATAFORMA</a>
+      </nav>
+      <div class="nav-auth">
+        <button class="btn btn-outline platform-logout hidden" id="logoutBtn" type="button">SALIR</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="platform-auth" id="authView" aria-labelledby="authTitle">
+      <div class="platform-auth-copy">
+        <p class="platform-kicker">CENTRO DIGITAL USMCF</p>
+        <h1 id="authTitle">TODO TU SERVICIO.<br /><span>EN UN SOLO LUGAR.</span></h1>
+        <p>Consulta tu salario, compra implementos, descarga facturas, revisa tu inventario y encuentra las normas operativas sin buscar entre canales.</p>
+        <div class="platform-feature-strip" aria-label="Funciones disponibles">
+          <span>SALARIO SEMANAL</span><span>STORE</span><span>FACTURAS</span><span>MANUALES</span>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist" aria-label="Acceso a la plataforma">
+          <button class="auth-tab active" id="loginTab" type="button" role="tab" aria-selected="true">INICIAR SESIÓN</button>
+          <button class="auth-tab" id="registerTab" type="button" role="tab" aria-selected="false">CREAR CUENTA</button>
+        </div>
+
+        <div class="platform-alert hidden" id="authMessage" role="status"></div>
+
+        <form id="loginForm" class="auth-form">
+          <label>Correo institucional<input id="loginEmail" type="email" autocomplete="email" required placeholder="marine@correo.com" /></label>
+          <label>Contraseña<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Tu contraseña" /></label>
+          <button class="platform-primary" id="loginBtn" type="submit">ENTRAR A LA PLATAFORMA</button>
+          <button class="discord-login" id="discordLoginBtn" type="button">
+            <span aria-hidden="true">◈</span> CONTINUAR CON DISCORD
+          </button>
+          <p class="auth-help">La vinculación con Discord crea tu perfil automáticamente. El acceso completo se habilita al aprobar tu entrenamiento.</p>
+        </form>
+
+        <form id="registerForm" class="auth-form hidden">
+          <div class="form-row">
+            <label>Nombre completo<input id="registerName" required autocomplete="name" placeholder="Nombre y apellido" /></label>
+            <label>Usuario Roblox<input id="registerRoblox" required placeholder="Tu usuario" /></label>
+          </div>
+          <label>Correo<input id="registerEmail" type="email" autocomplete="email" required placeholder="marine@correo.com" /></label>
+          <label>Contraseña<input id="registerPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Mínimo 8 caracteres" /></label>
+          <button class="platform-primary" id="registerBtn" type="submit">CREAR SOLICITUD</button>
+          <p class="auth-help">Tu cuenta quedará pendiente hasta que un miembro del staff confirme el entrenamiento.</p>
+        </form>
+
+        <details class="demo-access" id="demoAccess">
+          <summary>Acceso de demostración</summary>
+          <p><strong>cliente@usmcf.com</strong> · Cliente123!</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="member-shell hidden" id="memberView" aria-label="Panel de miembro">
+      <aside class="member-sidebar">
+        <div class="member-identity">
+          <div class="member-avatar" id="memberInitials">US</div>
+          <div><p id="memberName">Marine</p><span id="memberRank">Soldado</span></div>
+        </div>
+        <nav class="member-nav" aria-label="Secciones de la plataforma">
+          <button class="member-nav-btn active" data-view="resumen"><span>01</span> Resumen</button>
+          <button class="member-nav-btn" data-view="salario"><span>02</span> Mi salario</button>
+          <button class="member-nav-btn" data-view="tienda"><span>03</span> Store</button>
+          <button class="member-nav-btn" data-view="inventario"><span>04</span> Inventario y facturas</button>
+          <button class="member-nav-btn" data-view="biblioteca"><span>05</span> Biblioteca</button>
+          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>06</span> Administración</button>
+        </nav>
+        <div class="sidebar-status"><span></span><div><strong>ESTADO OPERACIONAL</strong><small>Plataforma conectada</small></div></div>
+      </aside>
+
+      <div class="member-content">
+        <div class="member-topline">
+          <div><p class="platform-kicker">PLATAFORMA DE MIEMBROS</p><h1 id="viewTitle">CENTRO DE CONTROL</h1></div>
+          <div class="balance-pill"><span>SALDO</span><strong id="topBalance">0 ¢</strong></div>
+        </div>
+        <div class="platform-alert hidden" id="appMessage" role="status"></div>
+
+        <section class="member-view active" data-panel="resumen">
+          <div class="summary-hero">
+            <div><p class="eyebrow">EXPEDIENTE ACTIVO</p><h2 id="welcomeTitle">Bienvenido, Marine</h2><p>Tu información operativa y económica está actualizada en este panel.</p></div>
+            <div class="service-number"><span>ID DE SERVICIO</span><strong id="serviceId">—</strong></div>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card"><span>RANGO ACTUAL</span><strong id="summaryRank">—</strong><small>Escalafón vigente</small></article>
+            <article class="metric-card"><span>PRÓXIMO SALARIO</span><strong id="summarySalary">—</strong><small id="summaryPayDate">Calculando fecha</small></article>
+            <article class="metric-card"><span>PUNTOS</span><strong id="summaryPoints">0</strong><small>Progreso acumulado</small></article>
+            <article class="metric-card"><span>IMPLEMENTOS</span><strong id="summaryItems">0</strong><small>En tu inventario</small></article>
+          </div>
+          <div class="dashboard-grid">
+            <article class="platform-card"><div class="card-heading"><div><span>ACTIVIDAD RECIENTE</span><h3>Movimientos</h3></div></div><div id="recentTransactions" class="activity-list"></div></article>
+            <article class="platform-card briefing-card"><span>ACCESO RÁPIDO</span><h3>Documentación esencial</h3><p>Reglas, armamento, uniforme y loadouts de especialidades reunidos en una biblioteca consultable.</p><button class="text-action" data-go="biblioteca" type="button">ABRIR BIBLIOTECA →</button></article>
+          </div>
+        </section>
+
+        <section class="member-view" data-panel="salario">
+          <div class="salary-layout">
+            <article class="salary-ticket"><span class="ticket-label">SALARIO SEMANAL</span><strong id="salaryAmount">0 ¢</strong><p id="salaryRank">Según rango actual</p><div class="ticket-divider"></div><div><span>ÚLTIMO PAGO</span><strong id="lastPayment">Sin pagos</strong></div><div><span>PRÓXIMO CICLO</span><strong id="nextPayment">—</strong></div><p class="ticket-note">El pago se procesa automáticamente cada semana. Al entrar, el sistema también verifica pagos pendientes.</p></article>
+            <article class="platform-card"><div class="card-heading"><div><span>HISTORIAL</span><h3>Pagos recibidos</h3></div></div><div id="salaryHistory" class="activity-list"></div></article>
+          </div>
+        </section>
+
+        <section class="member-view" data-panel="tienda">
+          <div class="store-toolbar"><div><span class="section-tag">STORE OFICIAL</span><h2>Implementos autorizados</h2></div><button class="cart-button" id="cartButton" type="button">CARRITO <span id="cartCount">0</span></button></div>
+          <div class="store-filters"><button class="store-filter active" data-category="todos">TODOS</button><button class="store-filter" data-category="uniforme">UNIFORME</button><button class="store-filter" data-category="insignia">INSIGNIAS</button><button class="store-filter" data-category="equipo">EQUIPO</button><button class="store-filter" data-category="reconocimiento">RECONOCIMIENTOS</button></div>
+          <div class="store-grid" id="storeGrid"></div>
+          <div class="cart-drawer hidden" id="cartDrawer" aria-label="Carrito de compras">
+            <button class="drawer-close" id="closeCartBtn" type="button" aria-label="Cerrar carrito">×</button>
+            <span class="section-tag">ORDEN DE COMPRA</span><h2>Tu carrito</h2><div id="cartItems" class="cart-items"></div>
+            <div class="cart-total"><span>TOTAL</span><div><strong id="cartMoney">0 ¢</strong><small id="cartPoints">0 pts</small></div></div>
+            <button class="platform-primary" id="checkoutBtn" type="button">PAGAR Y GENERAR FACTURA</button>
+          </div>
+          <div class="drawer-backdrop hidden" id="cartBackdrop"></div>
+        </section>
+
+        <section class="member-view" data-panel="inventario">
+          <div class="section-heading"><span class="section-tag">EXPEDIENTE LOGÍSTICO</span><h2>Inventario y facturas</h2><p>Cada compra queda registrada y vinculada a tu perfil.</p></div>
+          <div class="inventory-layout"><div><h3 class="subsection-title">MIS IMPLEMENTOS</h3><div id="inventoryGrid" class="inventory-grid"></div></div><div><h3 class="subsection-title">FACTURAS</h3><div id="invoiceList" class="invoice-list"></div></div></div>
+        </section>
+
+        <section class="member-view" data-panel="biblioteca">
+          <div class="section-heading"><span class="section-tag">DOCTRINA Y EQUIPAMIENTO</span><h2>Biblioteca operativa</h2><p>La información básica que antes estaba dispersa en canales, ahora organizada por tema.</p></div>
+          <div class="library-tools"><input id="librarySearch" type="search" placeholder="Buscar regla, arma, especialidad o manual…" aria-label="Buscar en la biblioteca" /><div class="library-filters"><button class="library-filter active" data-library="todos">TODO</button><button class="library-filter" data-library="reglas">REGLAS</button><button class="library-filter" data-library="armas">ARMAS</button><button class="library-filter" data-library="loadouts">LOADOUTS</button><button class="library-filter" data-library="manuales">MANUALES</button></div></div>
+          <div id="libraryGrid" class="library-grid"></div>
+        </section>
+
+        <section class="member-view" data-panel="administracion">
+          <div class="section-heading"><span class="section-tag">MANDO Y LOGÍSTICA</span><h2>Administración</h2><p>Aprueba miembros después del entrenamiento, asigna rangos y publica implementos sin salir de esta plataforma.</p></div>
+          <div class="admin-layout">
+            <article class="platform-card">
+              <div class="card-heading"><div><span>PERSONAL</span><h3>Solicitudes y miembros</h3></div></div>
+              <div id="adminProfiles" class="admin-list"></div>
+            </article>
+            <article class="platform-card">
+              <div class="card-heading"><div><span>STORE</span><h3>Publicar implemento</h3></div></div>
+              <form id="adminItemForm" class="admin-form">
+                <input id="adminItemName" required placeholder="Nombre del implemento" />
+                <textarea id="adminItemDescription" required rows="3" placeholder="Descripción y condiciones de uso"></textarea>
+                <div class="form-row"><select id="adminItemType"><option value="uniforme">Uniforme</option><option value="insignia">Insignia</option><option value="equipo">Equipo</option><option value="reconocimiento">Reconocimiento</option></select><input id="adminItemStock" type="number" min="-1" value="-1" aria-label="Stock; menos uno para ilimitado" /></div>
+                <div class="form-row"><input id="adminItemMoney" type="number" min="0" value="0" aria-label="Precio en dinero" placeholder="Precio en dinero" /><input id="adminItemPoints" type="number" min="0" value="0" aria-label="Precio en puntos" placeholder="Precio en puntos" /></div>
+                <button class="platform-primary" type="submit">PUBLICAR EN LA STORE</button>
+              </form>
+              <div id="adminCatalog" class="admin-catalog"></div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/local-auth.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/platform.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
