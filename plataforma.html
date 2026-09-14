@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css" />
+  <link rel="stylesheet" href="css/platform.css?v=20260914d" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -148,7 +148,7 @@
         </section>
 
         <section class="member-view" data-panel="misiones">
-          <div class="section-heading"><span class="section-tag">CENTRO DE OPERACIONES</span><h2>Misiones y despliegues</h2><p>Inscríbete, consulta tu estado y sigue la confirmación final de asistencia.</p></div>
+          <div class="section-heading"><span class="section-tag">CENTRO DE OPERACIONES</span><h2>Misiones y despliegues</h2><p>Inscríbete y consulta tu estado. Los puntos y dólares indicados se acreditan automáticamente cuando Administración confirma tu asistencia y finaliza la misión.</p></div>
           <div class="mission-summary" id="missionSummary"></div>
           <div class="mission-grid" id="missionGrid"></div>
           <article class="platform-card discord-log-card">
@@ -190,13 +190,16 @@
             <article class="platform-card">
               <div class="card-heading"><div><span>PERSONAL</span><h3>Usuarios y permisos</h3></div></div>
               <label class="field-control admin-search"><span>BUSCAR USUARIO</span><input id="adminUserSearch" type="search" placeholder="Nombre, correo, Roblox, rango o rol" /></label>
-              <form id="adminUserForm" class="admin-form hidden">
-                <div class="form-row"><input id="newUserName" required placeholder="Nombre del miembro" /><input id="newUserRoblox" required placeholder="Usuario de Roblox" /></div>
-                <input id="newUserEmail" type="email" required placeholder="Correo institucional" />
-                <div class="form-row"><input id="newUserPassword" type="password" minlength="8" required placeholder="Contraseña temporal" /><select id="newUserRole"><option value="usuario">Miembro</option><option value="staff">Staff</option><option value="admin">Administrador</option></select></div>
-                <button class="platform-primary" type="submit" id="createUserBtn">CREAR USUARIO Y ASIGNAR ENTRENAMIENTO</button>
-                <p class="auth-help">Los miembros nuevos comienzan como Recluta y reciben automáticamente el Entrenamiento Básico TRS.</p>
-              </form>
+              <details class="admin-create-panel hidden" id="adminCreatePanel">
+                <summary>＋ AÑADIR NUEVO USUARIO</summary>
+                <form id="adminUserForm" class="admin-form">
+                  <div class="form-row"><input id="newUserName" required placeholder="Nombre del miembro" /><input id="newUserRoblox" required placeholder="Usuario de Roblox" /></div>
+                  <input id="newUserEmail" type="email" required placeholder="Correo institucional" />
+                  <div class="form-row"><input id="newUserPassword" type="password" minlength="8" required placeholder="Contraseña temporal" /><select id="newUserRole"><option value="usuario">Miembro</option><option value="staff">Staff</option><option value="admin">Administrador</option></select></div>
+                  <button class="platform-primary" type="submit" id="createUserBtn">CREAR USUARIO Y ASIGNAR ENTRENAMIENTO</button>
+                  <p class="auth-help">Los miembros nuevos comienzan como Recluta y reciben automáticamente el Entrenamiento Básico TRS.</p>
+                </form>
+              </details>
               <div id="adminProfiles" class="admin-list"></div>
             </article>
             <article class="platform-card training-card">
@@ -224,7 +227,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/local-auth.js?v=20260914c"></script>
   <script src="js/config.js"></script>
-  <script src="js/platform.js?v=20260914c"></script>
+  <script src="js/platform.js?v=20260914d"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
