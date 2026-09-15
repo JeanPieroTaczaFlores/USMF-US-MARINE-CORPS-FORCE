@@ -32,9 +32,20 @@
     { category: "reglas", title: "Cadena de mando", summary: "Las órdenes de instructores, suboficiales y Alto Mando se cumplen dentro de la operación.", bullets: ["Sigue el canal de mando", "No interrumpas comunicaciones", "Reporta incidentes por la vía oficial"] },
     { category: "manuales", title: "Ingreso y entrenamiento TRS", summary: "Proceso desde la solicitud hasta la asignación de unidad.", bullets: ["Registro y verificación", "Entrenamiento inicial TRS", "Graduación y asignación de rol"] },
     { category: "manuales", title: "Uniforme y equipo", summary: "Configuración visual oficial para mantener disciplina y reconocimiento de aliados.", bullets: ["MCCUU desierto o bosque", "Colores Tan / Coyote Brown", "Accesorios de Store sólo si están aprobados"] },
+    { category: "equipamiento", title: "Uniforme USMCF oficial", image: "img/official-equipment/usmcf-uniforme.webp", summary: "MCCUU desierto o bosque con elementos Tan / Coyote Brown y representación visual uniforme de la facción.", bullets: ["Longship V1 SAPI en color TAN", "Casco, guantes, rodilleras, linterna y radio con auricular", "Bandera de Estados Unidos y parche de escuadra visibles"] },
+    { category: "equipamiento", title: "Carga media autorizada", image: "img/official-equipment/chaleco-medio.webp", summary: "Configuración con mochila para patrulla y reconocimiento, únicamente cuando Mando la autoriza.", bullets: ["Raciones y kit médico", "Binoculares y brújula", "Mantener el frontal del chaleco ligero"] },
+    { category: "equipamiento", title: "Carga ligera / CQB", image: "img/official-equipment/chaleco-ligero.webp", summary: "Configuración sin mochila para asalto, incursión y combate cercano con máxima movilidad.", bullets: ["Cargadores y munición", "Vendajes, torniquetes e IFAK", "Bolsas utilitarias y herramientas justificadas por el rol"] },
+    { category: "equipamiento", title: "Casco y accesorios", summary: "Configuración oficial del casco AEGIS Maritime Balistic; el MICH 2000 queda restringido a Logística, artilleros y Machine Gunners.", bullets: ["Ballistic Goggles Tan o Ballistic Glass", "NVG sólo en misiones nocturnas", "Comms para pilotos y operadores de radio; IR Strobe para señalización"] },
     { category: "armas", title: "Infantería", summary: "Armamento autorizado para el elemento de infantería regular.", bullets: ["RF416 A3, M16A4 o M4 Carbine", "Mira M150 y cargador USGI", "Secundaria M9A1 Beretta"] },
     { category: "armas", title: "MARSOC y tiradores", summary: "Configuraciones reservadas para operadores y especialidades aprobadas.", bullets: ["RF416 A5 para MARSOC", "SCAR-L: máximo un operador por equipo", "RF417 exclusivo para tirador designado MARSOC"] },
     { category: "armas", title: "Armas de especialidad", summary: "Equipo asignado por función; no puede usarse fuera de la especialidad.", bullets: ["M249 para Machine Gunner", "M1014 para brecha del Combat Engineer", "M24, L115A3 o M110 para tiradores autorizados"] },
+    { category: "equipamiento", title: "Rifleman", summary: "Carga base obligatoria para quien no tenga una especialidad activa.", bullets: ["RF416 A3", "M9A1", "Equipo de combate estándar y suministros básicos"] },
+    { category: "equipamiento", title: "DMR / Designated Marksman", summary: "Especialista de precisión y observación a media distancia.", bullets: ["Rifle DMR autorizado", "Óptica magnificada o de precisión", "Equipo de observación"] },
+    { category: "equipamiento", title: "Machine Gunner", summary: "Elemento de fuego sostenido y supresión.", bullets: ["Ametralladora autorizada", "Munición adicional", "Equipo de apoyo de fuego y MICH 2000 autorizado"] },
+    { category: "equipamiento", title: "Combat Medic", summary: "Soporte sanitario y estabilización de escuadra.", bullets: ["Rescue Axe", "Suministros médicos", "Equipo de estabilización"] },
+    { category: "equipamiento", title: "Combat Engineer", summary: "Brecha, acceso y demolición controlada.", bullets: ["Halligan Tool", "M1014", "Herramientas de demolición autorizadas"] },
+    { category: "equipamiento", title: "Grenadier", summary: "Apoyo explosivo y cobertura de humo bajo orden operativa.", bullets: ["M320 o lanzador autorizado", "Munición HE", "Granadas de humo"] },
+    { category: "equipamiento", title: "Radio Operator", summary: "Enlace de comunicaciones, navegación y señalización.", bullets: ["Radio de largo alcance", "Equipo de navegación", "Material de señalización"] },
     { category: "loadouts", title: "Asalto / CQB", summary: "Carga ligera para movilidad máxima en incursiones y combate cercano.", bullets: ["Sin mochila", "Munición y material médico esencial", "Arma definida por división"] },
     { category: "loadouts", title: "Patrulla / Reconocimiento", summary: "Carga media orientada a autonomía, observación y navegación.", bullets: ["Mochila con autorización", "Raciones, kit médico y binoculares", "Brújula y equipo de comunicaciones"] },
     { category: "loadouts", title: "Operación nocturna", summary: "Configuración especial para visibilidad, identificación y control del ruido.", bullets: ["NVG sólo en misión nocturna", "IR Strobe recomendado", "Supresor bajo autorización"] },
@@ -171,7 +182,11 @@
     $("serviceId").textContent = String(p.id).slice(0, 8).toUpperCase();
     $("summaryRank").textContent = p.rango || "Sin rango";
     $("summaryPoints").textContent = Number(p.puntos || 0).toLocaleString("es-PE");
-    $("topBalance").textContent = money(p.dinero);
+    var unlimitedAdmin = canManageUsers();
+    $("topBalance").textContent = unlimitedAdmin ? "∞ USD" : money(p.dinero);
+    $("balanceLabel").textContent = unlimitedAdmin ? "FONDOS DE MANDO" : "SALDO EN USD";
+    $("salaryNav").classList.toggle("hidden", unlimitedAdmin);
+    $("summarySalaryCard").classList.toggle("hidden", unlimitedAdmin);
     var rank = (window.RANGOS || []).find(function (entry) { return entry.rango === p.rango; });
     $("salaryAmount").textContent = money(rank ? rank.salario : 0);
     $("summarySalary").textContent = money(rank ? rank.salario : 0);
@@ -188,6 +203,7 @@
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
     $("adminStorePanel").classList.toggle("hidden", !canManageUsers());
+    $("announcementPanel").classList.toggle("hidden", !canManageUsers());
     $("adminSectionTitle").textContent = canManageUsers() ? "Administración" : "Centro de Staff";
     $("adminScopeCopy").textContent = canManageUsers()
       ? "Control total de usuarios: nombre, Roblox, correo, contraseña, permisos, estado, rango, puntos, dólares, inventario, facturas y movimientos."
@@ -203,7 +219,7 @@
   }
 
   async function verifySalary() {
-    if (!state.profile || state.profile.estado !== "activo") return;
+    if (!state.profile || state.profile.estado !== "activo" || canManageUsers()) return;
     var result = await supabase.rpc("pay_my_salary");
     if (result.error) {
       if (isSupabaseConfigured) setMessage("appMessage", "La consulta de salario no está disponible todavía: " + errorText(result.error), "error");
@@ -472,7 +488,8 @@
       return categoryMatch && (!query || text.indexOf(query) !== -1);
     });
     $("libraryGrid").innerHTML = entries.length ? entries.map(function (entry) {
-      return '<article class="library-card"><span>' + escapeHtml(entry.category) + '</span><h3>' + escapeHtml(entry.title) + '</h3><p>' + escapeHtml(entry.summary) + '</p><ul>' + entry.bullets.map(function (bullet) { return "<li>" + escapeHtml(bullet) + "</li>"; }).join("") + '</ul></article>';
+      var image = entry.image ? '<img class="library-card-image" src="' + escapeHtml(entry.image) + '" alt="Referencia oficial: ' + escapeHtml(entry.title) + '" loading="lazy" />' : '';
+      return '<article class="library-card">' + image + '<div class="library-card-copy"><span>' + escapeHtml(entry.category) + '</span><h3>' + escapeHtml(entry.title) + '</h3><p>' + escapeHtml(entry.summary) + '</p><ul>' + entry.bullets.map(function (bullet) { return "<li>" + escapeHtml(bullet) + "</li>"; }).join("") + '</ul></div></article>';
     }).join("") : '<p class="empty-state">No encontramos contenido con ese término.</p>';
   }
 
@@ -772,8 +789,26 @@
     await loadPlatformData();
   }
 
+  async function publishAnnouncement(event) {
+    event.preventDefault();
+    if (!canManageUsers()) return setMessage("appMessage", "Solo Administración puede publicar anuncios.", "error");
+    var button = $("announcementSubmit");
+    setBusy(button, true, "ENVIANDO…");
+    var result = await supabase.rpc("publish_announcement", { p_title: $("announcementTitle").value.trim(), p_message: $("announcementBody").value.trim(), p_kind: $("announcementKind").value });
+    setBusy(button, false);
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    $("announcementForm").reset();
+    setMessage("appMessage", "Anuncio entregado a la cola segura del bot de Discord.", "success");
+    if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
+    await loadPlatformData();
+  }
+
   function switchView(view) {
     if (view === "administracion" && !isStaff()) return;
+    if (view === "salario" && canManageUsers()) {
+      setMessage("appMessage", "Administración usa fondos de mando sin límite y no recibe salario.", "success");
+      view = "resumen";
+    }
     var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", entrenamiento: "MI ENTRENAMIENTO", especialidades: "ESPECIALIDADES", biblioteca: "BIBLIOTECA OPERATIVA", administracion: "ADMINISTRACIÓN" };
     document.querySelectorAll(".member-nav-btn").forEach(function (button) { button.classList.toggle("active", button.dataset.view === view); });
     document.querySelectorAll(".member-view").forEach(function (panel) { panel.classList.toggle("active", panel.dataset.panel === view); });
@@ -849,6 +884,7 @@
     $("checkoutBtn").addEventListener("click", checkout);
     $("adminItemForm").addEventListener("submit", publishItem);
     $("adminUserForm").addEventListener("submit", createAdminUser);
+    $("announcementForm").addEventListener("submit", publishAnnouncement);
     $("missionForm").addEventListener("submit", saveMission);
     $("cancelMissionEdit").addEventListener("click", resetMissionForm);
     $("librarySearch").addEventListener("input", function (event) { state.libraryQuery = event.target.value; renderLibrary(); });

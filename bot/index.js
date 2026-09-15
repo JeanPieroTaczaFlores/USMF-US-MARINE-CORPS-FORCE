@@ -9,6 +9,7 @@ const config = {
   trainingChannel: process.env.DISCORD_TRAINING_CHANNEL_ID,
   pointsChannel: process.env.DISCORD_POINTS_CHANNEL_ID,
   accessChannel: process.env.DISCORD_ACCESS_CHANNEL_ID,
+  announcementsChannel: process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID,
   recruitRole: process.env.DISCORD_ROLE_RECRUIT_ID,
   soldierRole: process.env.DISCORD_ROLE_SOLDIER_ID,
   staffRole: process.env.DISCORD_ROLE_STAFF_ID,
@@ -120,11 +121,14 @@ async function syncGuildRoster() {
   }
 }
 
-function eventChannel(type) {
-  if (type.startsWith("training_") || type === "specialty_approved") return config.trainingChannel;
-  if (type.startsWith("points_") || type === "rank_promoted") return config.pointsChannel;
-  if (type === "platform_login") return config.accessChannel || config.missionsChannel;
-  return config.missionsChannel;
+function eventChannels(type) {
+  if (type === "announcement_published") return [config.announcementsChannel];
+  if (type === "training_completed") return [config.trainingChannel, config.announcementsChannel];
+  if (type === "rank_promoted") return [config.pointsChannel, config.announcementsChannel];
+  if (type.startsWith("training_") || type === "specialty_approved") return [config.trainingChannel];
+  if (type.startsWith("points_")) return [config.pointsChannel];
+  if (type === "platform_login") return [config.accessChannel || config.missionsChannel];
+  return [config.missionsChannel];
 }
 
 async function syncMemberRoles(profile) {
@@ -160,11 +164,12 @@ async function syncMemberRoles(profile) {
 async function processEvent(event) {
   const profiles = event.user_id ? await supabase(`profiles?select=id,nombre,discord_id,rol,estado,rango,puntos&id=eq.${event.user_id}`) : [];
   const profile = profiles?.[0];
-  const channelId = eventChannel(event.tipo || "");
-  if (channelId) {
+  const channelIds = [...new Set(eventChannels(event.tipo || "").filter(Boolean))];
+  for (const channelId of channelIds) {
     await discord(`/channels/${channelId}/messages`, {
       method: "POST",
       body: JSON.stringify({
+        allowed_mentions: { parse: [] },
         embeds: [{
           title: event.titulo || "USMCF",
           description: event.mensaje || "Actividad registrada en la plataforma.",

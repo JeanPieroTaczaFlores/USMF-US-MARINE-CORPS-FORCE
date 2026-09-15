@@ -481,6 +481,7 @@
       }
 
       if (name === "pay_my_salary") {
+        if (["admin", "super_admin"].indexOf(profile.rol) !== -1) return { data: { paid: false, unlimited: true, amount: 0, next_at: null }, error: null };
         var salary = (window.RANGOS || []).find(function (r) { return r.rango === profile.rango; });
         var amount = salary ? salary.salario : 0;
         var last = profile.ultimo_salario ? new Date(profile.ultimo_salario) : null;
@@ -619,6 +620,17 @@
         db.discord_events.push(pointsEvent);
         saveDB(db);
         return { data: { points: target.puntos, money: target.dinero, event_id: pointsEvent.id, promotion_event_id: promotionEvent && promotionEvent.id }, error: null };
+      }
+
+      if (name === "publish_announcement") {
+        if (["admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Administración." } };
+        var announcementTitle = String(args && args.p_title || "").trim();
+        var announcementMessage = String(args && args.p_message || "").trim();
+        if (!announcementTitle || !announcementMessage) return { data: null, error: { message: "Título y mensaje son obligatorios." } };
+        var announcementEvent = { id: uid(), tipo: "announcement_published", titulo: announcementTitle.slice(0, 120), mensaje: announcementMessage.slice(0, 1800), kind: String(args && args.p_kind || "general"), mission_id: null, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(announcementEvent);
+        saveDB(db);
+        return { data: { event_id: announcementEvent.id }, error: null };
       }
 
       if (name === "checkout_cart") {

@@ -181,11 +181,16 @@
 .library-tools input { margin:0; min-height:43px; }
 .library-filters { margin:0; }
 .library-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.8rem; }
-.library-card { border:1px solid var(--platform-line); background:var(--platform-panel); padding:1.2rem; }
-.library-card > span { color:var(--platform-gold); font:700 .68rem "Oswald",sans-serif; text-transform:uppercase; letter-spacing:.12em; }
+.library-card { border:1px solid var(--platform-line); background:var(--platform-panel); overflow:hidden; }
+.library-card-copy { padding:1.2rem; }
+.library-card-image { display:block; width:100%; height:260px; object-fit:cover; object-position:center; border-bottom:1px solid var(--platform-line); background:#090b09; }
+.library-card-copy > span { color:var(--platform-gold); font:700 .68rem "Oswald",sans-serif; text-transform:uppercase; letter-spacing:.12em; }
 .library-card h3 { margin:.35rem 0 .55rem; font:1.15rem "Oswald",sans-serif; }
 .library-card p { color:#8e958e; font-size:.82rem; line-height:1.6; }
 .library-card ul { margin:.7rem 0 0 1rem; color:#a5aaa4; font-size:.78rem; line-height:1.65; }
+.announcement-form { margin:1rem 0 0; grid-template-columns:minmax(0,1fr) minmax(180px,.35fr); }
+.announcement-form .field-control:nth-child(2) { grid-row:span 2; }
+.announcement-form button { align-self:end; }
 
 .admin-layout { display:grid; grid-template-columns:1.15fr .85fr; gap:1rem; }
 .faction-directory-card { grid-column:1/-1; }
@@ -372,6 +377,8 @@
   .faction-directory { grid-template-columns:1fr; }
   .specialty-featured img { height:330px; }
   .library-grid { grid-template-columns:1fr; }
+  .announcement-form { grid-template-columns:1fr; }
+  .announcement-form .field-control:nth-child(2) { grid-row:auto; }
 }
 @media (max-width: 560px) {
   .platform-auth { padding-inline:1rem; }

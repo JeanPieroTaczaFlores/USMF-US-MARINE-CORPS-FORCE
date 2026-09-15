@@ -23,6 +23,8 @@ services:
         value: "1254309496268918804"
       - key: DISCORD_ACCESS_CHANNEL_ID
         sync: false
+      - key: DISCORD_ANNOUNCEMENTS_CHANNEL_ID
+        value: "1549116084714737755"
       - key: DISCORD_ROLE_RECRUIT_ID
         sync: false
       - key: DISCORD_ROLE_SOLDIER_ID

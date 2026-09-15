@@ -23,26 +23,35 @@ Deno.serve(async (request) => {
     if (event.user_id !== authData.user.id && !staff) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
     if (event.estado === "enviado") return new Response(JSON.stringify({ delivered: true, duplicate: true }), { headers: { ...cors, "Content-Type": "application/json" } });
 
-    const webhookUrl = event.tipo.startsWith("training_")
-      ? Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")
-      : event.tipo.startsWith("points_") || event.tipo === "rank_promoted"
-        ? Deno.env.get("DISCORD_POINTS_WEBHOOK_URL")
-        : event.tipo === "specialty_approved"
-          ? Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")
-          : event.tipo === "platform_login"
-          ? Deno.env.get("DISCORD_ACCESS_WEBHOOK_URL") || Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL")
-          : Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL");
-    if (!webhookUrl) throw new Error(`Discord webhook is not configured for ${event.tipo}`);
+    const announcements = Deno.env.get("DISCORD_ANNOUNCEMENTS_WEBHOOK_URL");
+    const webhookUrls = event.tipo === "announcement_published"
+      ? [announcements]
+      : event.tipo === "training_completed"
+        ? [Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL"), announcements]
+        : event.tipo === "rank_promoted"
+          ? [Deno.env.get("DISCORD_POINTS_WEBHOOK_URL"), announcements]
+          : event.tipo.startsWith("training_") || event.tipo === "specialty_approved"
+            ? [Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")]
+            : event.tipo.startsWith("points_")
+              ? [Deno.env.get("DISCORD_POINTS_WEBHOOK_URL")]
+              : event.tipo === "platform_login"
+                ? [Deno.env.get("DISCORD_ACCESS_WEBHOOK_URL") || Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL")]
+                : [Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL")];
+    const targets = [...new Set(webhookUrls.filter(Boolean))] as string[];
+    if (!targets.length) throw new Error(`Discord webhook is not configured for ${event.tipo}`);
 
-    const discordResponse = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: "USMCF Command Bot",
-        embeds: [{ title: event.titulo, description: event.mensaje, color: 0xd9a441, footer: { text: `Evento ${event.id}` }, timestamp: event.created_at }]
-      })
-    });
-    if (!discordResponse.ok) throw new Error(`Discord returned ${discordResponse.status}`);
+    for (const webhookUrl of targets) {
+      const discordResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "USMCF Command Bot",
+          allowed_mentions: { parse: [] },
+          embeds: [{ title: event.titulo, description: event.mensaje, color: 0xd9a441, footer: { text: `Evento ${event.id}` }, timestamp: event.created_at }]
+        })
+      });
+      if (!discordResponse.ok) throw new Error(`Discord returned ${discordResponse.status}`);
+    }
     await admin.from("discord_events").update({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }).eq("id", event.id);
     return new Response(JSON.stringify({ delivered: true }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (error) {
