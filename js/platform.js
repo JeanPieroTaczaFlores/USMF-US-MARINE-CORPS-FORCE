@@ -23,7 +23,8 @@
     storeCategory: "todos",
     libraryCategory: "todos",
     libraryQuery: "",
-    adminQuery: ""
+    adminQuery: "",
+    rolePreview: null
   };
 
   var libraryEntries = [
@@ -105,6 +106,20 @@
     return result.data;
   }
 
+  function applyLocalRolePreview(profile) {
+    var preview = !isSupabaseConfigured ? new URLSearchParams(window.location.search).get("preview") : null;
+    if (preview !== "staff") {
+      state.rolePreview = null;
+      return profile;
+    }
+    state.rolePreview = "staff";
+    return Object.assign({}, profile, {
+      nombre: "Vista Staff USMCF",
+      rango: "Sargento del Estado Mayor",
+      rol: "staff"
+    });
+  }
+
   async function loadSession() {
     if (!supabase) {
       setMessage("authMessage", "No se pudo iniciar el sistema de acceso.", "error");
@@ -123,7 +138,7 @@
         var identitySync = await supabase.rpc("sync_my_discord_identity");
         if (identitySync.error) throw identitySync.error;
       }
-      state.profile = await getProfile(user.id);
+      state.profile = applyLocalRolePreview(await getProfile(user.id));
       if (!state.profile) throw new Error("Tu cuenta todavía no tiene un perfil vinculado.");
       $("authView").classList.add("hidden");
       $("memberView").classList.remove("hidden");
@@ -134,6 +149,9 @@
       await syncDiscordRoles(user.id, true);
       await verifySalary();
       await loadPlatformData();
+      if (state.rolePreview === "staff") {
+        setMessage("appMessage", "VISTA PREVIA STAFF: puedes gestionar misiones, entrenamientos, especialidades, puntos y recompensas. La creación y modificación integral de usuarios permanece reservada a Administración.", "success");
+      }
       if (state.profile.estado !== "activo") {
         setMessage("appMessage", "Tu perfil está " + state.profile.estado + ". Puedes consultar la biblioteca, pero las compras se habilitan después de la aprobación del staff.");
       }
@@ -169,6 +187,11 @@
     $("adminNav").classList.toggle("hidden", !isStaff());
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
+    $("adminStorePanel").classList.toggle("hidden", !canManageUsers());
+    $("adminSectionTitle").textContent = canManageUsers() ? "Administración" : "Centro de Staff";
+    $("adminScopeCopy").textContent = canManageUsers()
+      ? "Control total de usuarios: nombre, Roblox, correo, contraseña, permisos, estado, rango, puntos, dólares, inventario, facturas y movimientos."
+      : "Gestión operativa: misiones, entrenamientos, especialidades, consulta de expedientes y ajustes auditados de puntos y dólares.";
   }
 
   function isStaff() {
@@ -187,7 +210,7 @@
       return;
     }
     if (result.data && result.data.paid) {
-      state.profile = await getProfile(state.user.id);
+      state.profile = applyLocalRolePreview(await getProfile(state.user.id));
       hydrateIdentity();
       setMessage("appMessage", "Salario semanal acreditado: " + money(result.data.amount) + ".", "success");
     }
@@ -215,7 +238,7 @@
     state.discordEvents = results[6].data || [];
     state.trainingAssignments = results[7].data || [];
     state.specialtyApplications = results[8].data || [];
-    state.profile = await getProfile(userId);
+    state.profile = applyLocalRolePreview(await getProfile(userId));
     hydrateIdentity();
     renderTransactions();
     renderStore();
@@ -633,7 +656,8 @@
       var movementText = transactions.length ? transactions.map(function (row) { return escapeHtml(row.descripcion) + " — " + escapeHtml(money(row.monto_dinero)) + " / " + escapeHtml(points(row.monto_puntos)); }).join("<br>") : "Sin movimientos";
       var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button></div>' : '';
       var dossier = '<details class="member-dossier"><summary>VER INVENTARIO, FACTURAS Y MOVIMIENTOS</summary><div class="dossier-grid"><div><strong>INVENTARIO</strong><p>' + inventoryText + '</p></div><div><strong>FACTURAS</strong><p>' + invoiceText + '</p></div><div><strong>ÚLTIMOS MOVIMIENTOS</strong><p>' + movementText + '</p></div></div></details>';
-      return '<details class="admin-person member-accordion"><summary class="member-summary"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + ' · ' + escapeHtml(profile.rango) + '</small></div><div class="member-summary-balance"><strong>' + escapeHtml(points(profile.puntos)) + '</strong><small>' + escapeHtml(money(profile.dinero)) + '</small></div><span class="accordion-hint">MODIFICAR</span></summary><div class="member-admin-panel"><div><small>Último ingreso: ' + escapeHtml(dateText(profile.last_login)) + '</small>' + editor + dossier + '</div><div class="admin-actions member-management"><label><span>SUMAR/RESTAR PUNTOS</span><input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" /></label><label><span>SUMAR/RESTAR USD</span><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" /></label><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">APLICAR AJUSTE</button><small>Usa números negativos para descontar.</small></div></div></details>';
+      var accordionAction = canManageUsers() ? "MODIFICAR" : "PUNTOS Y SALDO";
+      return '<details class="admin-person member-accordion"><summary class="member-summary"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + ' · ' + escapeHtml(profile.rango) + '</small></div><div class="member-summary-balance"><strong>' + escapeHtml(points(profile.puntos)) + '</strong><small>' + escapeHtml(money(profile.dinero)) + '</small></div><span class="accordion-hint">' + accordionAction + '</span></summary><div class="member-admin-panel"><div><small>Último ingreso: ' + escapeHtml(dateText(profile.last_login)) + '</small>' + editor + dossier + '</div><div class="admin-actions member-management"><label><span>SUMAR/RESTAR PUNTOS</span><input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" /></label><label><span>SUMAR/RESTAR USD</span><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" /></label><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">APLICAR AJUSTE</button><small>Usa números negativos para descontar.</small></div></div></details>';
     }).join("") : '<p class="empty-state">No hay usuarios que coincidan con la búsqueda.</p>';
     renderTrainingQueue();
     renderSpecialtyApplicationQueue();
