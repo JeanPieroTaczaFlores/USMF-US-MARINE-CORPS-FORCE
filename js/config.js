@@ -55,4 +55,23 @@ const RANGO_DEFAULT = 'Soldado';
 const DINERO_INICIAL = 500;
 const PUNTOS_INICIALES = 100;
 
+// Escala verificada en el canal oficial de rangos de Discord.
+// Los oficiales requieren guerras/capacitación y permanecen bajo confirmación de mando.
+const RANK_THRESHOLDS = [
+  { rango: 'Soldado', puntos: 100 },
+  { rango: 'Soldado de Primera', puntos: 150 },
+  { rango: 'Cabo de Lanza', puntos: 250 },
+  { rango: 'Cabo', puntos: 350 },
+  { rango: 'Cabo de Lanza (Avanzado)', puntos: 500 },
+  { rango: 'Sargento', puntos: 700 },
+  { rango: 'Sargento del Estado Mayor', puntos: 900 },
+  { rango: 'Sargento de Artillería', puntos: 1200 },
+  { rango: 'Sargento Mayor de 2da Clase', puntos: 1250 },
+  { rango: 'Sargento Primero', puntos: 1300 },
+  { rango: 'Sargento Mayor de Artillería', puntos: 1400 },
+  { rango: 'Sargento Mayor de 1ra Clase', puntos: 1450 },
+  { rango: 'Sargento Mayor de la Infantería', puntos: 1500 }
+];
+
 window.RANGOS = RANGOS;
+window.RANK_THRESHOLDS = RANK_THRESHOLDS;

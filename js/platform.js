@@ -17,6 +17,7 @@
     missionParticipants: [],
     discordEvents: [],
     trainingAssignments: [],
+    specialtyApplications: [],
     cart: [],
     storeCategory: "todos",
     libraryCategory: "todos",
@@ -37,6 +38,18 @@
     { category: "loadouts", title: "Operación nocturna", summary: "Configuración especial para visibilidad, identificación y control del ruido.", bullets: ["NVG sólo en misión nocturna", "IR Strobe recomendado", "Supresor bajo autorización"] },
     { category: "loadouts", title: "Despliegue anfibio", summary: "Equipo ligero e impermeable para operaciones costeras en el mapa Sea.", bullets: ["Prioriza movilidad", "Protege el material esencial", "Sigue la configuración indicada por el mando"] },
     { category: "manuales", title: "Controles y servidores", summary: "Guía de radio, postura, inclinación, accesorios e ingreso a servidores privados.", bullets: ["Configura teclas antes del despliegue", "Verifica radio y accesorios", "Usa sólo enlaces oficiales"] }
+  ];
+
+  var specialtyCatalog = [
+    { key: "raider", icon: "⚔", name: "Marine Raider", points: 100, requirement: "Evaluación MARSOC", benefits: ["Misiones especiales y de alto riesgo", "Entrenamiento avanzado", "Uniforme Kandahar autorizado"] },
+    { key: "radio", icon: "📡", name: "Operador de Radio", points: 250, requirement: "Curso de comunicaciones", benefits: ["Canal de mando exclusivo", "Coordinación de ataques", "Solicitud de refuerzos"] },
+    { key: "medico", icon: "✚", name: "Médico de Combate", points: 250, requirement: "Curso de sanidad", benefits: ["Revivir y estabilizar aliados", "Prioridad de protección", "Soporte médico de escuadra"] },
+    { key: "tirador_ligero", icon: "◎", name: "Tirador Designado Ligero", points: 300, requirement: "Prueba de puntería", benefits: ["Uso autorizado de M110", "Eventos de tiro", "Cobertura a media distancia"] },
+    { key: "tirador_pesado", icon: "⌖", name: "Tirador Designado Pesado", points: 400, requirement: "Prueba avanzada", benefits: ["AWP y M2000 autorizados", "Largo alcance", "Posiciones de observación"] },
+    { key: "machine_gunner", icon: "▰", name: "Machine Gunner", points: 300, requirement: "Curso de armas pesadas", benefits: ["PKM y M240", "Supresión y cobertura", "Control de zonas"] },
+    { key: "combat_engineer", icon: "◆", name: "Combat Engineer", points: 300, requirement: "Curso de demoliciones", benefits: ["Brecha y explosivos", "Destrucción controlada", "Herramientas de ingeniería"] },
+    { key: "conductor", icon: "▣", name: "Conductor", points: 120, requirement: "Instrucción vehicular", benefits: ["MRAP y HMMWV", "Maniobras tácticas", "Transporte de escuadra"] },
+    { key: "artillero", icon: "✦", name: "Artillero", points: 120, requirement: "Instrucción de apoyo", benefits: ["Torretas y CAWS", "Fuego de apoyo", "Defensa vehicular"] }
   ];
 
   function $(id) { return document.getElementById(id); }
@@ -181,7 +194,8 @@
       supabase.from("missions").select("*").order("fecha", { ascending: true }),
       supabase.from("mission_participants").select("*").order("joined_at", { ascending: true }),
       supabase.from("discord_events").select("*").order("created_at", { ascending: false }).limit(12),
-      supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false })
+      supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false }),
+      supabase.from("specialty_applications").select("*").order("created_at", { ascending: false })
     ]);
     state.transactions = results[0].data || [];
     state.items = results[1].data || [];
@@ -191,6 +205,7 @@
     state.missionParticipants = results[5].data || [];
     state.discordEvents = results[6].data || [];
     state.trainingAssignments = results[7].data || [];
+    state.specialtyApplications = results[8].data || [];
     state.profile = await getProfile(userId);
     hydrateIdentity();
     renderTransactions();
@@ -199,6 +214,8 @@
     renderInvoices();
     renderMissions();
     renderOnboarding();
+    renderRankProgress();
+    renderSpecialties();
     $("summaryItems").textContent = state.inventory.reduce(function (sum, row) { return sum + Number(row.cantidad || 1); }, 0);
     if (isStaff()) await loadAdminData();
   }
@@ -227,6 +244,56 @@
     $("recentTransactions").innerHTML = recent.length ? recent.map(transactionRow).join("") : '<p class="empty-state">Todavía no hay movimientos.</p>';
     var salaries = state.transactions.filter(function (row) { return row.tipo === "salario"; });
     $("salaryHistory").innerHTML = salaries.length ? salaries.map(transactionRow).join("") : '<p class="empty-state">Tu primer pago aparecerá aquí.</p>';
+  }
+
+  function renderRankProgress() {
+    var thresholds = window.RANK_THRESHOLDS || [];
+    var currentPoints = Number(state.profile.puntos || 0);
+    var currentIndex = thresholds.map(function (entry) { return entry.rango; }).indexOf(state.profile.rango);
+    var next = thresholds.find(function (entry) { return entry.puntos > currentPoints; });
+    $("rankProgressCurrent").textContent = state.profile.rango || "Sin rango";
+    if (!next || currentIndex === -1 && /Teniente|Capitán|Mayor|Coronel|General/.test(state.profile.rango || "")) {
+      $("rankProgressNext").textContent = "Carrera de oficial: validación de mando";
+      $("rankProgressBar").style.width = "100%";
+      $("rankProgressText").textContent = "Los rangos de oficial exigen guerras y capacitación; no se entregan automáticamente por puntos.";
+      return;
+    }
+    var previous = thresholds.filter(function (entry) { return entry.puntos <= currentPoints; }).slice(-1)[0] || { puntos: 0 };
+    var progress = Math.max(0, Math.min(100, ((currentPoints - previous.puntos) / Math.max(1, next.puntos - previous.puntos)) * 100));
+    $("rankProgressNext").textContent = "Siguiente: " + next.rango;
+    $("rankProgressBar").style.width = progress + "%";
+    $("rankProgressText").textContent = currentPoints.toLocaleString("es-PE") + " / " + next.puntos.toLocaleString("es-PE") + " pts · faltan " + Math.max(0, next.puntos - currentPoints).toLocaleString("es-PE") + " puntos";
+  }
+
+  function renderSpecialties() {
+    $("specialtyGrid").innerHTML = specialtyCatalog.map(function (specialty) {
+      var application = state.specialtyApplications.find(function (row) { return String(row.user_id) === String(state.user.id) && row.role_key === specialty.key; });
+      var eligible = state.profile.estado === "activo" && Number(state.profile.puntos || 0) >= specialty.points;
+      var action = application
+        ? '<span class="specialty-application-status ' + escapeHtml(application.estado) + '">' + escapeHtml(application.estado === "aprobada" ? "ROL APROBADO" : application.estado === "rechazada" ? "SOLICITUD RECHAZADA" : "EN EVALUACIÓN") + '</span>'
+        : '<button class="platform-primary compact" type="button" data-apply-specialty="' + specialty.key + '" ' + (eligible ? "" : "disabled") + '>' + (eligible ? "QUIERO POSTULAR" : "REQUIERE " + specialty.points + " PTS") + '</button>';
+      return '<article class="specialty-card ' + (specialty.key === "raider" ? "raider" : "") + '"><div class="specialty-card-top"><span>' + escapeHtml(specialty.icon) + '</span><small>' + escapeHtml(specialty.requirement) + '</small></div><h3>' + escapeHtml(specialty.name) + '</h3><strong>' + escapeHtml(points(specialty.points)) + '</strong><ul>' + specialty.benefits.map(function (benefit) { return '<li>' + escapeHtml(benefit) + '</li>'; }).join("") + '</ul>' + action + '</article>';
+    }).join("");
+  }
+
+  async function applySpecialty(roleKey) {
+    var specialty = specialtyCatalog.find(function (entry) { return entry.key === roleKey; });
+    if (!specialty) return;
+    if (state.profile.estado !== "activo" || Number(state.profile.puntos || 0) < specialty.points) return setMessage("appMessage", "Todavía no cumples los requisitos para esta especialidad.", "error");
+    var result = await supabase.from("specialty_applications").insert({ user_id: state.user.id, role_key: roleKey, estado: "pendiente", created_at: new Date().toISOString() });
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", "Solicitud enviada. Staff o Administración debe evaluar y confirmar tu especialidad.", "success");
+    await loadPlatformData();
+  }
+
+  async function reviewSpecialtyApplication(applicationId, status) {
+    var application = state.specialtyApplications.find(function (row) { return String(row.id) === String(applicationId); });
+    if (!application || !isStaff()) return;
+    var result = await supabase.from("specialty_applications").update({ estado: status, reviewed_by: state.user.id, reviewed_at: new Date().toISOString() }).eq("id", applicationId);
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    if (status === "aprobada") await syncDiscordRoles(application.user_id, false);
+    setMessage("appMessage", status === "aprobada" ? "Especialidad aprobada y enviada al bot de Discord." : "Solicitud rechazada.", "success");
+    await loadPlatformData();
   }
 
   function renderOnboarding() {
@@ -532,6 +599,8 @@
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     setMessage("appMessage", "Puntos y saldo actualizados con registro de auditoría.", "success");
     if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
+    if (result.data && result.data.promotion_event_id) await sendDiscordEvent(result.data.promotion_event_id);
+    await syncDiscordRoles(profileId, true);
     await loadPlatformData();
   }
 
@@ -556,6 +625,7 @@
       return '<details class="admin-person member-accordion"><summary class="member-summary"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + ' · ' + escapeHtml(profile.rango) + '</small></div><div class="member-summary-balance"><strong>' + escapeHtml(points(profile.puntos)) + '</strong><small>' + escapeHtml(money(profile.dinero)) + '</small></div><span class="accordion-hint">MODIFICAR</span></summary><div class="member-admin-panel"><div><small>Último ingreso: ' + escapeHtml(dateText(profile.last_login)) + '</small>' + editor + dossier + '</div><div class="admin-actions member-management"><label><span>SUMAR/RESTAR PUNTOS</span><input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" /></label><label><span>SUMAR/RESTAR USD</span><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" /></label><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">APLICAR AJUSTE</button><small>Usa números negativos para descontar.</small></div></div></details>';
     }).join("") : '<p class="empty-state">No hay usuarios que coincidan con la búsqueda.</p>';
     renderTrainingQueue();
+    renderSpecialtyApplicationQueue();
     $("adminCatalog").innerHTML = state.adminItems.length ? state.adminItems.map(function (item) {
       return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(item.tipo) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
@@ -571,6 +641,16 @@
       var actions = assignment.estado === "asignado" ? '<button type="button" data-take-training="' + escapeHtml(assignment.id) + '">TOMAR ENTRENAMIENTO</button>' : canFinish ? '<button type="button" data-finish-training="' + escapeHtml(assignment.id) + '">FINALIZAR Y GRADUAR</button>' : '';
       return '<div class="training-row"><div><strong>' + escapeHtml(recruit ? recruit.nombre : "Recluta") + '</strong><small>Entrenamiento Básico TRS · Roblox: ' + escapeHtml(recruit ? recruit.usuario_roblox : "Pendiente") + '</small><small>Instructor: ' + escapeHtml(trainer ? trainer.nombre : "Sin asignar") + '</small><span class="training-status">' + escapeHtml(String(assignment.estado || "asignado").replace("_", " ").toUpperCase()) + '</span></div><div class="admin-actions">' + actions + '</div></div>';
     }).join("") : '<p class="empty-state">No hay entrenamientos asignados.</p>';
+  }
+
+  function renderSpecialtyApplicationQueue() {
+    var pending = state.specialtyApplications.filter(function (row) { return row.estado === "pendiente"; });
+    $("specialtyPendingCount").textContent = pending.length + (pending.length === 1 ? " PENDIENTE" : " PENDIENTES");
+    $("specialtyApplicationQueue").innerHTML = state.specialtyApplications.length ? state.specialtyApplications.map(function (application) {
+      var specialty = specialtyCatalog.find(function (entry) { return entry.key === application.role_key; });
+      var reviewed = application.estado !== "pendiente";
+      return '<div class="training-row"><div><strong>' + escapeHtml(profileName(application.user_id)) + ' · ' + escapeHtml(specialty ? specialty.name : application.role_key) + '</strong><small>Solicitada: ' + escapeHtml(dateText(application.created_at)) + (application.reviewed_at ? ' · Revisada: ' + escapeHtml(dateText(application.reviewed_at)) : '') + '</small><span class="training-status">' + escapeHtml(application.estado.toUpperCase()) + '</span></div><div class="admin-actions"><button type="button" data-review-specialty="' + escapeHtml(application.id) + '" data-specialty-status="aprobada" ' + (reviewed ? "disabled" : "") + '>APROBAR ROL</button><button type="button" data-review-specialty="' + escapeHtml(application.id) + '" data-specialty-status="rechazada" ' + (reviewed ? "disabled" : "") + '>RECHAZAR</button></div></div>';
+    }).join("") : '<p class="empty-state">Todavía no hay solicitudes de especialidad.</p>';
   }
 
   async function createAdminUser(event) {
@@ -641,7 +721,7 @@
 
   function switchView(view) {
     if (view === "administracion" && !isStaff()) return;
-    var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", entrenamiento: "MI ENTRENAMIENTO", biblioteca: "BIBLIOTECA OPERATIVA", administracion: "ADMINISTRACIÓN" };
+    var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", entrenamiento: "MI ENTRENAMIENTO", especialidades: "ESPECIALIDADES", biblioteca: "BIBLIOTECA OPERATIVA", administracion: "ADMINISTRACIÓN" };
     document.querySelectorAll(".member-nav-btn").forEach(function (button) { button.classList.toggle("active", button.dataset.view === view); });
     document.querySelectorAll(".member-view").forEach(function (panel) { panel.classList.toggle("active", panel.dataset.panel === view); });
     $("viewTitle").textContent = titles[view] || "PLATAFORMA";
@@ -748,6 +828,10 @@
       if (takeTrainingButton) trainingAction("take_training", takeTrainingButton.dataset.takeTraining, "Entrenamiento tomado. Ya figuras como instructor responsable.");
       var finishTrainingButton = event.target.closest("[data-finish-training]");
       if (finishTrainingButton) trainingAction("finish_training", finishTrainingButton.dataset.finishTraining, "Entrenamiento finalizado. El recluta fue activado y ascendido automáticamente a Soldado.");
+      var specialtyButton = event.target.closest("[data-apply-specialty]");
+      if (specialtyButton) applySpecialty(specialtyButton.dataset.applySpecialty);
+      var specialtyReview = event.target.closest("[data-review-specialty]");
+      if (specialtyReview) reviewSpecialtyApplication(specialtyReview.dataset.reviewSpecialty, specialtyReview.dataset.specialtyStatus);
       var storeFilter = event.target.closest("[data-category]");
       if (storeFilter) {
         state.storeCategory = storeFilter.dataset.category;

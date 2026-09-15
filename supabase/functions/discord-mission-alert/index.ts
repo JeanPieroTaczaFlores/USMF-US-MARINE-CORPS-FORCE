@@ -25,9 +25,11 @@ Deno.serve(async (request) => {
 
     const webhookUrl = event.tipo.startsWith("training_")
       ? Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")
-      : event.tipo.startsWith("points_")
+      : event.tipo.startsWith("points_") || event.tipo === "rank_promoted"
         ? Deno.env.get("DISCORD_POINTS_WEBHOOK_URL")
-        : event.tipo === "platform_login"
+        : event.tipo === "specialty_approved"
+          ? Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")
+          : event.tipo === "platform_login"
           ? Deno.env.get("DISCORD_ACCESS_WEBHOOK_URL") || Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL")
           : Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL");
     if (!webhookUrl) throw new Error(`Discord webhook is not configured for ${event.tipo}`);

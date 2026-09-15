@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: usmcf-discord-bot
+    runtime: docker
+    dockerfilePath: ./bot/Dockerfile
+    dockerContext: ./bot
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_GUILD_ID
+        value: "1016036020875165797"
+      - key: DISCORD_MISSIONS_CHANNEL_ID
+        value: "1254309543828262923"
+      - key: DISCORD_TRAINING_CHANNEL_ID
+        value: "1259971958708240507"
+      - key: DISCORD_POINTS_CHANNEL_ID
+        value: "1254309496268918804"
+      - key: DISCORD_ACCESS_CHANNEL_ID
+        sync: false
+      - key: DISCORD_ROLE_RECRUIT_ID
+        sync: false
+      - key: DISCORD_ROLE_SOLDIER_ID
+        sync: false
+      - key: DISCORD_ROLE_STAFF_ID
+        sync: false
+      - key: DISCORD_ROLE_ADMIN_ID
+        sync: false
+      - key: DISCORD_RANK_ROLE_MAP
+        sync: false
+      - key: DISCORD_SPECIALTY_ROLE_MAP
+        sync: false

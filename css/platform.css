@@ -290,6 +290,15 @@
 .onboarding-banner h3 { margin:.3rem 0; color:#f1f2ed; font:1.3rem "Oswald",sans-serif; }
 .onboarding-banner p { margin:0; color:#8d948d; font-size:.75rem; }
 .onboarding-banner > strong { color:#17120b; background:var(--platform-gold-soft); padding:.45rem .6rem; font:700 .62rem "Inter",sans-serif; }
+.rank-progress-card { margin:1rem 0; display:grid; grid-template-columns:minmax(180px,.7fr) minmax(220px,1.3fr); gap:.8rem 1.4rem; align-items:center; padding:1rem 1.15rem; border:1px solid #394039; background:#111511; }
+.rank-progress-card span { color:var(--platform-gold); font:800 .62rem "Inter",sans-serif; letter-spacing:.11em; }
+.rank-progress-card h3 { margin:.3rem 0 0; }
+.rank-progress-card h3 strong,.rank-progress-card h3 small { display:block; }
+.rank-progress-card h3 strong { font:1.25rem "Oswald",sans-serif; }
+.rank-progress-card h3 small { margin-top:.18rem; color:#858d85; font-size:.7rem; }
+.rank-progress-track { height:10px; overflow:hidden; border:1px solid #384038; background:#090c0a; }
+.rank-progress-track span { display:block; width:0; height:100%; background:linear-gradient(90deg,#8a692c,var(--platform-gold-soft)); transition:width .4s ease; }
+.rank-progress-card > p { grid-column:2; margin:0; color:#929992; font-size:.72rem; }
 .training-access-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr); gap:1rem; align-items:stretch; }
 .training-timeline { display:grid; gap:.75rem; margin-top:1rem; }
 .training-timeline > div { display:grid; grid-template-columns:42px 1fr; gap:.8rem; align-items:center; padding:.8rem; border:1px solid #303630; background:#0c0f0d; }
@@ -305,12 +314,31 @@
 .wardrobe-access-state { margin:1rem 0; padding:.75rem; border:1px solid #745a30; color:#e4bd76; text-align:center; font:800 .68rem "Inter",sans-serif; letter-spacing:.1em; }
 .wardrobe-access-card.authorized { border-color:#4d7454; background:linear-gradient(145deg,#162219,#101310); }
 .wardrobe-access-card.authorized .wardrobe-access-state { color:#b8dcbc; border-color:#4d7454; }
+.specialty-featured { display:grid; grid-template-columns:minmax(260px,.75fr) minmax(0,1.25fr); min-height:350px; margin-bottom:1rem; border:1px solid #765a2d; background:linear-gradient(125deg,#171c18,#21190e); overflow:hidden; }
+.specialty-featured img { width:100%; height:100%; max-height:430px; object-fit:cover; object-position:center 30%; }
+.specialty-featured > div { display:flex; flex-direction:column; justify-content:center; padding:clamp(1.5rem,4vw,3rem); }
+.specialty-featured h3 { margin:.55rem 0; font:clamp(2rem,4vw,3.4rem) "Anton",sans-serif; text-transform:uppercase; }
+.specialty-featured p { max-width:650px; color:#a8aea7; line-height:1.65; }
+.benefit-tags { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:1rem; }
+.benefit-tags span { border:1px solid #71582f; padding:.45rem .6rem; color:#e4bd76; font:700 .66rem "Inter",sans-serif; }
+.specialty-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
+.specialty-card { display:flex; flex-direction:column; min-height:300px; padding:1.1rem; border:1px solid #343a34; border-top:3px solid #657065; background:#111511; }
+.specialty-card.raider { border-top-color:var(--platform-gold); }
+.specialty-card-top { display:flex; justify-content:space-between; gap:.8rem; align-items:center; }
+.specialty-card-top > span { font-size:1.5rem; color:var(--platform-gold-soft); }
+.specialty-card-top small { color:#7f877f; font-size:.68rem; text-align:right; }
+.specialty-card h3 { margin:.8rem 0 .25rem; font:1.25rem "Oswald",sans-serif; text-transform:uppercase; }
+.specialty-card > strong { color:var(--platform-gold-soft); font-size:.82rem; }
+.specialty-card ul { flex:1; margin:.9rem 0 1rem 1rem; color:#9ba29b; font-size:.75rem; line-height:1.7; }
+.specialty-application-status { align-self:flex-start; border:1px solid #785f32; padding:.55rem .65rem; color:#e3bd75; font:800 .64rem "Inter",sans-serif; letter-spacing:.08em; }
+.specialty-application-status.aprobada { border-color:#4d7454; color:#b8dcbc; }
 
 @media (max-width: 1050px) {
   .metric-grid { grid-template-columns:repeat(2,1fr); }
   .store-grid { grid-template-columns:repeat(2,1fr); }
   .library-tools { grid-template-columns:1fr; }
   .mission-command-layout { grid-template-columns:1fr; }
+  .specialty-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (max-width: 820px) {
   .platform-auth { grid-template-columns:1fr; padding-top:5.5rem; }
@@ -323,14 +351,16 @@
   .member-nav { display:flex; overflow-x:auto; margin:0; padding-bottom:.25rem; }
   .member-nav-btn { flex:0 0 auto; width:auto; white-space:nowrap; }
   .member-content { padding:1.3rem 1rem 3rem; }
-  .dashboard-grid,.salary-layout,.inventory-layout,.admin-layout,.mission-grid,.training-access-layout { grid-template-columns:1fr; }
+  .dashboard-grid,.salary-layout,.inventory-layout,.admin-layout,.mission-grid,.training-access-layout,.specialty-featured { grid-template-columns:1fr; }
+  .specialty-featured img { height:330px; }
   .library-grid { grid-template-columns:1fr; }
 }
 @media (max-width: 560px) {
   .platform-auth { padding-inline:1rem; }
   .platform-auth-copy h1 { font-size:3.35rem; }
   .auth-card { padding:1.3rem; }
-  .form-row,.metric-grid,.store-grid,.mission-summary { grid-template-columns:1fr; }
+  .form-row,.metric-grid,.store-grid,.mission-summary,.specialty-grid,.rank-progress-card { grid-template-columns:1fr; }
+  .rank-progress-card > p { grid-column:1; }
   .member-topline,.summary-hero,.store-toolbar { align-items:flex-start; flex-direction:column; }
   .service-number { text-align:left; }
   .balance-pill { width:100%; }

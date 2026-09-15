@@ -41,12 +41,27 @@
     localStorage.setItem(DB_KEY, JSON.stringify(db));
   }
 
+  function applyAutoPromotion(profile, db) {
+    if (!profile || profile.rol !== "usuario" || profile.estado !== "activo") return null;
+    var thresholds = window.RANK_THRESHOLDS || [];
+    var eligible = thresholds.filter(function (entry) { return Number(profile.puntos || 0) >= entry.puntos; }).slice(-1)[0];
+    if (!eligible) return null;
+    var currentIndex = thresholds.map(function (entry) { return entry.rango; }).indexOf(profile.rango);
+    var targetIndex = thresholds.map(function (entry) { return entry.rango; }).indexOf(eligible.rango);
+    if (targetIndex <= currentIndex) return null;
+    var previousRank = profile.rango;
+    profile.rango = eligible.rango;
+    var event = { id: uid(), tipo: "rank_promoted", titulo: "Ascenso automático", mensaje: profile.nombre + " ascendió de " + previousRank + " a " + eligible.rango + " al alcanzar " + profile.puntos + " puntos.", mission_id: null, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
+    db.discord_events.push(event);
+    return event;
+  }
+
   function getDB() {
     var db;
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], mission_participants: [], training_assignments: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
+    var defaults = { missions: [], mission_participants: [], training_assignments: [], specialty_applications: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
@@ -63,6 +78,7 @@
       if (p.ultimo_salario === undefined) p.ultimo_salario = null;
     });
     if (!db.shop_items.length) seedShop(db);
+    db.profiles.forEach(function (profile) { applyAutoPromotion(profile, db); });
     saveDB(db);
     return db;
   }
@@ -73,6 +89,7 @@
       missions: [],
       mission_participants: [],
       training_assignments: [],
+      specialty_applications: [],
       transactions: [],
       opinions: [],
       notifications: [],
@@ -549,6 +566,7 @@
           var rewardedProfile = db.profiles.find(function (candidate) { return String(candidate.id) === String(row.user_id); });
           if (!rewardedProfile) return;
           rewardedProfile.puntos += Number(finishMission.recompensa_puntos || 0);
+          applyAutoPromotion(rewardedProfile, db);
           rewardedProfile.dinero += Number(finishMission.recompensa_dinero || 0);
           row.rewarded_at = new Date().toISOString();
           db.transactions.push({ id: uid(), user_id: rewardedProfile.id, tipo: "mision", descripcion: "Misión completada: " + finishMission.titulo, monto_puntos: Number(finishMission.recompensa_puntos || 0), monto_dinero: Number(finishMission.recompensa_dinero || 0), created_at: new Date().toISOString() });
@@ -599,11 +617,12 @@
         if (target.puntos + pointsDelta < 0 || target.dinero + moneyDelta < 0) return { data: null, error: { message: "El ajuste dejaría un saldo negativo." } };
         target.puntos += pointsDelta;
         target.dinero += moneyDelta;
+        var promotionEvent = applyAutoPromotion(target, db);
         db.transactions.push({ id: uid(), user_id: target.id, tipo: "ajuste_mando", descripcion: args.p_reason || "Ajuste manual de mando", monto_puntos: pointsDelta, monto_dinero: moneyDelta, created_at: new Date().toISOString() });
         var pointsEvent = { id: uid(), tipo: "points_adjusted", titulo: "Actualización de puntos", mensaje: profile.nombre + " ajustó a " + target.nombre + ": " + (pointsDelta >= 0 ? "+" : "") + pointsDelta + " puntos y " + (moneyDelta >= 0 ? "+" : "") + moneyDelta + " de saldo.", mission_id: null, user_id: target.id, estado: "pendiente", created_at: new Date().toISOString() };
         db.discord_events.push(pointsEvent);
         saveDB(db);
-        return { data: { points: target.puntos, money: target.dinero, event_id: pointsEvent.id }, error: null };
+        return { data: { points: target.puntos, money: target.dinero, event_id: pointsEvent.id, promotion_event_id: promotionEvent && promotionEvent.id }, error: null };
       }
 
       if (name === "checkout_cart") {

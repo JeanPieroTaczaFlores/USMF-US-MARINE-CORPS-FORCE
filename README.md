@@ -15,6 +15,8 @@ Sitio público y plataforma de miembros unificados en un solo repositorio.
 - misiones con inscripción, estado en misión y bitácora de alertas Discord;
 - cierre bloqueado hasta que Staff/Admin confirme o marque ausente a cada participante;
 - recompensas de misión y ajustes auditados de puntos/dinero;
+- ascensos automáticos por puntos desde Soldado hasta Sargento Mayor de la Infantería;
+- convocatorias de Raider y especialidades con beneficios, requisitos y aprobación de Staff/Admin;
 - administración integral para crear cuentas, editar perfiles, permisos, estados y rangos;
 - asignación automática del Entrenamiento Básico TRS para cada cuenta nueva;
 - graduación por Staff/Admin que activa la cuenta y asigna automáticamente el rango Soldado;
@@ -40,3 +42,15 @@ Sin credenciales remotas, el sitio entra en modo demostración con `localStorage
 
 La migración activa RLS, limita cada miembro a sus propios datos, procesa el carrito dentro de una transacción y programa el pago semanal los lunes a las 00:00 (UTC-5).
 Las URLs de webhook, el token del bot y la clave `service_role` permanecen exclusivamente en Supabase; nunca se publican en el JavaScript del navegador. El bot publica una alerta en cada ingreso, inscripción, inicio de misión, entrenamiento y ajuste económico. Al vincular Discord asigna el rol Recluta; cuando Staff o Admin confirma el TRS, cambia automáticamente a Soldado. Los cambios de permiso hechos por Administración también sincronizan Staff o Admin si el usuario tiene Discord vinculado.
+
+## Bot Discord 24/7
+
+El directorio `bot/` contiene el servicio permanente que procesa eventos pendientes, anuncia ascensos y sincroniza rangos y especialidades. No necesita librerías externas: usa Node 20, la API REST de Discord y Supabase. El archivo `render.yaml` permite desplegarlo como servicio Docker con comprobación `/health`.
+
+1. Aplica la migración `20260914130000_rank_progression_and_specialties.sql`.
+2. Copia las variables de `bot/.env.example` en el proveedor donde funcionará el bot.
+3. Completa `DISCORD_RANK_ROLE_MAP` y `DISCORD_SPECIALTY_ROLE_MAP` con los IDs reales de los roles.
+4. Mantén el token del bot y la `service_role` únicamente como secretos del proveedor.
+5. Usa un servicio que permanezca activo continuamente; `/health` confirma si faltan credenciales o si el procesador está conectado.
+
+Los rangos de oficial no se asignan automáticamente: desde Teniente Segundo el Discord exige guerras y capacitación, por lo que el ascenso continúa bajo confirmación manual de Administración.

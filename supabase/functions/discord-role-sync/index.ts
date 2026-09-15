@@ -19,6 +19,11 @@ function response(body: unknown, status = 200) {
   });
 }
 
+function jsonMap(name: string): Record<string, string> {
+  try { return JSON.parse(Deno.env.get(name) || "{}"); }
+  catch { return {}; }
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -59,9 +64,17 @@ Deno.serve(async (request) => {
     if (targetError || !target) return response({ error: "User not found" }, 404);
     if (!target.discord_id) return response({ synced: false, reason: "discord_not_linked" });
 
+    const { data: specialtyApplications } = await admin
+      .from("specialty_applications")
+      .select("role_key")
+      .eq("user_id", targetId)
+      .eq("estado", "aprobada");
+
     const roleIds = Object.fromEntries(
       managedRoleKeys.map((key) => [key, Deno.env.get(key)]).filter((entry) => Boolean(entry[1])),
     ) as Record<string, string>;
+    const rankRoleMap = jsonMap("DISCORD_RANK_ROLE_MAP");
+    const specialtyRoleMap = jsonMap("DISCORD_SPECIALTY_ROLE_MAP");
 
     const desired = new Set<string>();
     if (target.estado !== "activo") {
@@ -70,6 +83,10 @@ Deno.serve(async (request) => {
       if (roleIds.DISCORD_ROLE_SOLDIER_ID) desired.add(roleIds.DISCORD_ROLE_SOLDIER_ID);
       if (target.rol === "staff" && roleIds.DISCORD_ROLE_STAFF_ID) desired.add(roleIds.DISCORD_ROLE_STAFF_ID);
       if (["admin", "super_admin"].includes(target.rol) && roleIds.DISCORD_ROLE_ADMIN_ID) desired.add(roleIds.DISCORD_ROLE_ADMIN_ID);
+      if (rankRoleMap[target.rango]) desired.add(rankRoleMap[target.rango]);
+      for (const application of specialtyApplications || []) {
+        if (specialtyRoleMap[application.role_key]) desired.add(specialtyRoleMap[application.role_key]);
+      }
     }
 
     const headers = { Authorization: `Bot ${botToken}` };
@@ -80,7 +97,7 @@ Deno.serve(async (request) => {
     }
     const member = await memberResponse.json();
     const currentRoles = new Set<string>(member.roles || []);
-    const managedRoles = Object.values(roleIds);
+    const managedRoles = Array.from(new Set([...Object.values(roleIds), ...Object.values(rankRoleMap), ...Object.values(specialtyRoleMap)]));
 
     for (const roleId of managedRoles) {
       const shouldHave = desired.has(roleId);

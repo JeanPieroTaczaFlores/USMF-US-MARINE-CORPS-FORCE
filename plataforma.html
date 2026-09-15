@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20260914e" />
+  <link rel="stylesheet" href="css/platform.css?v=20260914f" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -92,8 +92,9 @@
           <button class="member-nav-btn" data-view="inventario"><span>04</span> Inventario y facturas</button>
           <button class="member-nav-btn" data-view="misiones"><span>05</span> Misiones</button>
           <button class="member-nav-btn" data-view="entrenamiento"><span>06</span> Mi entrenamiento</button>
-          <button class="member-nav-btn" data-view="biblioteca"><span>07</span> Biblioteca</button>
-          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>08</span> Administración</button>
+          <button class="member-nav-btn" data-view="especialidades"><span>07</span> Especialidades</button>
+          <button class="member-nav-btn" data-view="biblioteca"><span>08</span> Biblioteca</button>
+          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>09</span> Administración</button>
         </nav>
         <div class="sidebar-status"><span></span><div><strong>ESTADO OPERACIONAL</strong><small>Plataforma conectada</small></div></div>
       </aside>
@@ -111,6 +112,7 @@
             <div class="service-number"><span>ID DE SERVICIO</span><strong id="serviceId">—</strong></div>
           </div>
           <article class="onboarding-banner hidden" id="onboardingBanner"><div><span>ENTRENAMIENTO ASIGNADO</span><h3>Entrenamiento Básico TRS</h3><p id="onboardingTrainer">Esperando instructor responsable.</p></div><strong id="onboardingStatus">ASIGNADO</strong></article>
+          <article class="rank-progress-card" id="rankProgressCard"><div><span>PROGRESO DE RANGO</span><h3><strong id="rankProgressCurrent">—</strong><small id="rankProgressNext">Siguiente rango</small></h3></div><div class="rank-progress-track"><span id="rankProgressBar"></span></div><p id="rankProgressText">Calculando tu progreso…</p></article>
           <div class="metric-grid">
             <article class="metric-card"><span>RANGO ACTUAL</span><strong id="summaryRank">—</strong><small>Escalafón vigente</small></article>
             <article class="metric-card"><span>PRÓXIMO SALARIO</span><strong id="summarySalary">—</strong><small id="summaryPayDate">Calculando fecha</small></article>
@@ -202,6 +204,15 @@
           </div>
         </section>
 
+        <section class="member-view" data-panel="especialidades">
+          <div class="section-heading"><span class="section-tag">CONVOCATORIAS Y ROLES</span><h2>¿Quieres convertirte en un Raider?</h2><p>Postúlate a Raider o a una especialidad operativa. Cumplir los puntos permite solicitarla; Staff o Administración debe evaluar el curso, la prueba y aprobar el rol.</p></div>
+          <article class="specialty-featured">
+            <img src="img/raider-kandahar.webp" alt="Uniforme Kandahar de Marines Raiders publicado en Discord" />
+            <div><span class="section-tag">MARINES RAIDERS · MARSOC</span><h3>Opera donde la fuerza regular no llega</h3><p>Acceso a entrenamientos avanzados, misiones de alto riesgo, equipamiento Kandahar y progresión interna Raider. La admisión exige disciplina, actividad y evaluación de mando.</p><div class="benefit-tags"><span>Operaciones especiales</span><span>Uniforme Kandahar</span><span>Entrenamiento avanzado</span></div></div>
+          </article>
+          <div class="specialty-grid" id="specialtyGrid"></div>
+        </section>
+
         <section class="member-view" data-panel="biblioteca">
           <div class="section-heading"><span class="section-tag">DOCTRINA Y EQUIPAMIENTO</span><h2>Biblioteca operativa</h2><p>La información básica que antes estaba dispersa en canales, ahora organizada por tema.</p></div>
           <div class="library-tools"><input id="librarySearch" type="search" placeholder="Buscar regla, arma, especialidad o manual…" aria-label="Buscar en la biblioteca" /><div class="library-filters"><button class="library-filter active" data-library="todos">TODO</button><button class="library-filter" data-library="reglas">REGLAS</button><button class="library-filter" data-library="armas">ARMAS</button><button class="library-filter" data-library="loadouts">LOADOUTS</button><button class="library-filter" data-library="manuales">MANUALES</button></div></div>
@@ -231,6 +242,11 @@
               <p class="muted-copy">Staff o Admin toma el entrenamiento. Al finalizar, el recluta queda activo y obtiene automáticamente el rango Soldado.</p>
               <div id="trainingQueue" class="training-queue"></div>
             </article>
+            <article class="platform-card training-card">
+              <div class="card-heading"><div><span>CONVOCATORIAS</span><h3>Solicitudes de especialidades</h3></div><span class="connection-badge" id="specialtyPendingCount">0 PENDIENTES</span></div>
+              <p class="muted-copy">Staff o Admin revisa la prueba correspondiente. Al aprobar, el bot sincroniza el rol especial en Discord.</p>
+              <div id="specialtyApplicationQueue" class="training-queue"></div>
+            </article>
             <article class="platform-card">
               <div class="card-heading"><div><span>STORE</span><h3>Publicar implemento</h3></div></div>
               <form id="adminItemForm" class="admin-form">
@@ -249,9 +265,9 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/local-auth.js?v=20260914d"></script>
-  <script src="js/config.js"></script>
-  <script src="js/platform.js?v=20260914e"></script>
+  <script src="js/local-auth.js?v=20260914f"></script>
+  <script src="js/config.js?v=20260914c"></script>
+  <script src="js/platform.js?v=20260914g"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
