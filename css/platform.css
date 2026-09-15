@@ -141,6 +141,11 @@
 .store-price small { color:#777e77; font-size:.7rem; }
 .add-cart { border:0; background:#2a302a; color:#fff; padding:.55rem .7rem; cursor:pointer; font:700 .68rem "Oswald",sans-serif; }
 .add-cart:hover { background:var(--platform-gold); color:#111; }
+.add-cart:disabled,.cart-button:disabled { opacity:.42; cursor:not-allowed; }
+.store-card.locked { opacity:.68; }
+.store-access-notice { margin-bottom:1rem; padding:1rem 1.1rem; border:1px solid #785d2f; border-left:4px solid var(--platform-gold); background:#20190f; }
+.store-access-notice strong { color:var(--platform-gold-soft); font:800 .72rem "Inter",sans-serif; letter-spacing:.1em; }
+.store-access-notice p { margin:.35rem 0 .6rem; color:#b2b6af; font-size:.8rem; line-height:1.55; }
 .cart-drawer { position:fixed; z-index:1002; right:0; top:0; bottom:0; width:min(430px,100%); padding:2rem; background:#101310; border-left:1px solid var(--platform-line); overflow-y:auto; box-shadow:-30px 0 80px rgba(0,0,0,.45); }
 .drawer-backdrop { position:fixed; z-index:1001; inset:0; background:rgba(0,0,0,.65); }
 .drawer-close { position:absolute; right:1.2rem; top:1.2rem; border:0; background:none; color:#fff; font-size:2rem; cursor:pointer; }
@@ -231,6 +236,8 @@
 .mission-meta span { color:#c5cac5; font-size:.72rem; }
 .mission-meta strong { display:block; color:#737a73; font-size:.6rem; letter-spacing:.12em; margin-bottom:.2rem; }
 .mission-card-actions { margin-top:1rem; min-height:34px; }
+.mission-edit-direct { margin-left:auto; border:1px solid var(--platform-gold); background:#211a0f; color:var(--platform-gold-soft); padding:.65rem .8rem; cursor:pointer; font:800 .66rem "Inter",sans-serif; letter-spacing:.04em; }
+.mission-edit-direct:hover { background:var(--platform-gold); color:#111; }
 .platform-primary.compact { width:auto; padding:.65rem .8rem; font-size:.7rem; }
 .secondary-action { border:1px solid #4a514a; background:transparent; color:#d6d9d4; padding:.65rem .8rem; cursor:pointer; font:700 .68rem "Inter",sans-serif; }
 .mission-personal-status { color:#bec4be; border:1px solid #4b524b; padding:.45rem .55rem; font:700 .62rem "Inter",sans-serif; }
@@ -283,6 +290,21 @@
 .onboarding-banner h3 { margin:.3rem 0; color:#f1f2ed; font:1.3rem "Oswald",sans-serif; }
 .onboarding-banner p { margin:0; color:#8d948d; font-size:.75rem; }
 .onboarding-banner > strong { color:#17120b; background:var(--platform-gold-soft); padding:.45rem .6rem; font:700 .62rem "Inter",sans-serif; }
+.training-access-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr); gap:1rem; align-items:stretch; }
+.training-timeline { display:grid; gap:.75rem; margin-top:1rem; }
+.training-timeline > div { display:grid; grid-template-columns:42px 1fr; gap:.8rem; align-items:center; padding:.8rem; border:1px solid #303630; background:#0c0f0d; }
+.training-timeline > div > span { display:grid; place-items:center; width:34px; height:34px; border:1px solid #505750; color:#7f877f; font:800 .68rem "Inter",sans-serif; }
+.training-timeline strong,.training-timeline small { display:block; }
+.training-timeline small { margin-top:.2rem; color:#818881; font-size:.72rem; }
+.training-timeline > div.complete { border-color:#4e6b53; }
+.training-timeline > div.complete > span { border-color:#668c6d; background:#253228; color:#b9dcbd; }
+.training-confirmation-note { margin-top:1rem; padding:.75rem; border-left:3px solid var(--platform-gold); background:#1d180f; color:#abaea8; font-size:.75rem; line-height:1.55; }
+.wardrobe-access-card { display:flex; flex-direction:column; justify-content:center; border-color:#6a512a; background:linear-gradient(145deg,#211a10,#101310); }
+.wardrobe-access-card h3 { margin:.5rem 0; font:1.8rem "Oswald",sans-serif; text-transform:uppercase; }
+.wardrobe-access-card p { color:#969d96; font-size:.8rem; line-height:1.6; }
+.wardrobe-access-state { margin:1rem 0; padding:.75rem; border:1px solid #745a30; color:#e4bd76; text-align:center; font:800 .68rem "Inter",sans-serif; letter-spacing:.1em; }
+.wardrobe-access-card.authorized { border-color:#4d7454; background:linear-gradient(145deg,#162219,#101310); }
+.wardrobe-access-card.authorized .wardrobe-access-state { color:#b8dcbc; border-color:#4d7454; }
 
 @media (max-width: 1050px) {
   .metric-grid { grid-template-columns:repeat(2,1fr); }
@@ -301,7 +323,7 @@
   .member-nav { display:flex; overflow-x:auto; margin:0; padding-bottom:.25rem; }
   .member-nav-btn { flex:0 0 auto; width:auto; white-space:nowrap; }
   .member-content { padding:1.3rem 1rem 3rem; }
-  .dashboard-grid,.salary-layout,.inventory-layout,.admin-layout,.mission-grid { grid-template-columns:1fr; }
+  .dashboard-grid,.salary-layout,.inventory-layout,.admin-layout,.mission-grid,.training-access-layout { grid-template-columns:1fr; }
   .library-grid { grid-template-columns:1fr; }
 }
 @media (max-width: 560px) {

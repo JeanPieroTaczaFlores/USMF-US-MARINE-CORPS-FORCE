@@ -113,6 +113,7 @@
       hydrateIdentity();
       var accessResult = await supabase.rpc("record_platform_login");
       if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
+      await syncDiscordRoles(user.id, true);
       await verifySalary();
       await loadPlatformData();
       if (state.profile.estado !== "activo") {
@@ -232,10 +233,28 @@
     var assignment = state.trainingAssignments.find(function (row) { return String(row.user_id) === String(state.user.id); });
     var visible = assignment && assignment.estado !== "finalizado";
     $("onboardingBanner").classList.toggle("hidden", !visible);
-    if (!visible) return;
-    var trainer = state.adminProfiles.find(function (row) { return String(row.id) === String(assignment.trainer_id); });
-    $("onboardingStatus").textContent = String(assignment.estado || "asignado").replace("_", " ").toUpperCase();
-    $("onboardingTrainer").textContent = trainer ? "Instructor responsable: " + trainer.nombre : "Esperando que Staff o Administración tome el entrenamiento.";
+    var trainer = assignment ? state.adminProfiles.find(function (row) { return String(row.id) === String(assignment.trainer_id); }) : null;
+    if (visible) {
+      $("onboardingStatus").textContent = String(assignment.estado || "asignado").replace("_", " ").toUpperCase();
+      $("onboardingTrainer").textContent = trainer ? "Instructor responsable: " + trainer.nombre : "Esperando que Staff o Administración tome el entrenamiento.";
+    }
+
+    var completed = assignment && assignment.estado === "finalizado";
+    var active = state.profile.estado === "activo";
+    $("myTrainingStatus").textContent = completed ? "FINALIZADO" : assignment ? String(assignment.estado || "asignado").replace("_", " ").toUpperCase() : "SIN ASIGNACIÓN";
+    $("myTrainingAssigned").textContent = assignment ? "Asignado el " + dateText(assignment.assigned_at) : "Administración debe revisar tu registro.";
+    $("myTrainingTrainer").textContent = trainer ? trainer.nombre + " confirmó que es tu instructor." : "Staff o Administración debe tomar el entrenamiento.";
+    $("myTrainingCompleted").textContent = completed ? "Confirmado el " + dateText(assignment.completed_at) + ". Rango Soldado otorgado." : "Sólo el instructor responsable o un Admin puede confirmar el final.";
+    document.querySelectorAll("[data-training-step]").forEach(function (step) {
+      var name = step.dataset.trainingStep;
+      var reached = name === "assigned" ? !!assignment : name === "started" ? !!(assignment && assignment.started_at) : completed;
+      step.classList.toggle("complete", reached);
+    });
+    $("wardrobeAccessCard").classList.toggle("authorized", active);
+    $("wardrobeAccessTitle").textContent = active ? "Vestuarios habilitados" : "Vestuarios bloqueados";
+    $("wardrobeAccessText").textContent = active ? "Tu entrenamiento fue confirmado y tu rango permite ingresar a la Store oficial." : "Completa el TRS y espera la aprobación del instructor para activar tu rango Soldado.";
+    $("wardrobeAccessState").textContent = active ? "ACCESO AUTORIZADO" : "SIN AUTORIZACIÓN";
+    $("wardrobeAccessButton").disabled = !active;
   }
 
   function transactionRow(row) {
@@ -246,15 +265,23 @@
   }
 
   function renderStore() {
+    var storeLocked = state.profile.estado !== "activo";
+    $("storeAccessNotice").classList.toggle("hidden", !storeLocked);
+    $("cartButton").disabled = storeLocked;
     var filtered = state.items.filter(function (item) { return state.storeCategory === "todos" || item.tipo === state.storeCategory; });
     $("storeGrid").innerHTML = filtered.length ? filtered.map(function (item) {
       var price = item.precio_dinero > 0 ? money(item.precio_dinero) : points(item.precio_puntos);
       var stock = item.stock < 0 ? "Stock permanente" : item.stock + " disponibles";
-      return '<article class="store-card"><div class="store-card-visual" aria-hidden="true">' + escapeHtml(item.tipo.charAt(0).toUpperCase()) + '</div><div class="store-card-body"><span>' + escapeHtml(item.tipo) + '</span><h3>' + escapeHtml(item.nombre) + '</h3><p>' + escapeHtml(item.descripcion || "Implemento oficial USMCF.") + '</p><div class="store-card-footer"><div class="store-price"><strong>' + escapeHtml(price) + '</strong><small>' + escapeHtml(stock) + '</small></div><button class="add-cart" type="button" data-add="' + escapeHtml(item.id) + '" ' + (item.stock === 0 ? "disabled" : "") + '>AGREGAR</button></div></div></article>';
+      return '<article class="store-card' + (storeLocked ? ' locked' : '') + '"><div class="store-card-visual" aria-hidden="true">' + escapeHtml(item.tipo.charAt(0).toUpperCase()) + '</div><div class="store-card-body"><span>' + escapeHtml(item.tipo) + '</span><h3>' + escapeHtml(item.nombre) + '</h3><p>' + escapeHtml(item.descripcion || "Implemento oficial USMCF.") + '</p><div class="store-card-footer"><div class="store-price"><strong>' + escapeHtml(price) + '</strong><small>' + escapeHtml(stock) + '</small></div><button class="add-cart" type="button" data-add="' + escapeHtml(item.id) + '" ' + (storeLocked || item.stock === 0 ? "disabled" : "") + '>' + (storeLocked ? 'REQUIERE TRS' : 'AGREGAR') + '</button></div></div></article>';
     }).join("") : '<p class="empty-state">No hay artículos publicados en esta categoría.</p>';
   }
 
   function addToCart(itemId) {
+    if (state.profile.estado !== "activo") {
+      setMessage("appMessage", "Tu vestuario se habilita cuando Staff o Administración confirma tu entrenamiento.", "error");
+      switchView("entrenamiento");
+      return;
+    }
     var item = state.items.find(function (candidate) { return String(candidate.id) === String(itemId); });
     if (!item) return;
     var current = state.cart.find(function (entry) { return String(entry.item.id) === String(item.id); });
@@ -374,8 +401,9 @@
       var canJoin = state.profile.estado === "activo" && ["programada", "activa"].indexOf(mission.estado) !== -1 && !mine;
       var canLeave = mine && mission.estado === "programada";
       var action = canJoin ? '<button type="button" class="platform-primary compact" data-join-mission="' + escapeHtml(mission.id) + '">UNIRME A LA MISIÓN</button>' : canLeave ? '<button type="button" class="secondary-action" data-leave-mission="' + escapeHtml(mission.id) + '">CANCELAR INSCRIPCIÓN</button>' : '';
+      var editAction = isStaff() ? '<button type="button" class="mission-edit-direct" data-edit-mission="' + escapeHtml(mission.id) + '">MODIFICAR MISIÓN</button>' : '';
       var myStatus = mine ? '<span class="mission-personal-status ' + escapeHtml(mine.estado) + '">' + escapeHtml(mine.rewarded_at ? "RECOMPENSA ACREDITADA: " + points(mission.recompensa_puntos) + " + " + money(mission.recompensa_dinero) : participantStatusLabel(mine.estado)) + '</span>' : '';
-      return '<article class="mission-card ' + escapeHtml(mission.estado) + '"><div class="mission-card-top"><span class="mission-status">' + escapeHtml(missionStatusLabel(mission.estado)) + '</span><span>' + participants.length + ' participantes</span></div><h3>' + escapeHtml(mission.titulo) + '</h3><p>' + escapeHtml(mission.descripcion || "Sin descripción operativa.") + '</p><div class="mission-meta"><span><strong>FECHA</strong>' + escapeHtml(dateText(mission.fecha)) + '</span><span><strong>RECOMPENSA</strong>' + escapeHtml(points(mission.recompensa_puntos)) + ' · ' + escapeHtml(money(mission.recompensa_dinero)) + '</span></div><div class="mission-card-actions">' + myStatus + action + '</div></article>';
+      return '<article class="mission-card ' + escapeHtml(mission.estado) + '"><div class="mission-card-top"><span class="mission-status">' + escapeHtml(missionStatusLabel(mission.estado)) + '</span><span>' + participants.length + ' participantes</span></div><h3>' + escapeHtml(mission.titulo) + '</h3><p>' + escapeHtml(mission.descripcion || "Sin descripción operativa.") + '</p><div class="mission-meta"><span><strong>FECHA</strong>' + escapeHtml(dateText(mission.fecha)) + '</span><span><strong>RECOMPENSA</strong>' + escapeHtml(points(mission.recompensa_puntos)) + ' · ' + escapeHtml(money(mission.recompensa_dinero)) + '</span></div><div class="mission-card-actions">' + myStatus + action + editAction + '</div></article>';
     }).join("") : '<p class="empty-state">No hay misiones publicadas.</p>';
 
     $("discordConnection").textContent = isSupabaseConfigured ? "DISCORD SEGURO" : "SIMULACIÓN LOCAL";
@@ -405,6 +433,14 @@
     if (!eventId || !supabase.functions || !supabase.functions.invoke) return;
     var result = await supabase.functions.invoke("discord-mission-alert", { body: { event_id: eventId } });
     if (result && result.error && isSupabaseConfigured) setMessage("appMessage", "La inscripción se guardó, pero Discord no pudo recibir la alerta todavía.", "error");
+  }
+
+  async function syncDiscordRoles(userId, silent) {
+    if (!userId || !supabase.functions || !supabase.functions.invoke) return;
+    var result = await supabase.functions.invoke("discord-role-sync", { body: { user_id: userId } });
+    if (result && result.error && isSupabaseConfigured && !silent) {
+      setMessage("appMessage", "Los cambios se guardaron en la web, pero el rol de Discord no pudo sincronizarse todavía.", "error");
+    }
   }
 
   async function joinMission(missionId) {
@@ -462,7 +498,8 @@
     $("missionRewardMoney").value = mission.recompensa_dinero || 0;
     $("missionSubmitBtn").textContent = "GUARDAR CAMBIOS";
     $("cancelMissionEdit").classList.remove("hidden");
-    $("missionTitle").focus();
+    $("missionCommand").scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(function () { $("missionTitle").focus(); }, 350);
   }
 
   async function missionRpc(name, args, successMessage) {
@@ -556,6 +593,7 @@
     var result = await supabase.functions.invoke("admin-users", { body: payload });
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     setMessage("appMessage", "Perfil, permisos y rango actualizados.", "success");
+    await syncDiscordRoles(profileId, false);
     await loadPlatformData();
   }
 
@@ -570,10 +608,12 @@
   }
 
   async function trainingAction(name, assignmentId, message) {
+    var assignment = state.trainingAssignments.find(function (row) { return String(row.id) === String(assignmentId); });
     var result = await supabase.rpc(name, { p_assignment_id: assignmentId });
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     setMessage("appMessage", message, "success");
     if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
+    if (name === "finish_training" && assignment) await syncDiscordRoles(assignment.user_id, false);
     await loadPlatformData();
   }
 
@@ -601,7 +641,7 @@
 
   function switchView(view) {
     if (view === "administracion" && !isStaff()) return;
-    var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", biblioteca: "BIBLIOTECA OPERATIVA", administracion: "ADMINISTRACIÓN" };
+    var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", entrenamiento: "MI ENTRENAMIENTO", biblioteca: "BIBLIOTECA OPERATIVA", administracion: "ADMINISTRACIÓN" };
     document.querySelectorAll(".member-nav-btn").forEach(function (button) { button.classList.toggle("active", button.dataset.view === view); });
     document.querySelectorAll(".member-view").forEach(function (panel) { panel.classList.toggle("active", panel.dataset.panel === view); });
     $("viewTitle").textContent = titles[view] || "PLATAFORMA";

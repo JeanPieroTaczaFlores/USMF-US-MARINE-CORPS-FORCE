@@ -398,6 +398,11 @@
           saveDB(db);
           return { data: { delivered: true, local: true }, error: null };
         }
+        if (name === "discord-role-sync") {
+          var syncedProfile = db.profiles.find(function (row) { return String(row.id) === String(body.user_id); });
+          if (!syncedProfile) return { data: null, error: { message: "Usuario no encontrado." } };
+          return { data: { synced: true, local: true, role: syncedProfile.estado === "pendiente" ? "Recluta" : syncedProfile.rol }, error: null };
+        }
         if (name === "admin-users") {
           var session = getSession();
           var actor = session && db.profiles.find(function (row) { return String(row.id) === String(session.id); });

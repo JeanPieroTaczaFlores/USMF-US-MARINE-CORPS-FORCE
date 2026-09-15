@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20260914d" />
+  <link rel="stylesheet" href="css/platform.css?v=20260914e" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -91,8 +91,9 @@
           <button class="member-nav-btn" data-view="tienda"><span>03</span> Store</button>
           <button class="member-nav-btn" data-view="inventario"><span>04</span> Inventario y facturas</button>
           <button class="member-nav-btn" data-view="misiones"><span>05</span> Misiones</button>
-          <button class="member-nav-btn" data-view="biblioteca"><span>06</span> Biblioteca</button>
-          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>07</span> Administración</button>
+          <button class="member-nav-btn" data-view="entrenamiento"><span>06</span> Mi entrenamiento</button>
+          <button class="member-nav-btn" data-view="biblioteca"><span>07</span> Biblioteca</button>
+          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>08</span> Administración</button>
         </nav>
         <div class="sidebar-status"><span></span><div><strong>ESTADO OPERACIONAL</strong><small>Plataforma conectada</small></div></div>
       </aside>
@@ -131,6 +132,7 @@
 
         <section class="member-view" data-panel="tienda">
           <div class="store-toolbar"><div><span class="section-tag">STORE OFICIAL</span><h2>Implementos autorizados</h2></div><button class="cart-button" id="cartButton" type="button">CARRITO <span id="cartCount">0</span></button></div>
+          <article class="store-access-notice hidden" id="storeAccessNotice"><strong>VESTUARIO BLOQUEADO</strong><p>Completa el Entrenamiento Básico TRS y espera la confirmación de Staff o Administración para comprar y acceder a tus uniformes.</p><button class="text-action" type="button" data-go="entrenamiento">VER MI ENTRENAMIENTO →</button></article>
           <div class="store-filters"><button class="store-filter active" data-category="todos">TODOS</button><button class="store-filter" data-category="uniforme">UNIFORME</button><button class="store-filter" data-category="insignia">INSIGNIAS</button><button class="store-filter" data-category="equipo">EQUIPO</button><button class="store-filter" data-category="reconocimiento">RECONOCIMIENTOS</button></div>
           <div class="store-grid" id="storeGrid"></div>
           <div class="cart-drawer hidden" id="cartDrawer" aria-label="Carrito de compras">
@@ -176,6 +178,28 @@
               </article>
             </div>
           </section>
+        </section>
+
+        <section class="member-view" data-panel="entrenamiento">
+          <div class="section-heading"><span class="section-tag">FORMACIÓN INICIAL</span><h2>Mi entrenamiento y acceso a vestuarios</h2><p>Todo miembro nuevo debe completar el Entrenamiento Básico TRS. La graduación y el acceso a vestuarios sólo se habilitan cuando el instructor Staff o Admin confirma la finalización.</p></div>
+          <div class="training-access-layout">
+            <article class="platform-card training-progress-card">
+              <div class="card-heading"><div><span>ENTRENAMIENTO ASIGNADO</span><h3 id="myTrainingTitle">Entrenamiento Básico TRS</h3></div><span class="connection-badge" id="myTrainingStatus">PENDIENTE</span></div>
+              <div class="training-timeline">
+                <div data-training-step="assigned"><span>01</span><div><strong>Entrenamiento asignado</strong><small id="myTrainingAssigned">Esperando asignación.</small></div></div>
+                <div data-training-step="started"><span>02</span><div><strong>Instructor responsable</strong><small id="myTrainingTrainer">Staff o Administración debe tomar el entrenamiento.</small></div></div>
+                <div data-training-step="completed"><span>03</span><div><strong>Confirmación y graduación</strong><small id="myTrainingCompleted">Pendiente de confirmación.</small></div></div>
+              </div>
+              <p class="training-confirmation-note">El miembro no puede finalizar su propio entrenamiento. El botón de confirmación aparece en Administración únicamente para Staff o Admin.</p>
+            </article>
+            <article class="platform-card wardrobe-access-card" id="wardrobeAccessCard">
+              <span class="section-tag">CONTROL DE ACCESO</span>
+              <h3 id="wardrobeAccessTitle">Vestuarios bloqueados</h3>
+              <p id="wardrobeAccessText">Completa el TRS y espera la aprobación del instructor para activar tu rango Soldado.</p>
+              <div class="wardrobe-access-state" id="wardrobeAccessState">SIN AUTORIZACIÓN</div>
+              <button class="platform-primary" id="wardrobeAccessButton" type="button" data-go="tienda" disabled>ACCEDER A VESTUARIOS</button>
+            </article>
+          </div>
         </section>
 
         <section class="member-view" data-panel="biblioteca">
@@ -225,9 +249,9 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/local-auth.js?v=20260914c"></script>
+  <script src="js/local-auth.js?v=20260914d"></script>
   <script src="js/config.js"></script>
-  <script src="js/platform.js?v=20260914d"></script>
+  <script src="js/platform.js?v=20260914e"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

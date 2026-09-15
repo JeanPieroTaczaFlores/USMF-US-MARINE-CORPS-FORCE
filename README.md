@@ -34,7 +34,9 @@ Sin credenciales remotas, el sitio entra en modo demostración con `localStorage
 4. En Supabase Auth, habilita Discord y registra la URL pública de `plataforma.html` como redirect URL.
 5. En el servidor `1016036020875165797`, crea webhooks para `🚨╙Misiones` (`1254309543828262923`), `🚨╙Entrenamientos` (`1259971958708240507`), `💵╙Puntos` (`1254309496268918804`) y un canal privado de accesos para el bot.
 6. Guarda las cuatro URLs fuera del repositorio: `supabase secrets set DISCORD_MISSIONS_WEBHOOK_URL=... DISCORD_TRAINING_WEBHOOK_URL=... DISCORD_POINTS_WEBHOOK_URL=... DISCORD_ACCESS_WEBHOOK_URL=...`.
-7. Despliega las funciones con `supabase functions deploy discord-mission-alert` y `supabase functions deploy admin-users`.
+7. Crea un bot de Discord, invítalo al servidor con el permiso **Gestionar roles** y coloca su rol por encima de Recluta, Soldado, Staff y Admin.
+8. Guarda también la configuración privada del bot: `supabase secrets set DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=1016036020875165797 DISCORD_ROLE_RECRUIT_ID=... DISCORD_ROLE_SOLDIER_ID=... DISCORD_ROLE_STAFF_ID=... DISCORD_ROLE_ADMIN_ID=...`.
+9. Despliega las funciones con `supabase functions deploy discord-mission-alert`, `supabase functions deploy discord-role-sync` y `supabase functions deploy admin-users`.
 
 La migración activa RLS, limita cada miembro a sus propios datos, procesa el carrito dentro de una transacción y programa el pago semanal los lunes a las 00:00 (UTC-5).
-Las URLs de webhook y la clave `service_role` permanecen exclusivamente en Supabase; nunca se publican en el JavaScript del navegador. El bot publica una alerta en cada ingreso, inscripción, inicio de misión, entrenamiento y ajuste económico.
+Las URLs de webhook, el token del bot y la clave `service_role` permanecen exclusivamente en Supabase; nunca se publican en el JavaScript del navegador. El bot publica una alerta en cada ingreso, inscripción, inicio de misión, entrenamiento y ajuste económico. Al vincular Discord asigna el rol Recluta; cuando Staff o Admin confirma el TRS, cambia automáticamente a Soldado. Los cambios de permiso hechos por Administración también sincronizan Staff o Admin si el usuario tiene Discord vinculado.
