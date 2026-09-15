@@ -7,5 +7,5 @@
     "start": "node index.js",
     "check": "node --check index.js"
   },
-  "engines": { "node": ">=20" }
+  "engines": { "node": ">=22" }
 }

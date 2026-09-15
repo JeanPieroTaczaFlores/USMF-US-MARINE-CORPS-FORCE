@@ -16,6 +16,7 @@ const config = {
   rankRoles: parseMap(process.env.DISCORD_RANK_ROLE_MAP),
   specialtyRoles: parseMap(process.env.DISCORD_SPECIALTY_ROLE_MAP),
   pollMs: Math.max(3000, Number(process.env.BOT_POLL_INTERVAL_MS || 5000)),
+  rosterSyncMs: Math.max(60000, Number(process.env.ROSTER_SYNC_INTERVAL_MS || 600000)),
   port: Number(process.env.PORT || 3000),
 };
 
@@ -51,6 +52,72 @@ async function discord(path, options = {}) {
   });
   if (!response.ok) throw new Error(`Discord ${response.status}: ${await response.text()}`);
   return response.status === 204 ? null : response.json();
+}
+
+function officialEmail(username, discordId) {
+  const clean = String(username || "marine")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, ".")
+    .replace(/^[._-]+|[._-]+$/g, "") || "marine";
+  return `${clean}.${String(discordId).slice(-6)}@usmcf.com`;
+}
+
+function memberAvatar(member) {
+  if (member.avatar) return `https://cdn.discordapp.com/guilds/${config.guildId}/users/${member.user.id}/avatars/${member.avatar}.png?size=256`;
+  if (member.user.avatar) return `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png?size=256`;
+  return null;
+}
+
+let rosterSyncing = false;
+let rosterLastSyncAt = null;
+let rosterCount = 0;
+
+async function syncGuildRoster() {
+  if (rosterSyncing || requiredConfig().length) return;
+  rosterSyncing = true;
+  const syncStartedAt = new Date().toISOString();
+  let after = "0";
+  let total = 0;
+  try {
+    const existingRoster = await supabase("faction_members?select=discord_id,institutional_email");
+    const savedEmails = new Map((existingRoster || []).map((member) => [member.discord_id, member.institutional_email]));
+    while (true) {
+      const members = await discord(`/guilds/${config.guildId}/members?limit=1000&after=${after}`);
+      const faction = (members || []).filter((member) => !member.user?.bot).map((member) => ({
+        discord_id: member.user.id,
+        username: member.user.username,
+        display_name: member.nick || member.user.global_name || member.user.username,
+        institutional_email: savedEmails.get(member.user.id) || officialEmail(member.user.username, member.user.id),
+        avatar_url: memberAvatar(member),
+        role_ids: member.roles || [],
+        joined_at: member.joined_at || null,
+        is_active: true,
+        synced_at: syncStartedAt,
+      }));
+      if (faction.length) {
+        await supabase("faction_members?on_conflict=discord_id", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: JSON.stringify(faction),
+        });
+        total += faction.length;
+      }
+      if (!members || members.length < 1000) break;
+      after = members[members.length - 1].user.id;
+    }
+
+    await supabase(`faction_members?is_active=eq.true&synced_at=lt.${encodeURIComponent(syncStartedAt)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: false }),
+    });
+    rosterCount = total;
+    rosterLastSyncAt = new Date().toISOString();
+    console.log(`[USMCF BOT] Discord roster synchronized: ${total} members`);
+  } finally {
+    rosterSyncing = false;
+  }
 }
 
 function eventChannel(type) {
@@ -138,7 +205,7 @@ http.createServer((request, response) => {
   if (request.url === "/health") {
     const missing = requiredConfig();
     response.statusCode = missing.length ? 503 : 200;
-    response.end(JSON.stringify({ online: !missing.length, missing, lastPollAt, lastError }));
+    response.end(JSON.stringify({ online: !missing.length, missing, lastPollAt, lastError, rosterLastSyncAt, rosterCount }));
     return;
   }
   response.statusCode = 200;
@@ -150,4 +217,6 @@ http.createServer((request, response) => {
 });
 
 setInterval(() => poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.pollMs);
+setInterval(() => syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.rosterSyncMs);
 poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
+syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });

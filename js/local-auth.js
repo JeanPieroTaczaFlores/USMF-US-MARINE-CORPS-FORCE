@@ -9,6 +9,7 @@
   var DB_KEY = "usmcf_db";
   var SESSION_KEY = "usmcf_session";
   var PW_KEY = "usmcf_passwords";
+  var DEMO_CLEANUP_KEY = "usmcf_demo_profiles_removed_v1";
 
   // --- Helpers ---
   function uid() {
@@ -61,11 +62,11 @@
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], mission_participants: [], training_assignments: [], specialty_applications: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
+    var defaults = { missions: [], mission_participants: [], training_assignments: [], specialty_applications: [], faction_members: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
-    seedAdditionalDemoPersonnel(db);
+    cleanupDemoPersonnel(db);
     if (db.missions_participants && db.missions_participants.length) {
       db.mission_participants = db.mission_participants.concat(db.missions_participants.filter(function (legacy) {
         return !db.mission_participants.some(function (current) { return current.id === legacy.id; });
@@ -90,6 +91,7 @@
       mission_participants: [],
       training_assignments: [],
       specialty_applications: [],
+      faction_members: [],
       transactions: [],
       opinions: [],
       notifications: [],
@@ -102,29 +104,13 @@
 
     var now = new Date().toISOString();
     var adminId = uid();
-    var staffId = uid();
-    var clienteId = uid();
 
-    db.profiles.push(
-      {
-        id: adminId, email: "admin@usmcf.com", nombre: "Comandante USMCF",
-        usuario_roblox: "AdminUSMCF", rango: "General", rol: "super_admin",
-        estado: "activo", puntos: 10000, dinero: 50000,
-        last_login: now, created_at: now
-      },
-      {
-        id: staffId, email: "staff@usmcf.com", nombre: "Sargento Mayor",
-        usuario_roblox: "StaffUSMCF", rango: "Sargento Mayor de 1ra Clase",
-        rol: "staff", estado: "activo", puntos: 5000, dinero: 15000,
-        last_login: now, created_at: now
-      },
-      {
-        id: clienteId, email: "cliente@usmcf.com", nombre: "Recluta Test",
-        usuario_roblox: "ClienteTest", rango: "Soldado",
-        rol: "usuario", estado: "activo", puntos: 100, dinero: 500,
-        last_login: now, created_at: now
-      }
-    );
+    db.profiles.push({
+      id: adminId, email: "admin@usmcf.com", nombre: "Comandante USMCF",
+      usuario_roblox: "AdminUSMCF", discord_id: null, rango: "General", rol: "super_admin",
+      estado: "activo", puntos: 10000, dinero: 50000,
+      last_login: now, created_at: now
+    });
 
     db.missions.push(
       {
@@ -139,7 +125,7 @@
         descripcion: "Sesión de entrenamiento para nuevos reclutas.",
         fecha: new Date(Date.now() + 86400000).toISOString(),
         recompensa_puntos: 80, recompensa_dinero: 120,
-        estado: "activa", created_by: staffId
+        estado: "activa", created_by: adminId
       },
       {
         id: uid(), titulo: "Asalto a Base Enemiga",
@@ -168,36 +154,34 @@
     });
   }
 
-  function seedAdditionalDemoPersonnel(db) {
-    var now = new Date().toISOString();
-    var demoPersonnel = [
-      { email: "diego.salazar@usmcf.com", nombre: "Cabo Diego Salazar", usuario_roblox: "DiegoSalazarUSMC", rango: "Cabo", rol: "usuario", estado: "activo", puntos: 850, dinero: 2400 },
-      { email: "mateo.ruiz@usmcf.com", nombre: "Soldado Mateo Ruiz", usuario_roblox: "MateoRuizUSMC", rango: "Soldado", rol: "usuario", estado: "activo", puntos: 320, dinero: 900 },
-      { email: "lucia.vega@usmcf.com", nombre: "Soldado Lucía Vega", usuario_roblox: "LuciaVegaUSMC", rango: "Soldado de Primera", rol: "usuario", estado: "activo", puntos: 470, dinero: 1300 },
-      { email: "tomas.leon@usmcf.com", nombre: "Recluta Tomás León", usuario_roblox: "TomasLeonUSMC", rango: "Recluta", rol: "usuario", estado: "pendiente", puntos: 0, dinero: 0, training: true },
-      { email: "valeria.cruz@usmcf.com", nombre: "Recluta Valeria Cruz", usuario_roblox: "ValeriaCruzUSMC", rango: "Recluta", rol: "usuario", estado: "pendiente", puntos: 0, dinero: 0, training: true },
-      { email: "reyes.staff@usmcf.com", nombre: "Instructor Reyes", usuario_roblox: "ReyesStaffUSMC", rango: "Sargento", rol: "staff", estado: "activo", puntos: 2100, dinero: 6200 },
-      { email: "torres.staff@usmcf.com", nombre: "Sargento Ana Torres", usuario_roblox: "AnaTorresUSMC", rango: "Sargento de Artillería", rol: "staff", estado: "activo", puntos: 3400, dinero: 9800 }
-    ];
+  function cleanupDemoPersonnel(db) {
+    if (localStorage.getItem(DEMO_CLEANUP_KEY)) return;
+    var demoEmails = ["staff@usmcf.com", "cliente@usmcf.com", "diego.salazar@usmcf.com", "mateo.ruiz@usmcf.com", "lucia.vega@usmcf.com", "tomas.leon@usmcf.com", "valeria.cruz@usmcf.com", "reyes.staff@usmcf.com", "torres.staff@usmcf.com"];
+    var demoNames = ["Recluta Test", "Marine Entrenamiento", "Cabo Diego Salazar", "Soldado Mateo Ruiz", "Soldado Lucía Vega", "Recluta Tomás León", "Recluta Valeria Cruz", "Instructor Reyes", "Sargento Ana Torres", "Sargento Mayor"];
+    var removedIds = db.profiles.filter(function (profile) {
+      return demoEmails.indexOf(String(profile.email || "").toLowerCase()) !== -1 || demoNames.indexOf(profile.nombre) !== -1;
+    }).map(function (profile) { return String(profile.id); });
+    if (removedIds.length) {
+      var removedOrderIds = db.orders.filter(function (row) { return removedIds.indexOf(String(row.user_id)) !== -1; }).map(function (row) { return String(row.id); });
+      db.profiles = db.profiles.filter(function (row) { return removedIds.indexOf(String(row.id)) === -1; });
+      ["transactions", "user_inventory", "mission_participants", "training_assignments", "specialty_applications", "discord_events"].forEach(function (table) {
+        db[table] = (db[table] || []).filter(function (row) { return removedIds.indexOf(String(row.user_id)) === -1; });
+      });
+      db.orders = db.orders.filter(function (row) { return removedIds.indexOf(String(row.user_id)) === -1; });
+      db.order_items = db.order_items.filter(function (row) { return removedOrderIds.indexOf(String(row.order_id)) === -1; });
+      db.faction_members.forEach(function (row) { if (removedIds.indexOf(String(row.profile_id)) !== -1) row.profile_id = null; });
+      var session = getSession();
+      if (session && removedIds.indexOf(String(session.id)) !== -1) clearSession();
+    }
     var passwords = getPasswords();
-    demoPersonnel.forEach(function (person, index) {
-      var existing = db.profiles.find(function (profile) { return profile.email === person.email; });
-      if (!existing) {
-        existing = Object.assign({ id: uid(), last_login: now, created_at: new Date(Date.now() - (index + 1) * 3600000).toISOString(), ultimo_salario: null }, person);
-        delete existing.training;
-        db.profiles.push(existing);
-        if (person.training) db.training_assignments.push({ id: uid(), user_id: existing.id, trainer_id: null, estado: "asignado", assigned_at: now, started_at: null, completed_at: null });
-      }
-      if (!passwords[person.email]) passwords[person.email] = "Demo123!";
-    });
+    Object.keys(passwords).forEach(function (email) { if (email !== "admin@usmcf.com") delete passwords[email]; });
     savePasswords(passwords);
+    localStorage.setItem(DEMO_CLEANUP_KEY, "true");
   }
 
   // Forzar contraseñas de prueba SOLO si no existen aún
   var testPasswords = {
-    "admin@usmcf.com": "Admin123!",
-    "staff@usmcf.com": "Staff123!",
-    "cliente@usmcf.com": "Cliente123!"
+    "admin@usmcf.com": "Admin123!"
   };
   var pw = getPasswords();
   var changed = false;
@@ -337,6 +321,7 @@
       signUp: async function (opts) {
         var db = getDB();
         var email = opts.email.toLowerCase().trim();
+        if (!/^[^@\s]+@usmcf\.com$/i.test(email)) return { data: { user: null, session: null }, error: { message: "Solo se aceptan correos institucionales @usmcf.com." } };
         var exists = db.profiles.find(function (p) { return p.email === email; });
         if (exists) {
           return { data: { user: null, session: null }, error: { message: "User already registered" } };
@@ -365,6 +350,7 @@
 
       signInWithPassword: async function (opts) {
         var email = opts.email.toLowerCase().trim();
+        if (!/^[^@\s]+@usmcf\.com$/i.test(email)) return { data: { user: null, session: null }, error: { message: "Debes ingresar con tu correo oficial @usmcf.com." } };
         var passwords = getPasswords();
 
         if (passwords[email] !== opts.password) {
@@ -396,6 +382,10 @@
 
       signInWithOAuth: async function () {
         return { data: null, error: { message: "Discord estará disponible al conectar Supabase." } };
+      },
+
+      linkIdentity: async function () {
+        return { data: null, error: { message: "La vinculación real con Discord requiere Supabase." } };
       }
     },
 
@@ -426,6 +416,7 @@
           if (!actor || ["admin", "super_admin"].indexOf(actor.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Administración." } };
           if (body.action === "create") {
             var email = String(body.email || "").toLowerCase().trim();
+            if (!/^[^@\s]+@usmcf\.com$/i.test(email)) return { data: null, error: { message: "Solo se aceptan correos institucionales @usmcf.com." } };
             if (db.profiles.some(function (row) { return row.email === email; })) return { data: null, error: { message: "Ese correo ya tiene una cuenta." } };
             var newId = uid();
             var now = new Date().toISOString();
@@ -443,6 +434,7 @@
           if (body.action === "update") {
             var targetProfile = db.profiles.find(function (row) { return String(row.id) === String(body.user_id); });
             if (!targetProfile) return { data: null, error: { message: "Usuario no encontrado." } };
+            if (body.email !== undefined && !/^[^@\s]+@usmcf\.com$/i.test(String(body.email).trim())) return { data: null, error: { message: "Solo se aceptan correos institucionales @usmcf.com." } };
             var oldEmail = targetProfile.email;
             ["nombre", "usuario_roblox", "email", "rol", "estado", "rango"].forEach(function (field) { if (body[field] !== undefined) targetProfile[field] = body[field]; });
             if (oldEmail !== targetProfile.email) {
@@ -482,6 +474,10 @@
         db.discord_events.push(loginEvent);
         saveDB(db);
         return { data: { event_id: loginEvent.id }, error: null };
+      }
+
+      if (name === "sync_my_discord_identity") {
+        return { data: { linked: Boolean(profile.discord_id), discord_id: profile.discord_id || null }, error: null };
       }
 
       if (name === "pay_my_salary") {

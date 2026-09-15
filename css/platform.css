@@ -44,6 +44,7 @@
 .platform-primary:disabled { opacity: .55; cursor: wait; transform: none; }
 .discord-login { background: #5865f2; color: #fff; }
 .discord-login:hover { background: #6d78f4; }
+.discord-login:disabled { opacity:.72; cursor:default; }
 .auth-help { color: #787e77; font-size: .76rem; line-height: 1.55; text-align: center; }
 .demo-access { margin-top: 1.2rem; color: #858b84; font-size: .75rem; border-top: 1px solid var(--platform-line); padding-top: 1rem; }
 .demo-access summary { cursor: pointer; color: #a9aea8; }
@@ -187,6 +188,16 @@
 .library-card ul { margin:.7rem 0 0 1rem; color:#a5aaa4; font-size:.78rem; line-height:1.65; }
 
 .admin-layout { display:grid; grid-template-columns:1.15fr .85fr; gap:1rem; }
+.faction-directory-card { grid-column:1/-1; }
+.faction-directory { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; margin-top:1rem; max-height:480px; overflow:auto; padding-right:.25rem; }
+.faction-member { display:grid; grid-template-columns:42px minmax(0,1fr) auto; gap:.75rem; align-items:center; border:1px solid rgba(255,255,255,.06); background:#101310; padding:.7rem; }
+.faction-member img,.faction-member > span { width:42px; height:42px; border-radius:50%; object-fit:cover; background:#242a24; display:grid; place-items:center; color:var(--platform-gold-soft); font:700 .72rem "Inter",sans-serif; }
+.faction-member strong,.faction-member small { display:block; }
+.faction-member small { color:#777f78; font-size:.66rem; margin-top:.16rem; overflow-wrap:anywhere; }
+.faction-link-state { text-align:right; }
+.faction-link-state > strong { color:#b3b9b3; font:800 .58rem "Inter",sans-serif; letter-spacing:.08em; }
+.faction-link-state.linked > strong { color:#8fbe91; }
+.faction-link-state.pending > strong { color:#d8bb6c; }
 .admin-list,.admin-catalog { display:grid; gap:.55rem; }
 .admin-person,.admin-catalog-row { border:1px solid rgba(255,255,255,.06); background:#151815; }
 .admin-catalog-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.8rem; align-items:center; padding:.85rem; }
@@ -299,6 +310,11 @@
 .rank-progress-track { height:10px; overflow:hidden; border:1px solid #384038; background:#090c0a; }
 .rank-progress-track span { display:block; width:0; height:100%; background:linear-gradient(90deg,#8a692c,var(--platform-gold-soft)); transition:width .4s ease; }
 .rank-progress-card > p { grid-column:2; margin:0; color:#929992; font-size:.72rem; }
+.discord-link-card { margin:0 0 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; border:1px solid rgba(88,101,242,.35); background:linear-gradient(110deg,rgba(88,101,242,.12),#111512 55%); padding:1rem 1.2rem; }
+.discord-link-card span { color:#9da5ff; font:800 .62rem "Inter",sans-serif; letter-spacing:.12em; }
+.discord-link-card h3 { margin:.25rem 0; font:1.2rem "Oswald",sans-serif; text-transform:uppercase; }
+.discord-link-card p { margin:0; color:#939a93; font-size:.75rem; }
+.discord-link-card .discord-login { width:auto; min-width:190px; }
 .training-access-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr); gap:1rem; align-items:stretch; }
 .training-timeline { display:grid; gap:.75rem; margin-top:1rem; }
 .training-timeline > div { display:grid; grid-template-columns:42px 1fr; gap:.8rem; align-items:center; padding:.8rem; border:1px solid #303630; background:#0c0f0d; }
@@ -352,6 +368,8 @@
   .member-nav-btn { flex:0 0 auto; width:auto; white-space:nowrap; }
   .member-content { padding:1.3rem 1rem 3rem; }
   .dashboard-grid,.salary-layout,.inventory-layout,.admin-layout,.mission-grid,.training-access-layout,.specialty-featured { grid-template-columns:1fr; }
+  .faction-directory-card { grid-column:auto; }
+  .faction-directory { grid-template-columns:1fr; }
   .specialty-featured img { height:330px; }
   .library-grid { grid-template-columns:1fr; }
 }
@@ -361,7 +379,8 @@
   .auth-card { padding:1.3rem; }
   .form-row,.metric-grid,.store-grid,.mission-summary,.specialty-grid,.rank-progress-card { grid-template-columns:1fr; }
   .rank-progress-card > p { grid-column:1; }
-  .member-topline,.summary-hero,.store-toolbar { align-items:flex-start; flex-direction:column; }
+  .member-topline,.summary-hero,.store-toolbar,.discord-link-card { align-items:flex-start; flex-direction:column; }
+  .discord-link-card .discord-login { width:100%; }
   .service-number { text-align:left; }
   .balance-pill { width:100%; }
   .summary-hero::after { font-size:3.8rem; }

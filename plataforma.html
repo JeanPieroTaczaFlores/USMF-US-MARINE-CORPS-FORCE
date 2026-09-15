@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20260914f" />
+  <link rel="stylesheet" href="css/platform.css?v=20260915a" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -52,11 +52,11 @@
         <div class="platform-alert hidden" id="authMessage" role="status"></div>
 
         <form id="loginForm" class="auth-form">
-          <label>Correo institucional<input id="loginEmail" type="email" autocomplete="email" required placeholder="marine@correo.com" /></label>
+          <label>Correo institucional<input id="loginEmail" type="email" autocomplete="email" required pattern="^[^@\s]+@usmcf\.com$" title="Usa tu correo oficial @usmcf.com" placeholder="marine@usmcf.com" /></label>
           <label>Contraseña<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Tu contraseña" /></label>
           <button class="platform-primary" id="loginBtn" type="submit">ENTRAR A LA PLATAFORMA</button>
           <button class="discord-login" id="discordLoginBtn" type="button">
-            <span aria-hidden="true">◈</span> CONTINUAR CON DISCORD
+            <span aria-hidden="true">◈</span> ENTRAR DIRECTO CON DISCORD
           </button>
           <p class="auth-help">La vinculación con Discord crea tu perfil automáticamente. El acceso completo se habilita al aprobar tu entrenamiento.</p>
         </form>
@@ -66,16 +66,12 @@
             <label>Nombre completo<input id="registerName" required autocomplete="name" placeholder="Nombre y apellido" /></label>
             <label>Usuario Roblox<input id="registerRoblox" required placeholder="Tu usuario" /></label>
           </div>
-          <label>Correo<input id="registerEmail" type="email" autocomplete="email" required placeholder="marine@correo.com" /></label>
+          <label>Correo oficial<input id="registerEmail" type="email" autocomplete="email" required pattern="^[^@\s]+@usmcf\.com$" title="Solo se aceptan correos @usmcf.com" placeholder="marine@usmcf.com" /></label>
           <label>Contraseña<input id="registerPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Mínimo 8 caracteres" /></label>
           <button class="platform-primary" id="registerBtn" type="submit">CREAR SOLICITUD</button>
           <p class="auth-help">Tu cuenta quedará pendiente hasta que un miembro del staff confirme el entrenamiento.</p>
         </form>
 
-        <details class="demo-access" id="demoAccess">
-          <summary>Acceso de demostración</summary>
-          <p><strong>cliente@usmcf.com</strong> · Cliente123!</p>
-        </details>
       </div>
     </section>
 
@@ -113,6 +109,7 @@
           </div>
           <article class="onboarding-banner hidden" id="onboardingBanner"><div><span>ENTRENAMIENTO ASIGNADO</span><h3>Entrenamiento Básico TRS</h3><p id="onboardingTrainer">Esperando instructor responsable.</p></div><strong id="onboardingStatus">ASIGNADO</strong></article>
           <article class="rank-progress-card" id="rankProgressCard"><div><span>PROGRESO DE RANGO</span><h3><strong id="rankProgressCurrent">—</strong><small id="rankProgressNext">Siguiente rango</small></h3></div><div class="rank-progress-track"><span id="rankProgressBar"></span></div><p id="rankProgressText">Calculando tu progreso…</p></article>
+          <article class="discord-link-card"><div><span>IDENTIDAD OFICIAL</span><h3>Cuenta Discord</h3><p id="discordIdentityStatus">Comprobando vinculación…</p></div><button class="discord-login" id="linkDiscordBtn" type="button">VINCULAR DISCORD</button></article>
           <div class="metric-grid">
             <article class="metric-card"><span>RANGO ACTUAL</span><strong id="summaryRank">—</strong><small>Escalafón vigente</small></article>
             <article class="metric-card"><span>PRÓXIMO SALARIO</span><strong id="summarySalary">—</strong><small id="summaryPayDate">Calculando fecha</small></article>
@@ -222,6 +219,11 @@
         <section class="member-view" data-panel="administracion">
           <div class="section-heading"><span class="section-tag">MANDO Y LOGÍSTICA</span><h2>Administración</h2><p>Control total de usuarios: nombre, Roblox, correo, contraseña, permisos, estado, rango, puntos, dólares, inventario, facturas y movimientos.</p></div>
           <div class="admin-layout">
+            <article class="platform-card faction-directory-card">
+              <div class="card-heading"><div><span>DISCORD OFICIAL</span><h3>Directorio completo de la facción</h3></div><span class="connection-badge" id="factionMemberCount">0 MIEMBROS</span></div>
+              <p class="muted-copy">El bot actualiza esta lista automáticamente desde el servidor. “Vinculado” significa que el miembro ya puede usar su expediente, puntos, rango y saldo en la web.</p>
+              <div id="factionDirectory" class="faction-directory"></div>
+            </article>
             <article class="platform-card">
               <div class="card-heading"><div><span>PERSONAL</span><h3>Usuarios y permisos</h3></div></div>
               <label class="field-control admin-search"><span>BUSCAR USUARIO</span><input id="adminUserSearch" type="search" placeholder="Nombre, correo, Roblox, rango o rol" /></label>
@@ -229,7 +231,7 @@
                 <summary>＋ AÑADIR NUEVO USUARIO</summary>
                 <form id="adminUserForm" class="admin-form">
                   <div class="form-row"><input id="newUserName" required placeholder="Nombre del miembro" /><input id="newUserRoblox" required placeholder="Usuario de Roblox" /></div>
-                  <input id="newUserEmail" type="email" required placeholder="Correo institucional" />
+                  <input id="newUserEmail" type="email" required pattern="^[^@\s]+@usmcf\.com$" title="Solo se aceptan correos @usmcf.com" placeholder="marine@usmcf.com" />
                   <div class="form-row"><input id="newUserPassword" type="password" minlength="8" required placeholder="Contraseña temporal" /><select id="newUserRole"><option value="usuario">Miembro</option><option value="staff">Staff</option><option value="admin">Administrador</option></select></div>
                   <button class="platform-primary" type="submit" id="createUserBtn">CREAR USUARIO Y ASIGNAR ENTRENAMIENTO</button>
                   <p class="auth-help">Los miembros nuevos comienzan como Recluta y reciben automáticamente el Entrenamiento Básico TRS.</p>
@@ -265,9 +267,9 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/local-auth.js?v=20260914f"></script>
-  <script src="js/config.js?v=20260914c"></script>
-  <script src="js/platform.js?v=20260914g"></script>
+  <script src="js/local-auth.js?v=20260915a"></script>
+  <script src="js/config.js?v=20260915a"></script>
+  <script src="js/platform.js?v=20260915a"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

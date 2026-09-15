@@ -35,3 +35,5 @@ services:
         sync: false
       - key: DISCORD_SPECIALTY_ROLE_MAP
         sync: false
+      - key: ROSTER_SYNC_INTERVAL_MS
+        value: "600000"

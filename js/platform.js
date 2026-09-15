@@ -18,6 +18,7 @@
     discordEvents: [],
     trainingAssignments: [],
     specialtyApplications: [],
+    factionMembers: [],
     cart: [],
     storeCategory: "todos",
     libraryCategory: "todos",
@@ -62,6 +63,7 @@
   function initials(name) {
     return (name || "US").split(/\s+/).slice(0, 2).map(function (part) { return part.charAt(0); }).join("").toUpperCase();
   }
+  function isOfficialEmail(value) { return /^[^@\s]+@usmcf\.com$/i.test(String(value || "").trim()); }
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>'"]/g, function (char) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char];
@@ -117,12 +119,15 @@
   async function enterPlatform(user) {
     try {
       state.user = user;
+      if (isSupabaseConfigured) {
+        var identitySync = await supabase.rpc("sync_my_discord_identity");
+        if (identitySync.error) throw identitySync.error;
+      }
       state.profile = await getProfile(user.id);
       if (!state.profile) throw new Error("Tu cuenta todavía no tiene un perfil vinculado.");
       $("authView").classList.add("hidden");
       $("memberView").classList.remove("hidden");
       $("logoutBtn").classList.remove("hidden");
-      if (!isSupabaseConfigured) $("demoAccess").classList.remove("hidden");
       hydrateIdentity();
       var accessResult = await supabase.rpc("record_platform_login");
       if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
@@ -157,6 +162,10 @@
     var next = p.ultimo_salario ? new Date(new Date(p.ultimo_salario).getTime() + 7 * 86400000) : new Date();
     $("nextPayment").textContent = dateText(next);
     $("summaryPayDate").textContent = next <= new Date() ? "En proceso" : dateText(next);
+    var discordLinked = Boolean(p.discord_id);
+    $("discordIdentityStatus").textContent = discordLinked ? "Vinculado y verificado · ID " + p.discord_id : "Aún no vinculado. Conecta tu Discord para sincronizar rangos y roles.";
+    $("linkDiscordBtn").textContent = discordLinked ? "DISCORD VINCULADO" : "VINCULAR DISCORD";
+    $("linkDiscordBtn").disabled = discordLinked;
     $("adminNav").classList.toggle("hidden", !isStaff());
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
@@ -227,7 +236,8 @@
       supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false }),
       supabase.from("user_inventory").select("*").order("comprado_at", { ascending: false }),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("transactions").select("*").order("created_at", { ascending: false })
+      supabase.from("transactions").select("*").order("created_at", { ascending: false }),
+      supabase.from("faction_members").select("*").order("display_name", { ascending: true })
     ]);
     state.adminProfiles = results[0].data || [];
     state.adminItems = results[1].data || [];
@@ -235,6 +245,7 @@
     state.adminInventory = results[3].data || [];
     state.adminOrders = results[4].data || [];
     state.adminTransactions = results[5].data || [];
+    state.factionMembers = results[6].data || [];
     renderAdmin();
     renderMissions();
   }
@@ -620,15 +631,31 @@
       var inventoryText = inventory.length ? inventory.map(function (row) { var item = state.adminItems.find(function (candidate) { return String(candidate.id) === String(row.item_id); }); return escapeHtml((item && item.nombre) || "Implemento") + " ×" + Number(row.cantidad || 1); }).join(" · ") : "Sin implementos asignados";
       var invoiceText = orders.length ? orders.map(function (order) { return escapeHtml(order.invoice_number) + " — " + escapeHtml(money(order.total_dinero)) + (order.total_puntos ? " + " + escapeHtml(points(order.total_puntos)) : ""); }).join("<br>") : "Sin facturas";
       var movementText = transactions.length ? transactions.map(function (row) { return escapeHtml(row.descripcion) + " — " + escapeHtml(money(row.monto_dinero)) + " / " + escapeHtml(points(row.monto_puntos)); }).join("<br>") : "Sin movimientos";
-      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button></div>' : '';
+      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button></div>' : '';
       var dossier = '<details class="member-dossier"><summary>VER INVENTARIO, FACTURAS Y MOVIMIENTOS</summary><div class="dossier-grid"><div><strong>INVENTARIO</strong><p>' + inventoryText + '</p></div><div><strong>FACTURAS</strong><p>' + invoiceText + '</p></div><div><strong>ÚLTIMOS MOVIMIENTOS</strong><p>' + movementText + '</p></div></div></details>';
       return '<details class="admin-person member-accordion"><summary class="member-summary"><div><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>' + escapeHtml(profile.usuario_roblox) + ' · ' + escapeHtml(profile.estado) + ' · ' + escapeHtml(profile.rol) + ' · ' + escapeHtml(profile.rango) + '</small></div><div class="member-summary-balance"><strong>' + escapeHtml(points(profile.puntos)) + '</strong><small>' + escapeHtml(money(profile.dinero)) + '</small></div><span class="accordion-hint">MODIFICAR</span></summary><div class="member-admin-panel"><div><small>Último ingreso: ' + escapeHtml(dateText(profile.last_login)) + '</small>' + editor + dossier + '</div><div class="admin-actions member-management"><label><span>SUMAR/RESTAR PUNTOS</span><input type="number" value="0" data-points-for="' + escapeHtml(profile.id) + '" /></label><label><span>SUMAR/RESTAR USD</span><input type="number" value="0" data-money-for="' + escapeHtml(profile.id) + '" /></label><button type="button" data-adjust-member="' + escapeHtml(profile.id) + '">APLICAR AJUSTE</button><small>Usa números negativos para descontar.</small></div></div></details>';
     }).join("") : '<p class="empty-state">No hay usuarios que coincidan con la búsqueda.</p>';
     renderTrainingQueue();
     renderSpecialtyApplicationQueue();
+    renderFactionDirectory();
     $("adminCatalog").innerHTML = state.adminItems.length ? state.adminItems.map(function (item) {
       return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(item.tipo) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
+  }
+
+  function renderFactionDirectory() {
+    var query = state.adminQuery.trim().toLowerCase();
+    var members = state.factionMembers.filter(function (member) {
+      return !query || [member.display_name, member.username, member.institutional_email].join(" ").toLowerCase().indexOf(query) !== -1;
+    });
+    $("factionMemberCount").textContent = state.factionMembers.length + (state.factionMembers.length === 1 ? " MIEMBRO" : " MIEMBROS");
+    $("factionDirectory").innerHTML = members.length ? members.map(function (member) {
+      var profile = state.adminProfiles.find(function (row) { return String(row.id) === String(member.profile_id) || String(row.discord_id || "") === String(member.discord_id); });
+      var statusText = !member.is_active ? "FUERA DEL SERVIDOR" : profile ? "VINCULADO" : "SIN ACTIVAR";
+      var statusDetail = profile ? escapeHtml(profile.rango) + ' · ' + escapeHtml(points(profile.puntos)) : member.is_active ? "Debe entrar o vincular Discord" : "Su expediente y puntos se conservan";
+      var avatar = member.avatar_url ? '<img src="' + escapeHtml(member.avatar_url) + '" alt="" loading="lazy" />' : '<span>' + escapeHtml(initials(member.display_name)) + '</span>';
+      return '<article class="faction-member">' + avatar + '<div><strong>' + escapeHtml(member.display_name) + '</strong><small>@' + escapeHtml(member.username) + '</small><small>' + escapeHtml(member.institutional_email) + '</small></div><div class="faction-link-state ' + (profile ? "linked" : "pending") + '"><strong>' + statusText + '</strong><small>' + statusDetail + '</small></div></article>';
+    }).join("") : '<p class="empty-state">El bot está esperando su primera sincronización con el servidor de Discord.</p>';
   }
 
   function renderTrainingQueue() {
@@ -655,6 +682,7 @@
 
   async function createAdminUser(event) {
     event.preventDefault();
+    if (!isOfficialEmail($("newUserEmail").value)) return setMessage("appMessage", "Solo se aceptan correos institucionales @usmcf.com.", "error");
     var button = $("createUserBtn");
     setBusy(button, true, "CREANDO…");
     var result = await supabase.functions.invoke("admin-users", { body: { action: "create", email: $("newUserEmail").value.trim(), password: $("newUserPassword").value, nombre: $("newUserName").value.trim(), usuario_roblox: $("newUserRoblox").value.trim(), rol: $("newUserRole").value } });
@@ -670,6 +698,7 @@
   async function saveProfile(profileId) {
     var payload = { action: "update", user_id: profileId };
     document.querySelectorAll('[data-profile-id="' + profileId + '"]').forEach(function (field) { payload[field.dataset.profileField] = field.value; });
+    if (!isOfficialEmail(payload.email)) return setMessage("appMessage", "El correo del perfil debe terminar en @usmcf.com.", "error");
     var result = await supabase.functions.invoke("admin-users", { body: payload });
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     setMessage("appMessage", "Perfil, permisos y rango actualizados.", "success");
@@ -731,9 +760,11 @@
   async function login(event) {
     event.preventDefault();
     setMessage("authMessage", "");
+    var email = $("loginEmail").value.trim();
+    if (!isOfficialEmail(email)) return setMessage("authMessage", "Debes ingresar con tu correo oficial @usmcf.com.", "error");
     var button = $("loginBtn");
     setBusy(button, true, "VERIFICANDO…");
-    var result = await supabase.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value });
+    var result = await supabase.auth.signInWithPassword({ email: email, password: $("loginPassword").value });
     setBusy(button, false);
     if (result.error) return setMessage("authMessage", errorText(result.error), "error");
     await enterPlatform(result.data.user);
@@ -742,10 +773,12 @@
   async function register(event) {
     event.preventDefault();
     setMessage("authMessage", "");
+    var email = $("registerEmail").value.trim();
+    if (!isOfficialEmail(email)) return setMessage("authMessage", "Solo se aceptan correos institucionales @usmcf.com.", "error");
     var button = $("registerBtn");
     setBusy(button, true, "CREANDO…");
     var result = await supabase.auth.signUp({
-      email: $("registerEmail").value.trim(),
+      email: email,
       password: $("registerPassword").value,
       options: { data: { nombre: $("registerName").value.trim(), usuario_roblox: $("registerRoblox").value.trim() } }
     });
@@ -759,6 +792,13 @@
     if (!isSupabaseConfigured) return setMessage("authMessage", "Conecta Supabase y activa el proveedor Discord para usar la vinculación automática.");
     var result = await supabase.auth.signInWithOAuth({ provider: "discord", options: { redirectTo: window.location.origin + window.location.pathname } });
     if (result.error) setMessage("authMessage", errorText(result.error), "error");
+  }
+
+  async function linkDiscordIdentity() {
+    if (state.profile && state.profile.discord_id) return;
+    if (!isSupabaseConfigured) return setMessage("appMessage", "La vinculación real se habilita al conectar Supabase y Discord.");
+    var result = await supabase.auth.linkIdentity({ provider: "discord", options: { redirectTo: window.location.origin + window.location.pathname } });
+    if (result.error) setMessage("appMessage", errorText(result.error), "error");
   }
 
   async function logout() {
@@ -777,6 +817,7 @@
     $("loginForm").addEventListener("submit", login);
     $("registerForm").addEventListener("submit", register);
     $("discordLoginBtn").addEventListener("click", loginWithDiscord);
+    $("linkDiscordBtn").addEventListener("click", linkDiscordIdentity);
     $("logoutBtn").addEventListener("click", logout);
     $("cartButton").addEventListener("click", openCart);
     $("closeCartBtn").addEventListener("click", closeCart);
