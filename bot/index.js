@@ -123,6 +123,7 @@ async function syncGuildRoster() {
 
 function eventChannels(type) {
   if (type === "announcement_published") return [config.announcementsChannel];
+  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];
   if (type === "training_completed") return [config.trainingChannel, config.announcementsChannel];
   if (type === "rank_promoted") return [config.pointsChannel, config.announcementsChannel];
   if (type.startsWith("training_") || type === "specialty_approved") return [config.trainingChannel];

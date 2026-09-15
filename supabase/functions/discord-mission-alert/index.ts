@@ -26,6 +26,8 @@ Deno.serve(async (request) => {
     const announcements = Deno.env.get("DISCORD_ANNOUNCEMENTS_WEBHOOK_URL");
     const webhookUrls = event.tipo === "announcement_published"
       ? [announcements]
+      : ["mission_published", "mission_updated"].includes(event.tipo)
+        ? [Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL"), announcements]
       : event.tipo === "training_completed"
         ? [Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL"), announcements]
         : event.tipo === "rank_promoted"

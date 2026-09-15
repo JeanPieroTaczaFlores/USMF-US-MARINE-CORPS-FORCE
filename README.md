@@ -15,7 +15,7 @@ Sitio público y plataforma de miembros unificados en un solo repositorio.
 - Store con carrito y checkout atómico;
 - facturas descargables e inventario;
 - biblioteca de reglas, armas, loadouts, equipamiento oficial con imágenes de Discord y manuales;
-- misiones con inscripción, estado en misión y bitácora de alertas Discord;
+- misiones con inscripción, estado en misión, equipamiento obligatorio, enlace privado de Roblox y bitácora de alertas Discord;
 - cierre bloqueado hasta que Staff/Admin confirme o marque ausente a cada participante;
 - recompensas de misión y ajustes auditados de puntos/dinero;
 - ascensos automáticos por puntos desde Soldado hasta Sargento Mayor de la Infantería;
@@ -23,6 +23,7 @@ Sitio público y plataforma de miembros unificados en un solo repositorio.
 - administración integral para crear cuentas, editar perfiles, permisos, estados y rangos;
 - asignación automática del Entrenamiento Básico TRS para cada cuenta nueva;
 - graduación por Staff/Admin que activa la cuenta y asigna automáticamente el rango Soldado;
+- publicación automática de cada misión en Discord con fecha, recompensas, equipamiento y enlace del servidor privado;
 - panel de anuncios de Administración con entrega al canal oficial de Discord;
 - publicación u ocultamiento de artículos de la Store.
 
@@ -40,6 +41,7 @@ Sin credenciales remotas, el sitio conserva únicamente el acceso local de mando
 8. Crea un bot de Discord, activa **Server Members Intent**, invítalo al servidor con **Ver canales**, **Enviar mensajes** y **Gestionar roles**, y coloca su rol por encima de los roles que administrará.
 9. Guarda también la configuración privada del bot: `supabase secrets set DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=1016036020875165797 DISCORD_ROLE_RECRUIT_ID=... DISCORD_ROLE_SOLDIER_ID=... DISCORD_ROLE_STAFF_ID=... DISCORD_ROLE_ADMIN_ID=...`.
 10. Despliega las funciones con `supabase functions deploy discord-mission-alert`, `supabase functions deploy discord-role-sync` y `supabase functions deploy admin-users`.
+11. La migración `20260915143000_mission_equipment_and_private_server.sql` añade los datos operativos de misión y la cola automática de anuncios.
 
 La migración activa RLS, limita cada miembro a sus propios datos, procesa el carrito dentro de una transacción y programa el pago semanal los lunes a las 00:00 (UTC-5).
 Las URLs de webhook, el token del bot y la clave `service_role` permanecen exclusivamente en Supabase; nunca se publican en el JavaScript del navegador. El bot publica una alerta en cada ingreso, inscripción, inicio de misión, entrenamiento y ajuste económico. Al vincular Discord asigna el rol Recluta; cuando Staff o Admin confirma el TRS, cambia automáticamente a Soldado. Los cambios de permiso hechos por Administración también sincronizan Staff o Admin si el usuario tiene Discord vinculado.

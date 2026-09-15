@@ -501,6 +501,27 @@
     return { inscrito: "INSCRITO", en_mision: "EN MISIÓN", confirmado: "ASISTENCIA CONFIRMADA", ausente: "AUSENTE" }[status] || String(status || "inscrito").toUpperCase();
   }
 
+  function safeRobloxUrl(value) {
+    try {
+      var url = new URL(String(value || ""));
+      return url.protocol === "https:" && (url.hostname === "roblox.com" || url.hostname.endsWith(".roblox.com")) ? url.href : "";
+    } catch (error) { return ""; }
+  }
+
+  function missionEquipment(mission) {
+    if (Array.isArray(mission.required_equipment)) return mission.required_equipment.filter(Boolean);
+    return String(mission.required_equipment || "").split(/[\n,]+/).map(function (item) { return item.trim(); }).filter(Boolean);
+  }
+
+  function ownsEquipment(label) {
+    var wanted = String(label || "").toLowerCase();
+    return state.inventory.some(function (owned) {
+      var item = state.items.find(function (entry) { return String(entry.id) === String(owned.item_id); });
+      var name = String(item && item.nombre || "").toLowerCase();
+      return name && (name.indexOf(wanted) !== -1 || wanted.indexOf(name) !== -1);
+    });
+  }
+
   function profileName(userId) {
     var profile = state.adminProfiles.find(function (row) { return String(row.id) === String(userId); });
     if (profile) return profile.nombre || profile.usuario_roblox || profile.email;
@@ -521,7 +542,11 @@
       var action = canJoin ? '<button type="button" class="platform-primary compact" data-join-mission="' + escapeHtml(mission.id) + '">UNIRME A LA MISIÓN</button>' : canLeave ? '<button type="button" class="secondary-action" data-leave-mission="' + escapeHtml(mission.id) + '">CANCELAR INSCRIPCIÓN</button>' : '';
       var editAction = isStaff() ? '<button type="button" class="mission-edit-direct" data-edit-mission="' + escapeHtml(mission.id) + '">MODIFICAR MISIÓN</button>' : '';
       var myStatus = mine ? '<span class="mission-personal-status ' + escapeHtml(mine.estado) + '">' + escapeHtml(mine.rewarded_at ? "RECOMPENSA ACREDITADA: " + points(mission.recompensa_puntos) + " + " + money(mission.recompensa_dinero) : participantStatusLabel(mine.estado)) + '</span>' : '';
-      return '<article class="mission-card ' + escapeHtml(mission.estado) + '"><div class="mission-card-top"><span class="mission-status">' + escapeHtml(missionStatusLabel(mission.estado)) + '</span><span>' + participants.length + ' participantes</span></div><h3>' + escapeHtml(mission.titulo) + '</h3><p>' + escapeHtml(mission.descripcion || "Sin descripción operativa.") + '</p><div class="mission-meta"><span><strong>FECHA</strong>' + escapeHtml(dateText(mission.fecha)) + '</span><span><strong>RECOMPENSA</strong>' + escapeHtml(points(mission.recompensa_puntos)) + ' · ' + escapeHtml(money(mission.recompensa_dinero)) + '</span></div><div class="mission-card-actions">' + myStatus + action + editAction + '</div></article>';
+      var equipment = missionEquipment(mission);
+      var equipmentBlock = equipment.length ? '<div class="mission-equipment"><strong>EQUIPAMIENTO PARA ESTA MISIÓN</strong><ul>' + equipment.map(function (item) { var owned = ownsEquipment(item); return '<li><span>' + escapeHtml(item) + '</span><small class="' + (owned ? "ready" : "check") + '">' + (owned ? "EN INVENTARIO" : "VERIFICAR") + '</small></li>'; }).join("") + '</ul></div>' : '<div class="mission-equipment"><strong>EQUIPAMIENTO PARA ESTA MISIÓN</strong><p>El mando aún no publicó una lista.</p></div>';
+      var serverUrl = safeRobloxUrl(mission.private_server_url);
+      var serverAccess = serverUrl && (mine || isStaff()) ? '<a class="mission-server-link" href="' + escapeHtml(serverUrl) + '" target="_blank" rel="noopener noreferrer">ABRIR SERVIDOR PRIVADO DE ROBLOX ↗</a>' : serverUrl ? '<p class="mission-server-locked">Únete a la misión para habilitar el enlace privado.</p>' : '';
+      return '<article class="mission-card ' + escapeHtml(mission.estado) + '"><div class="mission-card-top"><span class="mission-status">' + escapeHtml(missionStatusLabel(mission.estado)) + '</span><span>' + participants.length + ' participantes</span></div><h3>' + escapeHtml(mission.titulo) + '</h3><p>' + escapeHtml(mission.descripcion || "Sin descripción operativa.") + '</p><div class="mission-meta"><span><strong>FECHA</strong>' + escapeHtml(dateText(mission.fecha)) + '</span><span><strong>RECOMPENSA</strong>' + escapeHtml(points(mission.recompensa_puntos)) + ' · ' + escapeHtml(money(mission.recompensa_dinero)) + '</span></div>' + equipmentBlock + serverAccess + '<div class="mission-card-actions">' + myStatus + action + editAction + '</div></article>';
     }).join("") : '<p class="empty-state">No hay misiones publicadas.</p>';
 
     $("discordConnection").textContent = isSupabaseConfigured ? "DISCORD SEGURO" : "SIMULACIÓN LOCAL";
@@ -581,6 +606,8 @@
     $("missionId").value = "";
     $("missionRewardPoints").value = "100";
     $("missionRewardMoney").value = "0";
+    $("missionEquipment").value = "";
+    $("missionServerUrl").value = "";
     $("missionSubmitBtn").textContent = "CREAR MISIÓN";
     $("cancelMissionEdit").classList.add("hidden");
   }
@@ -588,18 +615,24 @@
   async function saveMission(event) {
     event.preventDefault();
     var id = $("missionId").value;
-    var payload = {
-      titulo: $("missionTitle").value.trim(),
-      descripcion: $("missionDescription").value.trim(),
-      fecha: new Date($("missionDate").value).toISOString(),
-      recompensa_puntos: Math.max(0, parseInt($("missionRewardPoints").value, 10) || 0),
-      recompensa_dinero: Math.max(0, parseInt($("missionRewardMoney").value, 10) || 0),
-      estado: $("missionStatus").value
-    };
-    if (!id) payload.created_by = state.user.id;
-    var result = id ? await supabase.from("missions").update(payload).eq("id", id) : await supabase.from("missions").insert(payload);
+    var serverUrl = safeRobloxUrl($("missionServerUrl").value.trim());
+    if (!serverUrl) return setMessage("appMessage", "Usa un enlace HTTPS oficial de roblox.com para el servidor privado.", "error");
+    var equipment = $("missionEquipment").value.split(/\n+/).map(function (item) { return item.trim(); }).filter(Boolean);
+    if (!equipment.length) return setMessage("appMessage", "Añade al menos un elemento de equipamiento obligatorio.", "error");
+    var result = await supabase.rpc("save_mission", {
+      p_mission_id: id || null,
+      p_title: $("missionTitle").value.trim(),
+      p_description: $("missionDescription").value.trim(),
+      p_date: new Date($("missionDate").value).toISOString(),
+      p_reward_points: Math.max(0, parseInt($("missionRewardPoints").value, 10) || 0),
+      p_reward_money: Math.max(0, parseInt($("missionRewardMoney").value, 10) || 0),
+      p_status: $("missionStatus").value,
+      p_private_server_url: serverUrl,
+      p_required_equipment: equipment
+    });
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
-    setMessage("appMessage", id ? "Misión actualizada." : "Misión creada y publicada.", "success");
+    setMessage("appMessage", id ? "Misión actualizada y anuncio enviado al bot." : "Misión creada y anuncio enviado al bot.", "success");
+    if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
     resetMissionForm();
     await loadPlatformData();
   }
@@ -614,6 +647,8 @@
     $("missionStatus").value = mission.estado === "finalizada" ? "programada" : mission.estado;
     $("missionRewardPoints").value = mission.recompensa_puntos || 0;
     $("missionRewardMoney").value = mission.recompensa_dinero || 0;
+    $("missionEquipment").value = missionEquipment(mission).join("\n");
+    $("missionServerUrl").value = mission.private_server_url || "";
     $("missionSubmitBtn").textContent = "GUARDAR CAMBIOS";
     $("cancelMissionEdit").classList.remove("hidden");
     $("missionCommand").scrollIntoView({ behavior: "smooth", block: "start" });

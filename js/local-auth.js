@@ -78,6 +78,10 @@
       if (!p.last_login) p.last_login = p.created_at || new Date().toISOString();
       if (p.ultimo_salario === undefined) p.ultimo_salario = null;
     });
+    db.missions.forEach(function (mission) {
+      if (!Array.isArray(mission.required_equipment)) mission.required_equipment = ["Uniforme MCCUU", "Chaleco medio", "M4A1 con silenciador"];
+      if (mission.private_server_url === undefined) mission.private_server_url = "https://www.roblox.com/share?code=USMCF-DEMO&type=Server";
+    });
     if (!db.shop_items.length) seedShop(db);
     db.profiles.forEach(function (profile) { applyAutoPromotion(profile, db); });
     saveDB(db);
@@ -118,6 +122,7 @@
         descripcion: "Operación de patrullaje en la zona norte.",
         fecha: new Date(Date.now() + 2 * 86400000).toISOString(),
         recompensa_puntos: 150, recompensa_dinero: 300,
+        required_equipment: ["Uniforme MCCUU", "Chaleco medio", "M4A1 con silenciador"], private_server_url: "https://www.roblox.com/share?code=USMCF-PATRULLA&type=Server",
         estado: "programada", created_by: adminId
       },
       {
@@ -125,6 +130,7 @@
         descripcion: "Sesión de entrenamiento para nuevos reclutas.",
         fecha: new Date(Date.now() + 86400000).toISOString(),
         recompensa_puntos: 80, recompensa_dinero: 120,
+        required_equipment: ["Uniforme MCCUU", "M4A1", "Radio"], private_server_url: "https://www.roblox.com/share?code=USMCF-TRS&type=Server",
         estado: "activa", created_by: adminId
       },
       {
@@ -132,6 +138,7 @@
         descripcion: "Operación ofensiva de alto riesgo.",
         fecha: new Date(Date.now() + 5 * 86400000).toISOString(),
         recompensa_puntos: 300, recompensa_dinero: 500,
+        required_equipment: ["Uniforme MCCUU", "Chaleco medio", "Casco coyote", "M4A1 con silenciador"], private_server_url: "https://www.roblox.com/share?code=USMCF-ASALTO&type=Server",
         estado: "programada", created_by: adminId
       }
     );
@@ -508,6 +515,25 @@
         db.discord_events.push(joinEvent);
         saveDB(db);
         return { data: { participant_id: participant.id, event_id: joinEvent.id }, error: null };
+      }
+
+      if (name === "save_mission") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var missionPayload = {
+          titulo: String(args.p_title || "").trim(), descripcion: String(args.p_description || "").trim(), fecha: args.p_date,
+          recompensa_puntos: Math.max(0, Number(args.p_reward_points || 0)), recompensa_dinero: Math.max(0, Number(args.p_reward_money || 0)),
+          estado: args.p_status || "programada", private_server_url: String(args.p_private_server_url || ""),
+          required_equipment: Array.isArray(args.p_required_equipment) ? args.p_required_equipment.filter(Boolean) : []
+        };
+        if (!missionPayload.titulo || !missionPayload.fecha || !missionPayload.required_equipment.length) return { data: null, error: { message: "Completa los datos y el equipamiento de la misión." } };
+        var savedMission = args.p_mission_id ? db.missions.find(function (row) { return String(row.id) === String(args.p_mission_id); }) : null;
+        var creating = !savedMission;
+        if (creating) { savedMission = Object.assign({ id: uid(), created_by: profile.id, created_at: new Date().toISOString() }, missionPayload); db.missions.push(savedMission); }
+        else Object.assign(savedMission, missionPayload);
+        var missionEvent = { id: uid(), tipo: creating ? "mission_published" : "mission_updated", titulo: (creating ? "Nueva misión: " : "Misión actualizada: ") + savedMission.titulo, mensaje: savedMission.descripcion + "\nFecha: " + new Date(savedMission.fecha).toLocaleString("es-CO") + "\nRecompensa: " + savedMission.recompensa_puntos + " pts · USD " + savedMission.recompensa_dinero + "\nEquipamiento: " + savedMission.required_equipment.join(", ") + "\nServidor privado: " + savedMission.private_server_url, mission_id: savedMission.id, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(missionEvent);
+        saveDB(db);
+        return { data: { mission_id: savedMission.id, event_id: missionEvent.id }, error: null };
       }
 
       if (name === "leave_mission") {
