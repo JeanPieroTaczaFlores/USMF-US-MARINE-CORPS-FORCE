@@ -24,8 +24,16 @@ Deno.serve(async (request) => {
     if (event.estado === "enviado") return new Response(JSON.stringify({ delivered: true, duplicate: true }), { headers: { ...cors, "Content-Type": "application/json" } });
 
     const announcements = Deno.env.get("DISCORD_ANNOUNCEMENTS_WEBHOOK_URL");
+    const routedWebhooks: Record<string, string | undefined> = {
+      announcements,
+      missions: Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL"),
+      training: Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL"),
+      points: Deno.env.get("DISCORD_POINTS_WEBHOOK_URL"),
+      support: Deno.env.get("DISCORD_SUPPORT_WEBHOOK_URL"),
+      access: Deno.env.get("DISCORD_ACCESS_WEBHOOK_URL"),
+    };
     const webhookUrls = event.tipo === "announcement_published"
-      ? [announcements]
+      ? [routedWebhooks[event.target_channel_key || "announcements"] || announcements]
       : ["mission_published", "mission_updated"].includes(event.tipo)
         ? [Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL"), announcements]
       : event.tipo === "training_completed"
@@ -47,9 +55,9 @@ Deno.serve(async (request) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: "USMCF Command Bot",
+          username: "Narun",
           allowed_mentions: { parse: [] },
-          embeds: [{ title: event.titulo, description: event.mensaje, color: 0xd9a441, footer: { text: `Evento ${event.id}` }, timestamp: event.created_at }]
+          embeds: [{ title: event.titulo, description: event.mensaje, color: Number.isInteger(event.embed_color) ? event.embed_color : 0xd9a441, footer: { text: `Evento ${event.id}` }, timestamp: event.created_at }]
         })
       });
       if (!discordResponse.ok) throw new Error(`Discord returned ${discordResponse.status}`);

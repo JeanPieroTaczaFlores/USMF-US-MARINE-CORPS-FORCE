@@ -15,7 +15,7 @@ Sitio público y plataforma de miembros unificados en un solo repositorio.
 - Store con carrito y checkout atómico;
 - facturas descargables e inventario;
 - biblioteca de reglas, armas, loadouts, equipamiento oficial con imágenes de Discord y manuales;
-- misiones con inscripción, estado en misión, equipamiento obligatorio, enlace privado de Roblox y bitácora de alertas Discord;
+- misiones con inscripción, estado en misión, equipamiento obligatorio y bitácora de alertas Discord; el enlace privado de Roblox sólo viaja en el anuncio del bot y no se abre desde la web;
 - cierre bloqueado hasta que Staff/Admin confirme o marque ausente a cada participante;
 - recompensas de misión y ajustes auditados de puntos/dinero;
 - ascensos automáticos por puntos desde Soldado hasta Sargento Mayor de la Infantería;
@@ -24,7 +24,7 @@ Sitio público y plataforma de miembros unificados en un solo repositorio.
 - asignación automática del Entrenamiento Básico TRS para cada cuenta nueva;
 - graduación por Staff/Admin que activa la cuenta y asigna automáticamente el rango Soldado;
 - publicación automática de cada misión en Discord con fecha, recompensas, equipamiento y enlace del servidor privado;
-- panel de anuncios de Administración con entrega al canal oficial de Discord;
+- panel de anuncios de Administración con selector de canal y color para la tarjeta de Discord;
 - publicación u ocultamiento de artículos de la Store.
 
 Sin credenciales remotas, el sitio incluye tres accesos locales para comprobar cada vista: `admin@usmcf.com` / `Admin123!`, `staff@usmcf.com` / `Staff123!` y `soldado@usmcf.com` / `Soldado123!`. Estas cuentas son exclusivas del modo local; los perfiles reales aparecen cuando Supabase y el bot sincronizan el servidor.
@@ -38,7 +38,7 @@ Sin credenciales remotas, el sitio incluye tres accesos locales para comprobar c
 5. En **Authentication → Hooks**, configura **Before User Created** con `pg-functions://postgres/private/hook_usmcf_before_user_created`. El hook rechaza correos que no terminen en `@usmcf.com`; los accesos de Discord se validan contra el directorio oficial.
 6. En el servidor `1016036020875165797`, crea webhooks para `🚨╙Misiones` (`1254309543828262923`), `🚨╙Entrenamientos` (`1259971958708240507`), `💵╙Puntos` (`1254309496268918804`), `📢╙Anuncio` (`1549116084714737755`) y un canal privado de accesos para el bot.
 7. Guarda las URLs fuera del repositorio: `supabase secrets set DISCORD_MISSIONS_WEBHOOK_URL=... DISCORD_TRAINING_WEBHOOK_URL=... DISCORD_POINTS_WEBHOOK_URL=... DISCORD_ANNOUNCEMENTS_WEBHOOK_URL=... DISCORD_ACCESS_WEBHOOK_URL=...`.
-8. Crea un bot de Discord, activa **Server Members Intent**, invítalo al servidor con **Ver canales**, **Enviar mensajes** y **Gestionar roles**, y coloca su rol por encima de los roles que administrará.
+8. Crea el bot **Narun**, activa **Server Members Intent**, invítalo al servidor con **Ver canales**, **Enviar mensajes** y **Gestionar roles**, y coloca su rol por encima de los roles que administrará. El seguimiento de voz usa el evento `GUILD_VOICE_STATES` y sólo registra canales asociados a una misión.
 9. Guarda también la configuración privada del bot: `supabase secrets set DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=1016036020875165797 DISCORD_ROLE_RECRUIT_ID=... DISCORD_ROLE_SOLDIER_ID=... DISCORD_ROLE_STAFF_ID=... DISCORD_ROLE_ADMIN_ID=...`.
 10. Despliega las funciones con `supabase functions deploy discord-mission-alert`, `supabase functions deploy discord-role-sync` y `supabase functions deploy admin-users`.
 11. La migración `20260915143000_mission_equipment_and_private_server.sql` añade los datos operativos de misión y la cola automática de anuncios.
@@ -48,11 +48,11 @@ Las URLs de webhook, el token del bot y la clave `service_role` permanecen exclu
 
 ## Bot Discord 24/7
 
-El directorio `bot/` contiene el servicio permanente que procesa eventos pendientes, publica anuncios, tickets y respuestas, anuncia graduaciones y ascensos, sincroniza rangos y especialidades y actualiza cada diez minutos el directorio completo de miembros de la facción. También recuerda al Staff los tickets o cursos que superen tres días sin resolverse y crea una invitación de Discord renovada antes de cumplir 24 horas. No necesita librerías externas: usa Node 22, la API REST de Discord y Supabase. El archivo `render.yaml` permite desplegarlo como servicio Docker con comprobación `/health`.
+El directorio `bot/` contiene el servicio permanente que procesa eventos pendientes, publica anuncios en el canal y color elegidos, tickets y respuestas, anuncia graduaciones y ascensos, sincroniza rangos y especialidades y actualiza cada diez minutos el directorio completo de miembros de la facción. Narun también escucha los canales de voz asociados a misiones: guarda hora de entrada, salida y duración, y envía al administrador un mensaje privado al entrar y al salir. Además recuerda al Staff los tickets o cursos que superen tres días sin resolverse y crea una invitación de Discord renovada antes de cumplir 24 horas. No necesita librerías externas: usa Node 22, el Gateway/API REST de Discord y Supabase. El archivo `render.yaml` permite desplegarlo como servicio Docker con comprobación `/health`.
 
 1. Aplica todas las migraciones, incluida `20260915051050_discord_roster_and_official_email.sql`.
 2. Copia las variables de `bot/.env.example` en el proveedor donde funcionará el bot.
-3. Completa `DISCORD_RANK_ROLE_MAP` y `DISCORD_SPECIALTY_ROLE_MAP` con los IDs reales de los roles.
+3. Completa `DISCORD_RANK_ROLE_MAP`, `DISCORD_SPECIALTY_ROLE_MAP` y `DISCORD_ADMIN_USER_ID` con los IDs reales. El administrador debe permitir mensajes privados del servidor para recibir los registros de voz.
 4. Mantén el token del bot y la `service_role` únicamente como secretos del proveedor.
 5. Usa un servicio que permanezca activo continuamente; `/health` confirma si faltan credenciales o si el procesador está conectado.
 

@@ -267,9 +267,7 @@
 .mission-equipment li { display:flex; align-items:center; justify-content:space-between; gap:1rem; color:#d7ddd7; font-size:.86rem; }
 .mission-equipment li small { flex:none; padding:.22rem .42rem; border:1px solid #646b64; color:#aab1aa; font:700 .62rem "Inter",sans-serif; letter-spacing:.06em; }
 .mission-equipment li small.ready { border-color:#55765b; color:#9ec5a5; }
-.mission-equipment p,.mission-server-locked { margin:.35rem 0 0; color:#969e96; font-size:.82rem; }
-.mission-server-link { display:block; margin:.8rem 0; padding:.72rem .85rem; border:1px solid #d6b84e; color:#f1da77; text-align:center; font:700 .76rem "Inter",sans-serif; letter-spacing:.08em; text-decoration:none; }
-.mission-server-link:hover { background:#d6b84e; color:#11140f; }
+.mission-equipment p { margin:.35rem 0 0; color:#969e96; font-size:.82rem; }
 .connection-badge,.event-status { color:#bfc5bf; border:1px solid #4c534c; padding:.3rem .45rem; font:700 .58rem "Inter",sans-serif; letter-spacing:.08em; }
 .event-status.simulado,.event-status.enviado { color:#a6d4ad; border-color:#426949; }
 .mission-command { margin-top:2.2rem; }

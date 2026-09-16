@@ -169,7 +169,8 @@
                   <label class="field-control"><span>NOMBRE DE LA MISIÓN</span><input id="missionTitle" required placeholder="Ej.: Operación Centinela" /></label>
                   <label class="field-control"><span>OBJETIVO E INSTRUCCIONES</span><textarea id="missionDescription" required rows="3" placeholder="Objetivo, punto de reunión, uniforme y reglas"></textarea></label>
                   <label class="field-control"><span>EQUIPAMIENTO OBLIGATORIO</span><textarea id="missionEquipment" required rows="3" placeholder="Un elemento por línea. Ej.: Uniforme MCCUU&#10;Chaleco medio&#10;M4A1 con silenciador"></textarea><small>El miembro verá esta lista antes de inscribirse y podrá contrastarla con su inventario.</small></label>
-                  <label class="field-control"><span>ENLACE DEL SERVIDOR PRIVADO DE ROBLOX</span><input id="missionServerUrl" type="url" required placeholder="https://www.roblox.com/share?code=..." /><small>Se enviará en el anuncio de Discord y se mostrará en la web a los inscritos.</small></label>
+                  <label class="field-control"><span>ENLACE DEL SERVIDOR PRIVADO DE ROBLOX</span><input id="missionServerUrl" type="url" required placeholder="https://www.roblox.com/share?code=..." /><small>Se enviará únicamente por Discord dentro del anuncio operativo; no se mostrará ni se abrirá desde la web.</small></label>
+                  <div class="form-row"><label class="field-control"><span>ID DEL CANAL DE VOZ</span><input id="missionVoiceChannelId" inputmode="numeric" pattern="[0-9]{17,20}" required placeholder="Ej.: 123456789012345678" /><small>Canal donde el bot medirá la asistencia.</small></label><label class="field-control"><span>NOMBRE DEL CANAL DE VOZ</span><input id="missionVoiceChannelName" required maxlength="100" placeholder="Ej.: Sala de Operaciones" /><small>Aparecerá en el anuncio de la misión.</small></label></div>
                   <div class="form-row"><label class="field-control"><span>FECHA Y HORA</span><input id="missionDate" type="datetime-local" required /></label><label class="field-control"><span>PUBLICACIÓN</span><select id="missionStatus"><option value="programada">Programar para después</option><option value="activa">Lanzar ahora</option></select></label></div>
                   <div class="form-row"><label class="field-control"><span>RECOMPENSA EN PUNTOS</span><input id="missionRewardPoints" type="number" min="0" step="1" value="100" placeholder="Ej.: 100" /><small>Puntos que recibe cada asistente confirmado.</small></label><label class="field-control"><span>RECOMPENSA EN DÓLARES (USD)</span><input id="missionRewardMoney" type="number" min="0" step="1" value="0" placeholder="Ej.: 250" /><small>Dinero que recibe cada asistente confirmado.</small></label></div>
                   <div class="form-actions"><button class="platform-primary" type="submit" id="missionSubmitBtn">CREAR MISIÓN</button><button class="secondary-action hidden" type="button" id="cancelMissionEdit">CANCELAR EDICIÓN</button></div>
@@ -296,7 +297,8 @@
               <form id="announcementForm" class="admin-form announcement-form">
                 <label class="field-control"><span>TÍTULO DEL ANUNCIO</span><input id="announcementTitle" required maxlength="120" placeholder="Ej.: Nuevas disposiciones operativas" /></label>
                 <label class="field-control"><span>MENSAJE</span><textarea id="announcementBody" required maxlength="1800" rows="5" placeholder="Escribe la información que recibirá la facción"></textarea></label>
-                <label class="field-control"><span>TIPO</span><select id="announcementKind"><option value="general">Anuncio general</option><option value="operativo">Orden operativa</option><option value="ascensos">Ascensos y reconocimientos</option><option value="entrenamiento">Entrenamiento</option></select></label>
+                <div class="form-row"><label class="field-control"><span>TIPO</span><select id="announcementKind"><option value="general">Anuncio general</option><option value="operativo">Orden operativa</option><option value="ascensos">Ascensos y reconocimientos</option><option value="entrenamiento">Entrenamiento</option></select></label><label class="field-control"><span>CANAL DE DISCORD</span><select id="announcementChannel"><option value="announcements">Anuncios</option><option value="missions">Misiones</option><option value="training">Entrenamientos</option><option value="points">Puntos y ascensos</option><option value="support">Soporte</option><option value="access">Accesos</option></select></label></div>
+                <label class="field-control"><span>COLOR DEL ANUNCIO</span><select id="announcementColor"><option value="14071886">Dorado de mando</option><option value="2577707">Verde operativo</option><option value="12083004">Rojo de alerta</option><option value="3438463">Azul informativo</option><option value="7289855">Morado especial</option></select><small>El bot usará este color en la tarjeta publicada en Discord.</small></label>
                 <button class="platform-primary" id="announcementSubmit" type="submit">ENVIAR AL BOT DE DISCORD</button>
               </form>
             </article>
@@ -319,9 +321,9 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/local-auth.js?v=20260916b"></script>
+  <script src="js/local-auth.js?v=20260916d"></script>
   <script src="js/config.js?v=20260915a"></script>
-  <script src="js/platform.js?v=20260916c"></script>
+  <script src="js/platform.js?v=20260916d"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

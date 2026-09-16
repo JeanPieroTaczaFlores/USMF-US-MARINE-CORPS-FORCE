@@ -62,12 +62,13 @@
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], mission_participants: [], training_assignments: [], specialty_applications: [], specialty_training_requests: [], support_tickets: [], support_ticket_comments: [], discord_invites: [], faction_members: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
+    var defaults = { missions: [], mission_participants: [], voice_sessions: [], training_assignments: [], specialty_applications: [], specialty_training_requests: [], support_tickets: [], support_ticket_comments: [], discord_invites: [], faction_members: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
     cleanupDemoPersonnel(db);
     ensureTestAccounts(db);
+    seedMissionAttendanceDemo(db);
     if (db.missions_participants && db.missions_participants.length) {
       db.mission_participants = db.mission_participants.concat(db.missions_participants.filter(function (legacy) {
         return !db.mission_participants.some(function (current) { return current.id === legacy.id; });
@@ -83,6 +84,8 @@
     db.missions.forEach(function (mission) {
       if (!Array.isArray(mission.required_equipment)) mission.required_equipment = ["Uniforme MCCUU", "Chaleco medio", "M4A1 con silenciador"];
       if (mission.private_server_url === undefined) mission.private_server_url = "https://www.roblox.com/share?code=USMCF-DEMO&type=Server";
+      if (!mission.voice_channel_id) mission.voice_channel_id = "1360827424018923530";
+      if (!mission.voice_channel_name) mission.voice_channel_name = "Sala de Operaciones";
     });
     if (!db.shop_items.length) seedShop(db);
     db.profiles.forEach(function (profile) { applyAutoPromotion(profile, db); });
@@ -95,6 +98,7 @@
       profiles: [],
       missions: [],
       mission_participants: [],
+      voice_sessions: [],
       training_assignments: [],
       specialty_applications: [],
       specialty_training_requests: [],
@@ -218,6 +222,21 @@
         db.profiles.push(Object.assign({ id: uid(), discord_id: null, ultimo_salario: null, last_login: now, created_at: now }, account));
       }
     });
+  }
+
+  function seedMissionAttendanceDemo(db) {
+    var soldier = db.profiles.find(function (row) { return String(row.email || "").toLowerCase() === "soldado@usmcf.com"; });
+    var mission = db.missions.find(function (row) { return row.estado === "activa"; });
+    if (!soldier || !mission) return;
+    mission.voice_channel_id = mission.voice_channel_id || "1360827424018923530";
+    mission.voice_channel_name = mission.voice_channel_name || "Sala de Operaciones";
+    var participant = db.mission_participants.find(function (row) { return String(row.mission_id) === String(mission.id) && String(row.user_id) === String(soldier.id); });
+    if (!participant) {
+      participant = { id: uid(), mission_id: mission.id, user_id: soldier.id, estado: "en_mision", joined_at: new Date(Date.now() - 52 * 60000).toISOString(), reviewed_at: null, reviewed_by: null, rewarded_at: null };
+      db.mission_participants.push(participant);
+    }
+    var voiceRow = db.voice_sessions.find(function (row) { return String(row.mission_id) === String(mission.id) && String(row.profile_id) === String(soldier.id); });
+    if (!voiceRow) db.voice_sessions.push({ id: uid(), discord_id: "900000000000000001", profile_id: soldier.id, mission_id: mission.id, channel_id: mission.voice_channel_id, channel_name: mission.voice_channel_name, joined_at: new Date(Date.now() - 46 * 60000).toISOString(), left_at: new Date(Date.now() - 5 * 60000).toISOString(), duration_seconds: 2460, notified_at: new Date().toISOString(), created_at: new Date().toISOString() });
   }
 
   // Estas credenciales existen únicamente en el adaptador local de demostración.
@@ -559,14 +578,15 @@
           titulo: String(args.p_title || "").trim(), descripcion: String(args.p_description || "").trim(), fecha: args.p_date,
           recompensa_puntos: Math.max(0, Number(args.p_reward_points || 0)), recompensa_dinero: Math.max(0, Number(args.p_reward_money || 0)),
           estado: args.p_status || "programada", private_server_url: String(args.p_private_server_url || ""),
-          required_equipment: Array.isArray(args.p_required_equipment) ? args.p_required_equipment.filter(Boolean) : []
+          required_equipment: Array.isArray(args.p_required_equipment) ? args.p_required_equipment.filter(Boolean) : [],
+          voice_channel_id: String(args.p_voice_channel_id || "").trim(), voice_channel_name: String(args.p_voice_channel_name || "").trim()
         };
-        if (!missionPayload.titulo || !missionPayload.fecha || !missionPayload.required_equipment.length) return { data: null, error: { message: "Completa los datos y el equipamiento de la misión." } };
+        if (!missionPayload.titulo || !missionPayload.fecha || !missionPayload.required_equipment.length || !/^\d{17,20}$/.test(missionPayload.voice_channel_id) || !missionPayload.voice_channel_name) return { data: null, error: { message: "Completa los datos, el equipamiento y el canal de voz de la misión." } };
         var savedMission = args.p_mission_id ? db.missions.find(function (row) { return String(row.id) === String(args.p_mission_id); }) : null;
         var creating = !savedMission;
         if (creating) { savedMission = Object.assign({ id: uid(), created_by: profile.id, created_at: new Date().toISOString() }, missionPayload); db.missions.push(savedMission); }
         else Object.assign(savedMission, missionPayload);
-        var missionEvent = { id: uid(), tipo: creating ? "mission_published" : "mission_updated", titulo: (creating ? "Nueva misión: " : "Misión actualizada: ") + savedMission.titulo, mensaje: savedMission.descripcion + "\nFecha: " + new Date(savedMission.fecha).toLocaleString("es-CO") + "\nRecompensa: " + savedMission.recompensa_puntos + " pts · USD " + savedMission.recompensa_dinero + "\nEquipamiento: " + savedMission.required_equipment.join(", ") + "\nServidor privado: " + savedMission.private_server_url, mission_id: savedMission.id, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
+        var missionEvent = { id: uid(), tipo: creating ? "mission_published" : "mission_updated", titulo: (creating ? "Nueva misión: " : "Misión actualizada: ") + savedMission.titulo, mensaje: savedMission.descripcion + "\nFecha: " + new Date(savedMission.fecha).toLocaleString("es-CO") + "\nRecompensa: " + savedMission.recompensa_puntos + " pts · USD " + savedMission.recompensa_dinero + "\nEquipamiento: " + savedMission.required_equipment.join(", ") + "\nCanal de voz: <#" + savedMission.voice_channel_id + "> (" + savedMission.voice_channel_name + ")\nServidor privado: " + savedMission.private_server_url, mission_id: savedMission.id, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
         db.discord_events.push(missionEvent);
         saveDB(db);
         return { data: { mission_id: savedMission.id, event_id: missionEvent.id }, error: null };
@@ -689,7 +709,7 @@
         var announcementTitle = String(args && args.p_title || "").trim();
         var announcementMessage = String(args && args.p_message || "").trim();
         if (!announcementTitle || !announcementMessage) return { data: null, error: { message: "Título y mensaje son obligatorios." } };
-        var announcementEvent = { id: uid(), tipo: "announcement_published", titulo: announcementTitle.slice(0, 120), mensaje: announcementMessage.slice(0, 1800), kind: String(args && args.p_kind || "general"), mission_id: null, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
+        var announcementEvent = { id: uid(), tipo: "announcement_published", titulo: announcementTitle.slice(0, 120), mensaje: announcementMessage.slice(0, 1800), kind: String(args && args.p_kind || "general"), target_channel_key: String(args && args.p_channel_key || "announcements"), embed_color: Math.max(0, Math.min(16777215, Number(args && args.p_embed_color || 14071886))), mission_id: null, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
         db.discord_events.push(announcementEvent);
         saveDB(db);
         return { data: { event_id: announcementEvent.id }, error: null };

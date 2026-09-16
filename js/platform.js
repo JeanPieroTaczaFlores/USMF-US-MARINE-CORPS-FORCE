@@ -15,6 +15,7 @@
     adminTransactions: [],
     missions: [],
     missionParticipants: [],
+    voiceSessions: [],
     discordEvents: [],
     trainingAssignments: [],
     specialtyApplications: [],
@@ -243,7 +244,8 @@
       supabase.from("specialty_training_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("support_tickets").select("*").order("updated_at", { ascending: false }),
       supabase.from("support_ticket_comments").select("*").order("created_at", { ascending: true }),
-      supabase.from("discord_invites").select("*").order("created_at", { ascending: false }).limit(1)
+      supabase.from("discord_invites").select("*").order("created_at", { ascending: false }).limit(1),
+      supabase.from("voice_sessions").select("*").order("joined_at", { ascending: false }).limit(200)
     ]);
     state.transactions = results[0].data || [];
     state.items = results[1].data || [];
@@ -258,6 +260,7 @@
     state.tickets = results[10].data || [];
     state.ticketComments = results[11].data || [];
     state.discordInvites = results[12].data || [];
+    state.voiceSessions = results[13].data || [];
     state.profile = await getProfile(userId);
     hydrateIdentity();
     renderTransactions();
@@ -673,9 +676,7 @@
       var myStatus = mine ? '<span class="mission-personal-status ' + escapeHtml(mine.estado) + '">' + escapeHtml(mine.rewarded_at ? "RECOMPENSA ACREDITADA: " + points(mission.recompensa_puntos) + " + " + money(mission.recompensa_dinero) : participantStatusLabel(mine.estado)) + '</span>' : '';
       var equipment = missionEquipment(mission);
       var equipmentBlock = equipment.length ? '<div class="mission-equipment"><strong>EQUIPAMIENTO PARA ESTA MISIÓN</strong><ul>' + equipment.map(function (item) { var owned = ownsEquipment(item); return '<li><span>' + escapeHtml(item) + '</span><small class="' + (owned ? "ready" : "check") + '">' + (owned ? "EN INVENTARIO" : "VERIFICAR") + '</small></li>'; }).join("") + '</ul></div>' : '<div class="mission-equipment"><strong>EQUIPAMIENTO PARA ESTA MISIÓN</strong><p>El mando aún no publicó una lista.</p></div>';
-      var serverUrl = safeRobloxUrl(mission.private_server_url);
-      var serverAccess = serverUrl && (mine || isStaff()) ? '<a class="mission-server-link" href="' + escapeHtml(serverUrl) + '" target="_blank" rel="noopener noreferrer">ABRIR SERVIDOR PRIVADO DE ROBLOX ↗</a>' : serverUrl ? '<p class="mission-server-locked">Únete a la misión para habilitar el enlace privado.</p>' : '';
-      return '<article class="mission-card ' + escapeHtml(mission.estado) + '"><div class="mission-card-top"><span class="mission-status">' + escapeHtml(missionStatusLabel(mission.estado)) + '</span><span>' + participants.length + ' participantes</span></div><h3>' + escapeHtml(mission.titulo) + '</h3><p>' + escapeHtml(mission.descripcion || "Sin descripción operativa.") + '</p><div class="mission-meta"><span><strong>FECHA</strong>' + escapeHtml(dateText(mission.fecha)) + '</span><span><strong>RECOMPENSA</strong>' + escapeHtml(points(mission.recompensa_puntos)) + ' · ' + escapeHtml(money(mission.recompensa_dinero)) + '</span></div>' + equipmentBlock + serverAccess + '<div class="mission-card-actions">' + myStatus + action + editAction + '</div></article>';
+      return '<article class="mission-card ' + escapeHtml(mission.estado) + '"><div class="mission-card-top"><span class="mission-status">' + escapeHtml(missionStatusLabel(mission.estado)) + '</span><span>' + participants.length + ' participantes</span></div><h3>' + escapeHtml(mission.titulo) + '</h3><p>' + escapeHtml(mission.descripcion || "Sin descripción operativa.") + '</p><div class="mission-meta"><span><strong>FECHA</strong>' + escapeHtml(dateText(mission.fecha)) + '</span><span><strong>RECOMPENSA</strong>' + escapeHtml(points(mission.recompensa_puntos)) + ' · ' + escapeHtml(money(mission.recompensa_dinero)) + '</span></div>' + equipmentBlock + '<div class="mission-card-actions">' + myStatus + action + editAction + '</div></article>';
     }).join("") : '<p class="empty-state">No hay misiones publicadas.</p>';
 
     $("discordConnection").textContent = isSupabaseConfigured ? "DISCORD SEGURO" : "SIMULACIÓN LOCAL";
@@ -691,14 +692,26 @@
       var participants = state.missionParticipants.filter(function (row) { return String(row.mission_id) === String(mission.id); });
       var pending = participants.filter(function (row) { return ["confirmado", "ausente"].indexOf(row.estado) === -1; }).length;
       var participantRows = participants.length ? participants.map(function (participant) {
-        var reviewed = ["confirmado", "ausente"].indexOf(participant.estado) !== -1;
-        return '<div class="attendance-row"><div><strong>' + escapeHtml(profileName(participant.user_id)) + '</strong><small>' + escapeHtml(participantStatusLabel(participant.estado)) + (participant.rewarded_at ? ' · RECOMPENSA ACREDITADA' : '') + '</small></div><div class="admin-actions"><button type="button" data-review-participant="' + escapeHtml(participant.id) + '" data-review-status="confirmado" ' + (participant.estado === "confirmado" ? "disabled" : "") + '>CONFIRMAR</button><button type="button" data-review-participant="' + escapeHtml(participant.id) + '" data-review-status="ausente" ' + (participant.estado === "ausente" ? "disabled" : "") + '>AUSENTE</button></div></div>';
+        var member = state.adminProfiles.find(function (row) { return String(row.id) === String(participant.user_id); });
+        var voiceRows = state.voiceSessions.filter(function (row) { return String(row.mission_id) === String(mission.id) && (String(row.profile_id || "") === String(participant.user_id) || (member && member.discord_id && String(row.discord_id) === String(member.discord_id))); });
+        var voiceSeconds = voiceRows.reduce(function (sum, row) { return sum + Number(row.duration_seconds || (row.left_at ? Math.max(0, (new Date(row.left_at) - new Date(row.joined_at)) / 1000) : 0)); }, 0);
+        var inVoice = voiceRows.some(function (row) { return !row.left_at; });
+        var voiceText = voiceRows.length ? ' · VOZ: ' + (inVoice ? 'CONECTADO · ' : '') + formatDuration(voiceSeconds) : ' · VOZ: SIN REGISTRO';
+        return '<div class="attendance-row"><div><strong>' + escapeHtml(profileName(participant.user_id)) + '</strong><small>' + escapeHtml(participantStatusLabel(participant.estado)) + (participant.rewarded_at ? ' · RECOMPENSA ACREDITADA' : '') + escapeHtml(voiceText) + '</small></div><div class="admin-actions"><button type="button" data-review-participant="' + escapeHtml(participant.id) + '" data-review-status="confirmado" ' + (participant.estado === "confirmado" ? "disabled" : "") + '>CONFIRMAR</button><button type="button" data-review-participant="' + escapeHtml(participant.id) + '" data-review-status="ausente" ' + (participant.estado === "ausente" ? "disabled" : "") + '>AUSENTE</button></div></div>';
       }).join("") : '<p class="empty-state">Aún no hay inscritos.</p>';
       var startButton = mission.estado === "programada" ? '<button type="button" data-start-mission="' + escapeHtml(mission.id) + '">LANZAR MISIÓN</button>' : '';
       var finishButton = mission.estado === "activa" ? '<button type="button" class="finish-mission" data-finish-mission="' + escapeHtml(mission.id) + '" ' + (pending || !participants.length ? "disabled" : "") + '>TERMINAR Y ENTREGAR RECOMPENSAS</button>' : '';
       var confirmAll = mission.estado === "activa" && pending ? '<button type="button" data-confirm-all="' + escapeHtml(mission.id) + '">CONFIRMAR TODOS LOS PENDIENTES</button>' : '';
-      return '<details class="mission-admin-card" ' + (mission.estado === "activa" ? "open" : "") + '><summary><span><strong>' + escapeHtml(mission.titulo) + '</strong><small>' + escapeHtml(missionStatusLabel(mission.estado)) + ' · ' + participants.length + ' participantes · Premio: ' + escapeHtml(points(mission.recompensa_puntos)) + ' + ' + escapeHtml(money(mission.recompensa_dinero)) + '</small></span><span>' + pending + ' por revisar</span></summary><div class="mission-admin-body"><div class="mission-command-actions"><button type="button" data-edit-mission="' + escapeHtml(mission.id) + '">EDITAR DATOS Y RECOMPENSAS</button>' + startButton + confirmAll + finishButton + '</div><div class="attendance-list">' + participantRows + '</div>' + (mission.estado === "activa" && pending ? '<p class="mission-blocker">Debes confirmar o marcar ausente a cada participante antes de cerrar.</p>' : '') + '</div></details>';
+      var voiceChannel = mission.voice_channel_name || mission.voice_channel_id || "Sin canal asignado";
+      return '<details class="mission-admin-card" ' + (mission.estado === "activa" ? "open" : "") + '><summary><span><strong>' + escapeHtml(mission.titulo) + '</strong><small>' + escapeHtml(missionStatusLabel(mission.estado)) + ' · ' + participants.length + ' participantes · Voz: ' + escapeHtml(voiceChannel) + ' · Premio: ' + escapeHtml(points(mission.recompensa_puntos)) + ' + ' + escapeHtml(money(mission.recompensa_dinero)) + '</small></span><span>' + pending + ' por revisar</span></summary><div class="mission-admin-body"><div class="mission-command-actions"><button type="button" data-edit-mission="' + escapeHtml(mission.id) + '">EDITAR DATOS Y RECOMPENSAS</button>' + startButton + confirmAll + finishButton + '</div><div class="attendance-list">' + participantRows + '</div>' + (mission.estado === "activa" && pending ? '<p class="mission-blocker">Debes confirmar o marcar ausente a cada participante antes de cerrar.</p>' : '') + '</div></details>';
     }).join("") : '<p class="empty-state">Crea la primera misión desde el formulario.</p>';
+  }
+
+  function formatDuration(seconds) {
+    var total = Math.max(0, Math.round(Number(seconds || 0)));
+    var hours = Math.floor(total / 3600);
+    var minutes = Math.floor((total % 3600) / 60);
+    return (hours ? hours + " h " : "") + minutes + " min";
   }
 
   async function sendDiscordEvent(eventId) {
@@ -737,6 +750,8 @@
     $("missionRewardMoney").value = "0";
     $("missionEquipment").value = "";
     $("missionServerUrl").value = "";
+    $("missionVoiceChannelId").value = "";
+    $("missionVoiceChannelName").value = "";
     $("missionSubmitBtn").textContent = "CREAR MISIÓN";
     $("cancelMissionEdit").classList.add("hidden");
   }
@@ -757,7 +772,9 @@
       p_reward_money: Math.max(0, parseInt($("missionRewardMoney").value, 10) || 0),
       p_status: $("missionStatus").value,
       p_private_server_url: serverUrl,
-      p_required_equipment: equipment
+      p_required_equipment: equipment,
+      p_voice_channel_id: $("missionVoiceChannelId").value.trim(),
+      p_voice_channel_name: $("missionVoiceChannelName").value.trim()
     });
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     setMessage("appMessage", id ? "Misión actualizada y anuncio enviado al bot." : "Misión creada y anuncio enviado al bot.", "success");
@@ -778,6 +795,8 @@
     $("missionRewardMoney").value = mission.recompensa_dinero || 0;
     $("missionEquipment").value = missionEquipment(mission).join("\n");
     $("missionServerUrl").value = mission.private_server_url || "";
+    $("missionVoiceChannelId").value = mission.voice_channel_id || "";
+    $("missionVoiceChannelName").value = mission.voice_channel_name || "";
     $("missionSubmitBtn").textContent = "GUARDAR CAMBIOS";
     $("cancelMissionEdit").classList.remove("hidden");
     $("missionCommand").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -997,7 +1016,7 @@
     if (!canManageUsers()) return setMessage("appMessage", "Solo Administración puede publicar anuncios.", "error");
     var button = $("announcementSubmit");
     setBusy(button, true, "ENVIANDO…");
-    var result = await supabase.rpc("publish_announcement", { p_title: $("announcementTitle").value.trim(), p_message: $("announcementBody").value.trim(), p_kind: $("announcementKind").value });
+    var result = await supabase.rpc("publish_announcement", { p_title: $("announcementTitle").value.trim(), p_message: $("announcementBody").value.trim(), p_kind: $("announcementKind").value, p_channel_key: $("announcementChannel").value, p_embed_color: parseInt($("announcementColor").value, 10) });
     setBusy(button, false);
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     $("announcementForm").reset();
