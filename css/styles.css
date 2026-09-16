@@ -612,6 +612,34 @@ img {
   height: 100%;
   border: 0;
   display: block;
+  object-fit: cover;
+}
+
+.hero-feature {
+  overflow: hidden;
+}
+
+.hero-feature figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 2.8rem 1.2rem 1rem;
+  font-family: var(--font-cond);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  color: #f3f1e8;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  pointer-events: none;
+}
+
+.hero-feature figcaption span {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.18em;
 }
 
 .hero-unmute {
@@ -1319,6 +1347,31 @@ img {
   border-bottom: 1px solid var(--border-gold);
 }
 
+.page-about .page-hero {
+  background: linear-gradient(120deg, rgba(10, 10, 10, .96), rgba(12, 15, 13, .7)), url("../img/field/formation.jpg") center 42% / cover;
+}
+
+.page-missions .page-hero {
+  background: linear-gradient(120deg, rgba(10, 10, 10, .96), rgba(12, 15, 13, .62)), url("../img/field/mission.jpg") center 40% / cover;
+}
+
+.page-recruitment .page-hero {
+  background: linear-gradient(120deg, rgba(10, 10, 10, .96), rgba(12, 15, 13, .64)), url("../img/field/training.jpg") center 48% / cover;
+}
+
+.page-ranks .page-hero {
+  background: linear-gradient(120deg, rgba(10, 10, 10, .96), rgba(12, 15, 13, .66)), url("../img/field/ceremony.jpg") center 52% / cover;
+}
+
+.page-resources .page-hero,
+.page-document .page-hero {
+  background: linear-gradient(120deg, rgba(10, 10, 10, .96), rgba(12, 15, 13, .68)), url("../img/field/convoy.jpg") center 54% / cover;
+}
+
+.page-contact .page-hero {
+  background: linear-gradient(120deg, rgba(10, 10, 10, .96), rgba(12, 15, 13, .65)), url("../img/field/aviation.jpg") center 48% / cover;
+}
+
 .page-hero::before {
   content: "";
   position: absolute;
@@ -1430,6 +1483,47 @@ img {
   flex-direction: column;
   gap: 0.55rem;
   transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.rank-medal {
+  width: 100%;
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.35rem;
+  padding: 0.75rem;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(211, 175, 74, 0.12), transparent 56%),
+    #0b0d0b;
+  border: 1px solid rgba(211, 175, 74, 0.18);
+}
+
+.rank-medal img {
+  width: auto;
+  height: 82px;
+  max-width: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.48));
+}
+
+.rank-medal-officer img {
+  height: 64px;
+}
+
+.rank-medal-empty span {
+  font-family: var(--font-cond);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+}
+
+.rank-source-note {
+  margin-top: 0.7rem;
+  color: var(--text-dim);
+  font-size: 0.86rem;
+  max-width: 850px;
 }
 
 .rank-card:hover {

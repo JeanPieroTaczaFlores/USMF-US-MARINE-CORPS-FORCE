@@ -82,7 +82,7 @@
 .member-view.active { display:block; }
 @keyframes platformFade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 
-.summary-hero { position:relative; overflow:hidden; min-height:220px; padding: clamp(1.5rem,4vw,3.2rem); display:flex; justify-content:space-between; align-items:flex-end; gap:2rem; background:linear-gradient(110deg,rgba(25,31,25,.97),rgba(12,15,13,.87)),url('../img/13fc4762-2d97-4936-97ef-aa21037c578a.webp') center/cover; border:1px solid var(--platform-line); }
+.summary-hero { position:relative; overflow:hidden; min-height:220px; padding: clamp(1.5rem,4vw,3.2rem); display:flex; justify-content:space-between; align-items:flex-end; gap:2rem; background:linear-gradient(110deg,rgba(25,31,25,.97),rgba(12,15,13,.78)),url('../img/field/ceremony.jpg') center/cover; border:1px solid var(--platform-line); }
 .summary-hero::after { content:"SEMPER FI"; position:absolute; right:-.5rem; top:-.8rem; color:rgba(255,255,255,.035); font:5.5rem "Anton",sans-serif; }
 .summary-hero h2 { margin:.5rem 0; font:clamp(2rem,4vw,3.6rem) "Anton",sans-serif; }
 .summary-hero p:not(.eyebrow) { color:#afb4ae; }
