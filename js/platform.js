@@ -119,6 +119,21 @@
 
   function applyLocalRolePreview(profile) {
     var preview = !isSupabaseConfigured ? new URLSearchParams(window.location.search).get("preview") : null;
+    if (preview === "member") {
+      state.rolePreview = "member";
+      return Object.assign({}, profile, {
+        nombre: "Soldado USMCF",
+        usuario_roblox: "Marine_USMCF",
+        email: "soldado@usmcf.com",
+        rango: "Soldado",
+        rol: "usuario",
+        estado: "activo",
+        puntos: 240,
+        dinero: 720,
+        discord_id: null,
+        ultimo_salario: null
+      });
+    }
     if (preview !== "staff") {
       state.rolePreview = null;
       return profile;
@@ -155,13 +170,18 @@
       $("memberView").classList.remove("hidden");
       $("logoutBtn").classList.remove("hidden");
       hydrateIdentity();
-      var accessResult = await supabase.rpc("record_platform_login");
-      if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
-      await syncDiscordRoles(user.id, true);
-      await verifySalary();
+      if (state.rolePreview !== "member") {
+        var accessResult = await supabase.rpc("record_platform_login");
+        if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
+        await syncDiscordRoles(user.id, true);
+        await verifySalary();
+      }
       await loadPlatformData();
       if (state.rolePreview === "staff") {
         setMessage("appMessage", "VISTA PREVIA STAFF: puedes gestionar misiones, entrenamientos, especialidades, puntos y recompensas. La creación y modificación integral de usuarios permanece reservada a Administración.", "success");
+      }
+      if (state.rolePreview === "member") {
+        setMessage("appMessage", "VISTA PREVIA SOLDADO: esta es la experiencia de un miembro activo. Los controles de Administración y Staff permanecen ocultos y esta vista no modifica datos.", "success");
       }
       if (state.profile.estado !== "activo") {
         setMessage("appMessage", "Tu perfil está " + state.profile.estado + ". Puedes consultar la biblioteca, pero las compras se habilitan después de la aprobación del staff.");
