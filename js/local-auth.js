@@ -62,7 +62,7 @@
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], mission_participants: [], training_assignments: [], specialty_applications: [], faction_members: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
+    var defaults = { missions: [], mission_participants: [], training_assignments: [], specialty_applications: [], specialty_training_requests: [], support_tickets: [], support_ticket_comments: [], discord_invites: [], faction_members: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
@@ -77,6 +77,7 @@
     db.profiles.forEach(function (p) {
       if (!p.last_login) p.last_login = p.created_at || new Date().toISOString();
       if (p.ultimo_salario === undefined) p.ultimo_salario = null;
+      if (!p.callsign) p.callsign = p.usuario_roblox || String(p.nombre || "Marine").split(/\s+/)[0];
     });
     db.missions.forEach(function (mission) {
       if (!Array.isArray(mission.required_equipment)) mission.required_equipment = ["Uniforme MCCUU", "Chaleco medio", "M4A1 con silenciador"];
@@ -95,6 +96,10 @@
       mission_participants: [],
       training_assignments: [],
       specialty_applications: [],
+      specialty_training_requests: [],
+      support_tickets: [],
+      support_ticket_comments: [],
+      discord_invites: [],
       faction_members: [],
       transactions: [],
       opinions: [],
@@ -110,7 +115,7 @@
     var adminId = uid();
 
     db.profiles.push({
-      id: adminId, email: "admin@usmcf.com", nombre: "Comandante USMCF",
+      id: adminId, email: "admin@usmcf.com", nombre: "Comandante USMCF", callsign: "Comando",
       usuario_roblox: "AdminUSMCF", discord_id: null, rango: "General", rol: "super_admin",
       estado: "activo", puntos: 10000, dinero: 50000,
       last_login: now, created_at: now
@@ -337,7 +342,7 @@
         var id = uid();
         var profile = {
           id: id, email: email, nombre: meta.nombre || "Sin nombre",
-          usuario_roblox: meta.usuario_roblox || "SinUsuario",
+          usuario_roblox: meta.usuario_roblox || "SinUsuario", callsign: meta.callsign || meta.usuario_roblox || "Marine",
           rango: "Recluta", rol: "usuario", estado: "pendiente",
           puntos: 0, dinero: 0, last_login: new Date().toISOString(), created_at: new Date().toISOString()
         };
@@ -427,7 +432,7 @@
             if (db.profiles.some(function (row) { return row.email === email; })) return { data: null, error: { message: "Ese correo ya tiene una cuenta." } };
             var newId = uid();
             var now = new Date().toISOString();
-            var newProfile = { id: newId, email: email, nombre: body.nombre || "Sin nombre", usuario_roblox: body.usuario_roblox || "SinUsuario", rango: "Recluta", rol: body.rol || "usuario", estado: "pendiente", puntos: 0, dinero: 0, last_login: now, created_at: now };
+            var newProfile = { id: newId, email: email, nombre: body.nombre || "Sin nombre", usuario_roblox: body.usuario_roblox || "SinUsuario", callsign: body.callsign || body.usuario_roblox || "Marine", rango: "Recluta", rol: body.rol || "usuario", estado: "pendiente", puntos: 0, dinero: 0, last_login: now, created_at: now };
             db.profiles.push(newProfile);
             db.training_assignments.push({ id: uid(), user_id: newId, trainer_id: null, estado: "asignado", assigned_at: now, started_at: null, completed_at: null });
             var createEvent = { id: uid(), tipo: "training_assigned", titulo: "Nuevo recluta", mensaje: newProfile.nombre + " recibió el Entrenamiento Básico TRS.", mission_id: null, user_id: newId, estado: "pendiente", created_at: now };
@@ -443,7 +448,7 @@
             if (!targetProfile) return { data: null, error: { message: "Usuario no encontrado." } };
             if (body.email !== undefined && !/^[^@\s]+@usmcf\.com$/i.test(String(body.email).trim())) return { data: null, error: { message: "Solo se aceptan correos institucionales @usmcf.com." } };
             var oldEmail = targetProfile.email;
-            ["nombre", "usuario_roblox", "email", "rol", "estado", "rango"].forEach(function (field) { if (body[field] !== undefined) targetProfile[field] = body[field]; });
+            ["nombre", "callsign", "usuario_roblox", "email", "rol", "estado", "rango"].forEach(function (field) { if (body[field] !== undefined) targetProfile[field] = body[field]; });
             if (oldEmail !== targetProfile.email) {
               var storedPasswords = getPasswords();
               storedPasswords[targetProfile.email] = storedPasswords[oldEmail];
@@ -657,6 +662,105 @@
         db.discord_events.push(announcementEvent);
         saveDB(db);
         return { data: { event_id: announcementEvent.id }, error: null };
+      }
+
+      if (name === "request_specialty_training") {
+        if (profile.rol !== "usuario" || profile.estado !== "activo") return { data: null, error: { message: "Debes ser un miembro activo para solicitar cursos." } };
+        var specialtyKey = String(args && args.p_specialty_key || "");
+        var requirements = { raider: 100, radio: 250, medico: 250, tirador_ligero: 300, tirador_pesado: 400, machine_gunner: 300, combat_engineer: 300, conductor: 120, artillero: 120 };
+        if (requirements[specialtyKey] === undefined || Number(profile.puntos || 0) < requirements[specialtyKey]) return { data: null, error: { message: "No cumples los puntos requeridos para este curso." } };
+        var existingTraining = db.specialty_training_requests.find(function (row) { return String(row.user_id) === String(profile.id) && row.specialty_key === specialtyKey && ["pendiente", "asignado", "en_curso"].indexOf(row.estado) !== -1; });
+        if (existingTraining) return { data: null, error: { message: "Ya tienes una solicitud activa para esta especialidad." } };
+        var trainingRequest = { id: uid(), user_id: profile.id, specialty_key: specialtyKey, notes: String(args.p_notes || "").slice(0, 500), estado: "pendiente", trainer_id: null, created_at: new Date().toISOString(), started_at: null, completed_at: null, reviewed_at: null };
+        db.specialty_training_requests.push(trainingRequest);
+        var requestEvent = { id: uid(), tipo: "specialty_training_requested", titulo: "Nuevo entrenamiento solicitado", mensaje: "@" + profile.callsign + " solicitó el curso " + specialtyKey + " con " + profile.puntos + " puntos.", mission_id: null, user_id: profile.id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(requestEvent);
+        saveDB(db);
+        return { data: { request_id: trainingRequest.id, event_id: requestEvent.id }, error: null };
+      }
+
+      if (name === "admin_set_specialty") {
+        if (["admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Administración." } };
+        var managedUserId = args && args.p_user_id;
+        var managedKey = String(args && args.p_specialty_key || "");
+        var enabled = Boolean(args && args.p_enabled);
+        var managedProfile = db.profiles.find(function (row) { return String(row.id) === String(managedUserId); });
+        if (!managedProfile) return { data: null, error: { message: "Miembro no encontrado." } };
+        var managedSpecialty = db.specialty_applications.find(function (row) { return String(row.user_id) === String(managedUserId) && row.role_key === managedKey; });
+        if (enabled) {
+          if (managedSpecialty) { managedSpecialty.estado = "aprobada"; managedSpecialty.reviewed_by = profile.id; managedSpecialty.reviewed_at = new Date().toISOString(); }
+          else db.specialty_applications.push({ id: uid(), user_id: managedUserId, role_key: managedKey, estado: "aprobada", created_at: new Date().toISOString(), reviewed_at: new Date().toISOString(), reviewed_by: profile.id });
+        } else {
+          db.specialty_applications = db.specialty_applications.filter(function (row) { return !(String(row.user_id) === String(managedUserId) && row.role_key === managedKey); });
+        }
+        var managedEvent = { id: uid(), tipo: enabled ? "specialty_approved" : "specialty_revoked", titulo: enabled ? "Especialidad otorgada" : "Especialidad retirada", mensaje: profile.nombre + (enabled ? " otorgó " : " retiró ") + managedKey + " a " + managedProfile.nombre + ".", mission_id: null, user_id: managedUserId, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(managedEvent);
+        saveDB(db);
+        return { data: { event_id: managedEvent.id }, error: null };
+      }
+
+      if (name === "review_specialty_training") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var requestedTraining = db.specialty_training_requests.find(function (row) { return String(row.id) === String(args.p_request_id); });
+        if (!requestedTraining) return { data: null, error: { message: "Solicitud no encontrada." } };
+        var courseAction = String(args.p_action || "");
+        if (courseAction === "tomar" && requestedTraining.estado === "pendiente") {
+          requestedTraining.estado = "en_curso"; requestedTraining.trainer_id = profile.id; requestedTraining.started_at = new Date().toISOString();
+        } else if (courseAction === "finalizar" && requestedTraining.estado === "en_curso") {
+          if (String(requestedTraining.trainer_id) !== String(profile.id) && ["admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Solo el instructor responsable o un administrador puede finalizarlo." } };
+          requestedTraining.estado = "finalizado"; requestedTraining.completed_at = new Date().toISOString(); requestedTraining.reviewed_at = new Date().toISOString();
+          var existingRole = db.specialty_applications.find(function (row) { return String(row.user_id) === String(requestedTraining.user_id) && row.role_key === requestedTraining.specialty_key; });
+          if (existingRole) { existingRole.estado = "aprobada"; existingRole.reviewed_at = new Date().toISOString(); existingRole.reviewed_by = profile.id; }
+          else db.specialty_applications.push({ id: uid(), user_id: requestedTraining.user_id, role_key: requestedTraining.specialty_key, estado: "aprobada", created_at: requestedTraining.created_at, reviewed_at: new Date().toISOString(), reviewed_by: profile.id });
+        } else if (courseAction === "rechazar" && ["pendiente", "en_curso"].indexOf(requestedTraining.estado) !== -1) {
+          requestedTraining.estado = "rechazada"; requestedTraining.reviewed_at = new Date().toISOString();
+        } else return { data: null, error: { message: "La solicitud no permite esa acción." } };
+        var courseEvent = { id: uid(), tipo: courseAction === "finalizar" ? "specialty_approved" : "specialty_training_" + courseAction, titulo: courseAction === "finalizar" ? "Especialidad concedida" : "Actualización de entrenamiento", mensaje: profile.nombre + " actualizó el curso " + requestedTraining.specialty_key + " a " + requestedTraining.estado + ".", mission_id: null, user_id: requestedTraining.user_id, estado: "pendiente", created_at: new Date().toISOString() };
+        db.discord_events.push(courseEvent);
+        saveDB(db);
+        return { data: { event_id: courseEvent.id, user_id: requestedTraining.user_id }, error: null };
+      }
+
+      if (name === "create_support_ticket") {
+        var ticketType = String(args && args.p_type || "soporte");
+        var ticketSubject = String(args && args.p_subject || "").trim();
+        var ticketBody = String(args && args.p_body || "").trim();
+        if (!ticketSubject || !ticketBody) return { data: null, error: { message: "Asunto y detalle son obligatorios." } };
+        var ticketNow = new Date().toISOString();
+        var ticket = { id: uid(), user_id: profile.id, tipo: ticketType, asunto: ticketSubject.slice(0, 120), detalle: ticketBody.slice(0, 1800), estado: "abierto", assigned_to: null, created_at: ticketNow, updated_at: ticketNow, closed_at: null, reminded_at: null };
+        db.support_tickets.push(ticket);
+        var ticketEvent = { id: uid(), tipo: "ticket_created", titulo: "Nuevo ticket: " + ticket.asunto, mensaje: "@" + profile.callsign + " abrió un ticket de " + ticket.tipo + ".\n" + ticket.detalle, mission_id: null, user_id: profile.id, estado: "pendiente", created_at: ticketNow };
+        db.discord_events.push(ticketEvent);
+        saveDB(db);
+        return { data: { ticket_id: ticket.id, event_id: ticketEvent.id }, error: null };
+      }
+
+      if (name === "comment_support_ticket") {
+        var ticketForComment = db.support_tickets.find(function (row) { return String(row.id) === String(args.p_ticket_id); });
+        if (!ticketForComment) return { data: null, error: { message: "Ticket no encontrado." } };
+        if (String(ticketForComment.user_id) !== String(profile.id) && ["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "No puedes comentar en este ticket." } };
+        var commentText = String(args.p_message || "").trim();
+        if (!commentText) return { data: null, error: { message: "El comentario está vacío." } };
+        var commentNow = new Date().toISOString();
+        db.support_ticket_comments.push({ id: uid(), ticket_id: ticketForComment.id, author_id: profile.id, author_name: profile.callsign || profile.nombre, message: commentText.slice(0, 1000), created_at: commentNow });
+        ticketForComment.updated_at = commentNow;
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) !== -1 && ticketForComment.estado === "abierto") ticketForComment.estado = "en_revision";
+        var commentEvent = { id: uid(), tipo: "ticket_commented", titulo: "Respuesta en ticket: " + ticketForComment.asunto, mensaje: "@" + profile.callsign + ": " + commentText.slice(0, 900), mission_id: null, user_id: ticketForComment.user_id, estado: "pendiente", created_at: commentNow };
+        db.discord_events.push(commentEvent);
+        saveDB(db);
+        return { data: { event_id: commentEvent.id }, error: null };
+      }
+
+      if (name === "update_support_ticket_status") {
+        if (["staff", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Staff y Administración." } };
+        var ticketForStatus = db.support_tickets.find(function (row) { return String(row.id) === String(args.p_ticket_id); });
+        var nextStatus = String(args.p_status || "");
+        if (!ticketForStatus || ["abierto", "en_revision", "resuelto", "cerrado"].indexOf(nextStatus) === -1) return { data: null, error: { message: "Ticket o estado inválido." } };
+        ticketForStatus.estado = nextStatus; ticketForStatus.assigned_to = profile.id; ticketForStatus.updated_at = new Date().toISOString(); ticketForStatus.closed_at = ["resuelto", "cerrado"].indexOf(nextStatus) !== -1 ? ticketForStatus.updated_at : null;
+        var statusEvent = { id: uid(), tipo: "ticket_status_changed", titulo: "Ticket " + nextStatus, mensaje: profile.nombre + " cambió el estado de “" + ticketForStatus.asunto + "” a " + nextStatus + ".", mission_id: null, user_id: ticketForStatus.user_id, estado: "pendiente", created_at: ticketForStatus.updated_at };
+        db.discord_events.push(statusEvent);
+        saveDB(db);
+        return { data: { event_id: statusEvent.id }, error: null };
       }
 
       if (name === "checkout_cart") {

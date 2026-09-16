@@ -48,7 +48,7 @@ Las URLs de webhook, el token del bot y la clave `service_role` permanecen exclu
 
 ## Bot Discord 24/7
 
-El directorio `bot/` contiene el servicio permanente que procesa eventos pendientes, publica anuncios, anuncia graduaciones y ascensos, sincroniza rangos y especialidades y actualiza cada diez minutos el directorio completo de miembros de la facción. No necesita librerías externas: usa Node 22, la API REST de Discord y Supabase. El archivo `render.yaml` permite desplegarlo como servicio Docker con comprobación `/health`.
+El directorio `bot/` contiene el servicio permanente que procesa eventos pendientes, publica anuncios, tickets y respuestas, anuncia graduaciones y ascensos, sincroniza rangos y especialidades y actualiza cada diez minutos el directorio completo de miembros de la facción. También recuerda al Staff los tickets o cursos que superen tres días sin resolverse y crea una invitación de Discord renovada antes de cumplir 24 horas. No necesita librerías externas: usa Node 22, la API REST de Discord y Supabase. El archivo `render.yaml` permite desplegarlo como servicio Docker con comprobación `/health`.
 
 1. Aplica todas las migraciones, incluida `20260915051050_discord_roster_and_official_email.sql`.
 2. Copia las variables de `bot/.env.example` en el proveedor donde funcionará el bot.

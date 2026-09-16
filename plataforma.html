@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20260915b" />
+  <link rel="stylesheet" href="css/platform.css?v=20260916a" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -66,6 +66,7 @@
             <label>Nombre completo<input id="registerName" required autocomplete="name" placeholder="Nombre y apellido" /></label>
             <label>Usuario Roblox<input id="registerRoblox" required placeholder="Tu usuario" /></label>
           </div>
+          <label>Nombre de usuario operativo<input id="registerCallsign" required maxlength="24" pattern="^[A-Za-z0-9_.-]{3,24}$" placeholder="Ej.: Narumi" /><small>Será tu identidad visible como @Narumi dentro de la plataforma.</small></label>
           <label>Correo oficial<input id="registerEmail" type="email" autocomplete="email" required pattern="^[^@\s]+@usmcf\.com$" title="Solo se aceptan correos @usmcf.com" placeholder="marine@usmcf.com" /></label>
           <label>Contraseña<input id="registerPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Mínimo 8 caracteres" /></label>
           <button class="platform-primary" id="registerBtn" type="submit">CREAR SOLICITUD</button>
@@ -88,9 +89,10 @@
           <button class="member-nav-btn" data-view="inventario"><span>04</span> Inventario y facturas</button>
           <button class="member-nav-btn" data-view="misiones"><span>05</span> Misiones</button>
           <button class="member-nav-btn" data-view="entrenamiento"><span>06</span> Mi entrenamiento</button>
-          <button class="member-nav-btn" data-view="especialidades"><span>07</span> Especialidades</button>
-          <button class="member-nav-btn" data-view="biblioteca"><span>08</span> Biblioteca</button>
-          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>09</span> Administración</button>
+          <button class="member-nav-btn" id="specialtiesNav" data-view="especialidades"><span>07</span> Especialidades</button>
+          <button class="member-nav-btn" data-view="tickets"><span>08</span> Tickets <b class="nav-count hidden" id="ticketPendingBadge">0</b></button>
+          <button class="member-nav-btn" data-view="biblioteca"><span>09</span> Biblioteca</button>
+          <button class="member-nav-btn hidden" id="adminNav" data-view="administracion"><span>10</span> Integrantes <b class="nav-count hidden" id="staffPendingBadge">0</b></button>
         </nav>
         <div class="sidebar-status"><span></span><div><strong>ESTADO OPERACIONAL</strong><small>Plataforma conectada</small></div></div>
       </aside>
@@ -105,11 +107,11 @@
         <section class="member-view active" data-panel="resumen">
           <div class="summary-hero">
             <div><p class="eyebrow">EXPEDIENTE ACTIVO</p><h2 id="welcomeTitle">Bienvenido, Marine</h2><p>Tu información operativa y económica está actualizada en este panel.</p></div>
-            <div class="service-number"><span>ID DE SERVICIO</span><strong id="serviceId">—</strong></div>
+            <div class="service-number"><span>USUARIO OPERATIVO</span><strong id="profileHandle">@Marine</strong></div>
           </div>
           <article class="onboarding-banner hidden" id="onboardingBanner"><div><span>ENTRENAMIENTO ASIGNADO</span><h3>Entrenamiento Básico TRS</h3><p id="onboardingTrainer">Esperando instructor responsable.</p></div><strong id="onboardingStatus">ASIGNADO</strong></article>
           <article class="rank-progress-card" id="rankProgressCard"><div><span>PROGRESO DE RANGO</span><h3><strong id="rankProgressCurrent">—</strong><small id="rankProgressNext">Siguiente rango</small></h3></div><div class="rank-progress-track"><span id="rankProgressBar"></span></div><p id="rankProgressText">Calculando tu progreso…</p></article>
-          <article class="discord-link-card"><div><span>IDENTIDAD OFICIAL</span><h3>Cuenta Discord</h3><p id="discordIdentityStatus">Comprobando vinculación…</p></div><button class="discord-login" id="linkDiscordBtn" type="button">VINCULAR DISCORD</button></article>
+          <article class="discord-link-card"><div><span>IDENTIDAD OFICIAL</span><h3>Cuenta Discord</h3><p id="discordIdentityStatus">Comprobando vinculación…</p><small id="discordInviteStatus">El bot publicará una invitación renovada cada 24 horas.</small></div><div class="discord-card-actions"><button class="discord-login" id="linkDiscordBtn" type="button">VINCULAR DISCORD</button><a class="secondary-action hidden" id="discordInviteLink" target="_blank" rel="noopener">ENTRAR AL SERVIDOR</a></div></article>
           <div class="metric-grid">
             <article class="metric-card"><span>RANGO ACTUAL</span><strong id="summaryRank">—</strong><small>Rango militar vigente</small></article>
             <article class="metric-card" id="summarySalaryCard"><span>PRÓXIMO SALARIO</span><strong id="summarySalary">—</strong><small id="summaryPayDate">Calculando fecha</small></article>
@@ -201,6 +203,16 @@
               <button class="platform-primary" id="wardrobeAccessButton" type="button" data-go="tienda" disabled>ACCEDER A VESTUARIOS</button>
             </article>
           </div>
+          <article class="platform-card specialty-training-request">
+            <div class="card-heading"><div><span>FORMACIÓN CONTINUA</span><h3>Solicitar entrenamiento de especialidad</h3></div><span class="connection-badge" id="eligibleCourseCount">0 DISPONIBLES</span></div>
+            <p class="muted-copy">El sistema sólo muestra cursos para los que ya tienes los puntos necesarios. Staff asignará un instructor y confirmará el resultado.</p>
+            <form id="specialtyTrainingForm" class="admin-form training-request-form">
+              <label class="field-control"><span>CURSO SOLICITADO</span><select id="specialtyTrainingType" required></select></label>
+              <label class="field-control"><span>DISPONIBILIDAD O COMENTARIO</span><textarea id="specialtyTrainingNotes" rows="3" maxlength="500" placeholder="Ej.: Disponible viernes después de las 20:00"></textarea></label>
+              <button class="platform-primary" id="specialtyTrainingSubmit" type="submit">SOLICITAR ENTRENAMIENTO</button>
+            </form>
+            <div id="mySpecialtyTrainingRequests" class="training-queue"></div>
+          </article>
         </section>
 
         <section class="member-view" data-panel="especialidades">
@@ -210,6 +222,22 @@
             <div><span class="section-tag">MARINES RAIDERS · MARSOC</span><h3>Opera donde la fuerza regular no llega</h3><p>Acceso a entrenamientos avanzados, misiones de alto riesgo, equipamiento Kandahar y progresión interna Raider. La admisión exige disciplina, actividad y evaluación de mando.</p><div class="benefit-tags"><span>Operaciones especiales</span><span>Uniforme Kandahar</span><span>Entrenamiento avanzado</span></div></div>
           </article>
           <div class="specialty-grid" id="specialtyGrid"></div>
+        </section>
+
+        <section class="member-view" data-panel="tickets">
+          <div class="section-heading"><span class="section-tag">SOPORTE Y REPORTES</span><h2>Tickets de atención</h2><p>Solicita ayuda, reporta un problema o deja una observación. La conversación queda guardada aquí y el bot avisa al canal de soporte de Discord.</p></div>
+          <div class="ticket-layout">
+            <article class="platform-card ticket-compose">
+              <div class="card-heading"><div><span>NUEVA SOLICITUD</span><h3>Abrir ticket</h3></div></div>
+              <form id="ticketForm" class="admin-form">
+                <label class="field-control"><span>TIPO</span><select id="ticketType"><option value="soporte">Soporte</option><option value="reporte">Reporte</option><option value="apelacion">Apelación</option><option value="otro">Otro</option></select></label>
+                <label class="field-control"><span>ASUNTO</span><input id="ticketSubject" required maxlength="120" placeholder="Resume lo que necesitas" /></label>
+                <label class="field-control"><span>DETALLE</span><textarea id="ticketBody" required maxlength="1800" rows="6" placeholder="Explica el caso con la información necesaria"></textarea></label>
+                <button class="platform-primary" id="ticketSubmit" type="submit">CREAR TICKET Y AVISAR A DISCORD</button>
+              </form>
+            </article>
+            <div id="ticketList" class="ticket-list"></div>
+          </div>
         </section>
 
         <section class="member-view" data-panel="biblioteca">
@@ -233,6 +261,7 @@
                 <summary>＋ AÑADIR NUEVO USUARIO</summary>
                 <form id="adminUserForm" class="admin-form">
                   <div class="form-row"><input id="newUserName" required placeholder="Nombre del miembro" /><input id="newUserRoblox" required placeholder="Usuario de Roblox" /></div>
+                  <input id="newUserCallsign" required maxlength="24" pattern="^[A-Za-z0-9_.-]{3,24}$" placeholder="Usuario operativo, ej.: Narumi" />
                   <input id="newUserEmail" type="email" required pattern="^[^@\s]+@usmcf\.com$" title="Solo se aceptan correos @usmcf.com" placeholder="marine@usmcf.com" />
                   <div class="form-row"><input id="newUserPassword" type="password" minlength="8" required placeholder="Contraseña temporal" /><select id="newUserRole"><option value="usuario">Miembro</option><option value="staff">Staff</option><option value="admin">Administrador</option></select></div>
                   <button class="platform-primary" type="submit" id="createUserBtn">CREAR USUARIO Y ASIGNAR ENTRENAMIENTO</button>
@@ -251,6 +280,16 @@
               <p class="muted-copy">Staff o Admin revisa la prueba correspondiente. Al aprobar, el bot sincroniza el rol especial en Discord.</p>
               <div id="specialtyApplicationQueue" class="training-queue"></div>
             </article>
+            <article class="platform-card training-card" id="specialtyTrainingQueuePanel">
+              <div class="card-heading"><div><span>CURSOS SOLICITADOS</span><h3>Entrenamientos de especialidad</h3></div><span class="connection-badge" id="specialtyTrainingPendingCount">0 PENDIENTES</span></div>
+              <p class="muted-copy">Staff toma la solicitud, imparte el curso y confirma la especialidad. Las solicitudes con tres días sin atención generan recordatorio en Discord.</p>
+              <div id="specialtyTrainingQueue" class="training-queue"></div>
+            </article>
+            <article class="platform-card training-card" id="ticketQueuePanel">
+              <div class="card-heading"><div><span>SOPORTE</span><h3>Tickets y reportes</h3></div><span class="connection-badge" id="ticketQueueCount">0 ABIERTOS</span></div>
+              <p class="muted-copy">Responde desde la plataforma; cada respuesta y cambio de estado queda sincronizado con la cola del bot.</p>
+              <div id="staffTicketQueue" class="ticket-list"></div>
+            </article>
             <article class="platform-card training-card hidden" id="announcementPanel">
               <div class="card-heading"><div><span>COMUNICACIONES</span><h3>Publicar anuncio en Discord</h3></div><span class="connection-badge">CANAL OFICIAL</span></div>
               <p class="muted-copy">Administración redacta el aviso aquí y el bot 24/7 lo entrega en el canal de anuncios. No se permiten menciones masivas automáticas.</p>
@@ -266,6 +305,7 @@
               <form id="adminItemForm" class="admin-form">
                 <input id="adminItemName" required placeholder="Nombre del implemento" />
                 <textarea id="adminItemDescription" required rows="3" placeholder="Descripción y condiciones de uso"></textarea>
+                <label class="field-control"><span>IMAGEN DEL IMPLEMENTO</span><input id="adminItemImage" type="text" placeholder="https://... o img/archivo.webp" /><small>Opcional. Puede ser una imagen oficial guardada en la web.</small></label>
                 <div class="form-row"><label class="field-control"><span>TIPO DE IMPLEMENTO</span><select id="adminItemType"><option value="uniforme">Uniforme</option><option value="insignia">Insignia</option><option value="equipo">Equipo</option><option value="reconocimiento">Reconocimiento</option></select></label><label class="field-control"><span>UNIDADES DISPONIBLES</span><input id="adminItemStock" type="number" min="-1" value="-1" /><small>Usa -1 si el stock es ilimitado.</small></label></div>
                 <div class="form-row"><label class="field-control"><span>PRECIO EN DÓLARES (USD)</span><input id="adminItemMoney" type="number" min="0" value="0" placeholder="Ej.: 120" /></label><label class="field-control"><span>PRECIO EN PUNTOS</span><input id="adminItemPoints" type="number" min="0" value="0" placeholder="Ej.: 250" /></label></div>
                 <button class="platform-primary" type="submit">PUBLICAR EN LA STORE</button>
@@ -279,9 +319,9 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/local-auth.js?v=20260915e"></script>
+  <script src="js/local-auth.js?v=20260916a"></script>
   <script src="js/config.js?v=20260915a"></script>
-  <script src="js/platform.js?v=20260915e"></script>
+  <script src="js/platform.js?v=20260916a"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

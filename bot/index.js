@@ -10,6 +10,8 @@ const config = {
   pointsChannel: process.env.DISCORD_POINTS_CHANNEL_ID,
   accessChannel: process.env.DISCORD_ACCESS_CHANNEL_ID,
   announcementsChannel: process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID,
+  supportChannel: process.env.DISCORD_SUPPORT_CHANNEL_ID,
+  inviteChannel: process.env.DISCORD_INVITE_CHANNEL_ID,
   recruitRole: process.env.DISCORD_ROLE_RECRUIT_ID,
   soldierRole: process.env.DISCORD_ROLE_SOLDIER_ID,
   staffRole: process.env.DISCORD_ROLE_STAFF_ID,
@@ -18,6 +20,8 @@ const config = {
   specialtyRoles: parseMap(process.env.DISCORD_SPECIALTY_ROLE_MAP),
   pollMs: Math.max(3000, Number(process.env.BOT_POLL_INTERVAL_MS || 5000)),
   rosterSyncMs: Math.max(60000, Number(process.env.ROSTER_SYNC_INTERVAL_MS || 600000)),
+  reminderMs: Math.max(300000, Number(process.env.REMINDER_INTERVAL_MS || 3600000)),
+  inviteRefreshMs: Math.max(3600000, Number(process.env.INVITE_REFRESH_INTERVAL_MS || 82800000)),
   port: Number(process.env.PORT || 3000),
 };
 
@@ -127,6 +131,8 @@ function eventChannels(type) {
   if (type === "training_completed") return [config.trainingChannel, config.announcementsChannel];
   if (type === "rank_promoted") return [config.pointsChannel, config.announcementsChannel];
   if (type.startsWith("training_") || type === "specialty_approved") return [config.trainingChannel];
+  if (type.startsWith("specialty_training_")) return [config.trainingChannel];
+  if (type.startsWith("ticket_")) return [config.supportChannel || config.trainingChannel];
   if (type.startsWith("points_")) return [config.pointsChannel];
   if (type === "platform_login") return [config.accessChannel || config.missionsChannel];
   return [config.missionsChannel];
@@ -186,6 +192,38 @@ async function processEvent(event) {
   await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }) });
 }
 
+async function refreshDiscordInvite() {
+  if (!config.inviteChannel || requiredConfig().length) return;
+  const invite = await discord(`/channels/${config.inviteChannel}/invites`, {
+    method: "POST",
+    body: JSON.stringify({ max_age: 86400, max_uses: 0, temporary: false, unique: true }),
+  });
+  const createdAt = new Date();
+  const expiresAt = new Date(createdAt.getTime() + 86400000);
+  await supabase("discord_invites", {
+    method: "POST",
+    body: JSON.stringify({ invite_url: `https://discord.gg/${invite.code}`, invite_code: invite.code, expires_at: expiresAt.toISOString(), created_at: createdAt.toISOString() }),
+  });
+  console.log(`[USMCF BOT] Discord invite refreshed; expires ${expiresAt.toISOString()}`);
+}
+
+async function remindDelayedWork() {
+  if (requiredConfig().length) return;
+  const cutoff = new Date(Date.now() - 3 * 86400000).toISOString();
+  const [tickets, courses] = await Promise.all([
+    supabase(`support_tickets?select=*&estado=in.(abierto,en_revision)&created_at=lt.${encodeURIComponent(cutoff)}&or=(reminded_at.is.null,reminded_at.lt.${encodeURIComponent(cutoff)})`),
+    supabase(`specialty_training_requests?select=*&estado=in.(pendiente,en_curso)&created_at=lt.${encodeURIComponent(cutoff)}&or=(reminded_at.is.null,reminded_at.lt.${encodeURIComponent(cutoff)})`),
+  ]);
+  for (const ticket of tickets || []) {
+    if (config.supportChannel) await discord(`/channels/${config.supportChannel}/messages`, { method: "POST", body: JSON.stringify({ allowed_mentions: { parse: [] }, embeds: [{ title: "Ticket pendiente por más de 3 días", description: ticket.asunto, color: 0xb85f3c, timestamp: new Date().toISOString() }] }) });
+    await supabase(`support_tickets?id=eq.${ticket.id}`, { method: "PATCH", body: JSON.stringify({ reminded_at: new Date().toISOString() }) });
+  }
+  for (const course of courses || []) {
+    if (config.trainingChannel) await discord(`/channels/${config.trainingChannel}/messages`, { method: "POST", body: JSON.stringify({ allowed_mentions: { parse: [] }, embeds: [{ title: "Entrenamiento pendiente por más de 3 días", description: `Curso solicitado: ${course.specialty_key}`, color: 0xb85f3c, timestamp: new Date().toISOString() }] }) });
+    await supabase(`specialty_training_requests?id=eq.${course.id}`, { method: "PATCH", body: JSON.stringify({ reminded_at: new Date().toISOString() }) });
+  }
+}
+
 let polling = false;
 let lastPollAt = null;
 let lastError = null;
@@ -224,5 +262,9 @@ http.createServer((request, response) => {
 
 setInterval(() => poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.pollMs);
 setInterval(() => syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.rosterSyncMs);
+setInterval(() => remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.reminderMs);
+setInterval(() => refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.inviteRefreshMs);
 poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
+remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
+refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });

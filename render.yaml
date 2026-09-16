@@ -25,6 +25,10 @@ services:
         sync: false
       - key: DISCORD_ANNOUNCEMENTS_CHANNEL_ID
         value: "1549116084714737755"
+      - key: DISCORD_SUPPORT_CHANNEL_ID
+        sync: false
+      - key: DISCORD_INVITE_CHANNEL_ID
+        sync: false
       - key: DISCORD_ROLE_RECRUIT_ID
         sync: false
       - key: DISCORD_ROLE_SOLDIER_ID
@@ -39,3 +43,7 @@ services:
         sync: false
       - key: ROSTER_SYNC_INTERVAL_MS
         value: "600000"
+      - key: REMINDER_INTERVAL_MS
+        value: "3600000"
+      - key: INVITE_REFRESH_INTERVAL_MS
+        value: "82800000"

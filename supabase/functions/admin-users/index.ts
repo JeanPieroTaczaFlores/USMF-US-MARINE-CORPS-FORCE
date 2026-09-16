@@ -27,9 +27,9 @@ Deno.serve(async (request) => {
       const requestedRole = roles.includes(body.rol) ? body.rol : "usuario";
       if (requestedRole === "super_admin" && actor.rol !== "super_admin") return json({ error: "Only Alto Mando can create another Alto Mando" }, 403);
       const officialEmail = String(body.email).toLowerCase().trim();
-      const { data: created, error: createError } = await admin.auth.admin.createUser({ email: officialEmail, password: body.password, email_confirm: true, user_metadata: { nombre: body.nombre, usuario_roblox: body.usuario_roblox } });
+      const { data: created, error: createError } = await admin.auth.admin.createUser({ email: officialEmail, password: body.password, email_confirm: true, user_metadata: { nombre: body.nombre, usuario_roblox: body.usuario_roblox, callsign: body.callsign } });
       if (createError || !created.user) return json({ error: createError?.message || "User could not be created" }, 400);
-      await admin.from("profiles").update({ nombre: body.nombre, usuario_roblox: body.usuario_roblox, rol: requestedRole, rango: "Recluta", estado: "pendiente" }).eq("id", created.user.id);
+      await admin.from("profiles").update({ nombre: body.nombre, usuario_roblox: body.usuario_roblox, callsign: body.callsign || body.usuario_roblox, rol: requestedRole, rango: "Recluta", estado: "pendiente" }).eq("id", created.user.id);
       const { data: event } = await admin.from("discord_events").select("id").eq("user_id", created.user.id).eq("tipo", "training_assigned").order("created_at", { ascending: false }).limit(1).single();
       return json({ user_id: created.user.id, event_id: event?.id || null });
     }
@@ -47,7 +47,7 @@ Deno.serve(async (request) => {
         if (emailError) return json({ error: emailError.message }, 400);
         body.email = officialEmail;
       }
-      const update = Object.fromEntries(["nombre", "usuario_roblox", "email", "rol", "estado", "rango"].filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
+      const update = Object.fromEntries(["nombre", "callsign", "usuario_roblox", "email", "rol", "estado", "rango"].filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
       const { error: updateError } = await admin.from("profiles").update(update).eq("id", target.id);
       if (updateError) return json({ error: updateError.message }, 400);
       return json({ updated: true });
