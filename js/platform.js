@@ -27,8 +27,7 @@
     storeCategory: "todos",
     libraryCategory: "todos",
     libraryQuery: "",
-    adminQuery: "",
-    rolePreview: null
+    adminQuery: ""
   };
 
   var libraryEntries = [
@@ -121,37 +120,15 @@
     return result.data;
   }
 
-  function applyLocalRolePreview(profile) {
-    var preview = !isSupabaseConfigured ? new URLSearchParams(window.location.search).get("preview") : null;
-    if (preview === "member") {
-      state.rolePreview = "member";
-      return Object.assign({}, profile, {
-        nombre: "Soldado USMCF",
-        usuario_roblox: "Marine_USMCF",
-        email: "soldado@usmcf.com",
-        callsign: "Narumi",
-        rango: "Soldado",
-        rol: "usuario",
-        estado: "activo",
-        puntos: 360,
-        dinero: 720,
-        discord_id: null,
-        ultimo_salario: null
-      });
-    }
-    if (preview !== "staff") {
-      state.rolePreview = null;
-      return profile;
-    }
-    state.rolePreview = "staff";
-    return Object.assign({}, profile, {
-      nombre: "Vista Staff USMCF",
-      rango: "Sargento del Estado Mayor",
-      rol: "staff"
-    });
+  function clearLegacyPreviewFromUrl() {
+    var url = new URL(window.location.href);
+    if (!url.searchParams.has("preview")) return;
+    url.searchParams.delete("preview");
+    window.history.replaceState({}, "", url.pathname + (url.search ? url.search : "") + url.hash);
   }
 
   async function loadSession() {
+    clearLegacyPreviewFromUrl();
     if (!supabase) {
       setMessage("authMessage", "No se pudo iniciar el sistema de acceso.", "error");
       return;
@@ -169,25 +146,17 @@
         var identitySync = await supabase.rpc("sync_my_discord_identity");
         if (identitySync.error) throw identitySync.error;
       }
-      state.profile = applyLocalRolePreview(await getProfile(user.id));
+      state.profile = await getProfile(user.id);
       if (!state.profile) throw new Error("Tu cuenta todavía no tiene un perfil vinculado.");
       $("authView").classList.add("hidden");
       $("memberView").classList.remove("hidden");
       $("logoutBtn").classList.remove("hidden");
       hydrateIdentity();
-      if (state.rolePreview !== "member") {
-        var accessResult = await supabase.rpc("record_platform_login");
-        if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
-        await syncDiscordRoles(user.id, true);
-        await verifySalary();
-      }
+      var accessResult = await supabase.rpc("record_platform_login");
+      if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
+      await syncDiscordRoles(user.id, true);
+      await verifySalary();
       await loadPlatformData();
-      if (state.rolePreview === "staff") {
-        setMessage("appMessage", "VISTA PREVIA STAFF: puedes gestionar misiones, entrenamientos, especialidades, puntos y recompensas. La creación y modificación integral de usuarios permanece reservada a Administración.", "success");
-      }
-      if (state.rolePreview === "member") {
-        setMessage("appMessage", "VISTA PREVIA SOLDADO: esta es la experiencia de un miembro activo. Los controles de Administración y Staff permanecen ocultos y esta vista no modifica datos.", "success");
-      }
       if (state.profile.estado !== "activo") {
         setMessage("appMessage", "Tu perfil está " + state.profile.estado + ". Puedes consultar la biblioteca, pero las compras se habilitan después de la aprobación del staff.");
       }
@@ -252,7 +221,7 @@
       return;
     }
     if (result.data && result.data.paid) {
-      state.profile = applyLocalRolePreview(await getProfile(state.user.id));
+      state.profile = await getProfile(state.user.id);
       hydrateIdentity();
       setMessage("appMessage", "Salario semanal acreditado: " + money(result.data.amount) + ".", "success");
     }
@@ -288,7 +257,7 @@
     state.tickets = results[10].data || [];
     state.ticketComments = results[11].data || [];
     state.discordInvites = results[12].data || [];
-    state.profile = applyLocalRolePreview(await getProfile(userId));
+    state.profile = await getProfile(userId);
     hydrateIdentity();
     renderTransactions();
     renderStore();

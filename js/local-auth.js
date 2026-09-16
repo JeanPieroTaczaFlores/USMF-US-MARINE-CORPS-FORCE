@@ -67,6 +67,7 @@
       if (!db[key]) db[key] = defaults[key];
     }
     cleanupDemoPersonnel(db);
+    ensureTestAccounts(db);
     if (db.missions_participants && db.missions_participants.length) {
       db.mission_participants = db.mission_participants.concat(db.missions_participants.filter(function (legacy) {
         return !db.mission_participants.some(function (current) { return current.id === legacy.id; });
@@ -191,9 +192,39 @@
     localStorage.setItem(DEMO_CLEANUP_KEY, "true");
   }
 
-  // Forzar contraseñas de prueba SOLO si no existen aún
+  function ensureTestAccounts(db) {
+    var now = new Date().toISOString();
+    var accounts = [
+      {
+        email: "admin@usmcf.com", nombre: "Comandante USMCF", callsign: "Comando",
+        usuario_roblox: "AdminUSMCF", rango: "General", rol: "super_admin",
+        estado: "activo", puntos: 10000, dinero: 50000
+      },
+      {
+        email: "staff@usmcf.com", nombre: "Instructor USMCF", callsign: "Instructor",
+        usuario_roblox: "StaffUSMCF", rango: "Sargento del Estado Mayor", rol: "staff",
+        estado: "activo", puntos: 1800, dinero: 3500
+      },
+      {
+        email: "soldado@usmcf.com", nombre: "Soldado de Prueba", callsign: "Narumi",
+        usuario_roblox: "SoldadoUSMCF", rango: "Soldado", rol: "usuario",
+        estado: "activo", puntos: 100, dinero: 720
+      }
+    ];
+
+    accounts.forEach(function (account) {
+      var profile = db.profiles.find(function (row) { return String(row.email || "").toLowerCase() === account.email; });
+      if (!profile) {
+        db.profiles.push(Object.assign({ id: uid(), discord_id: null, ultimo_salario: null, last_login: now, created_at: now }, account));
+      }
+    });
+  }
+
+  // Estas credenciales existen únicamente en el adaptador local de demostración.
   var testPasswords = {
-    "admin@usmcf.com": "Admin123!"
+    "admin@usmcf.com": "Admin123!",
+    "staff@usmcf.com": "Staff123!",
+    "soldado@usmcf.com": "Soldado123!"
   };
   var pw = getPasswords();
   var changed = false;

@@ -27,7 +27,7 @@ Sitio público y plataforma de miembros unificados en un solo repositorio.
 - panel de anuncios de Administración con entrega al canal oficial de Discord;
 - publicación u ocultamiento de artículos de la Store.
 
-Sin credenciales remotas, el sitio conserva únicamente el acceso local de mando `admin@usmcf.com` / `Admin123!`. Los antiguos miembros ficticios se eliminan automáticamente del almacenamiento local. Los perfiles reales aparecen cuando el bot sincroniza el servidor.
+Sin credenciales remotas, el sitio incluye tres accesos locales para comprobar cada vista: `admin@usmcf.com` / `Admin123!`, `staff@usmcf.com` / `Staff123!` y `soldado@usmcf.com` / `Soldado123!`. Estas cuentas son exclusivas del modo local; los perfiles reales aparecen cuando Supabase y el bot sincronizan el servidor.
 
 ## Conectar Supabase
 
