@@ -152,6 +152,7 @@
       $("memberView").classList.remove("hidden");
       $("logoutBtn").classList.remove("hidden");
       hydrateIdentity();
+      switchView("resumen");
       var accessResult = await supabase.rpc("record_platform_login");
       if (!accessResult.error && accessResult.data && accessResult.data.event_id) await sendDiscordEvent(accessResult.data.event_id);
       await syncDiscordRoles(user.id, true);
