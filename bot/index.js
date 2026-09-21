@@ -405,12 +405,13 @@ http.createServer((request, response) => {
   response.setHeader("Content-Type", "application/json");
   if (request.url === "/health") {
     const missing = requiredConfig();
-    response.statusCode = missing.length ? 503 : 200;
-    response.end(JSON.stringify({ online: !missing.length, missing, gatewayConnected, activeVoiceSessions: activeVoiceSessions.size, lastPollAt, lastError, rosterLastSyncAt, rosterCount }));
+    const online = missing.length === 0 && gatewayConnected && lastPollAt !== null;
+    response.statusCode = online ? 200 : 503;
+    response.end(JSON.stringify({ online, missing, gatewayConnected, activeVoiceSessions: activeVoiceSessions.size, lastPollAt, lastError, rosterLastSyncAt, rosterCount }));
     return;
   }
   response.statusCode = 200;
-  response.end(JSON.stringify({ service: config.botName, online: true }));
+  response.end(JSON.stringify({ service: config.botName, online: requiredConfig().length === 0 && gatewayConnected && lastPollAt !== null }));
 }).listen(config.port, () => {
   console.log(`[USMCF BOT] Health server listening on ${config.port}`);
   const missing = requiredConfig();
