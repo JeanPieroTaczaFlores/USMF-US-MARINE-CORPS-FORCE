@@ -5,6 +5,7 @@ const config = {
   serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   botToken: process.env.DISCORD_BOT_TOKEN,
   guildId: process.env.DISCORD_GUILD_ID,
+  botName: process.env.DISCORD_BOT_NAME || "Kriss Kyle",
   missionsChannel: process.env.DISCORD_MISSIONS_CHANNEL_ID,
   trainingChannel: process.env.DISCORD_TRAINING_CHANNEL_ID,
   pointsChannel: process.env.DISCORD_POINTS_CHANNEL_ID,
@@ -293,7 +294,7 @@ async function closeVoiceSession(discordId, channelId) {
     description: `${profile?.callsign || profile?.nombre || active.display_name || discordId} salió de **${active.channel_name || "voz de misión"}**.`,
     color: 0xb85f3c,
     fields: [{ name: "Misión", value: active.mission_title || "Misión asignada", inline: true }, { name: "Tiempo conectado", value: durationText(durationSeconds), inline: true }],
-    timestamp: leftAt.toISOString(), footer: { text: "Narun · Registro de voz USMCF" },
+    timestamp: leftAt.toISOString(), footer: { text: `${config.botName} · Registro de voz USMCF` },
   }).catch((error) => console.error(`[USMCF BOT] Admin DM failed: ${error.message}`));
 }
 
@@ -313,7 +314,7 @@ async function openVoiceSession(state, mission) {
     description: `${profile?.callsign || profile?.nombre || displayName} entró a **${mission.voice_channel_name || "voz de misión"}**.`,
     color: 0x34777f,
     fields: [{ name: "Misión", value: mission.titulo, inline: true }, { name: "Estado web", value: profile ? "Cuenta vinculada" : "Discord sin vincular", inline: true }],
-    timestamp: joinedAt, footer: { text: "Narun · Registro de voz USMCF" },
+    timestamp: joinedAt, footer: { text: `${config.botName} · Registro de voz USMCF` },
   }).catch((error) => console.error(`[USMCF BOT] Admin DM failed: ${error.message}`));
 }
 
@@ -348,13 +349,14 @@ function connectGateway() {
       if (packet.s !== null && packet.s !== undefined) gatewaySequence = packet.s;
       if (packet.op === 10) {
         gatewayHeartbeat = setInterval(() => socket.send(JSON.stringify({ op: 1, d: gatewaySequence })), packet.d.heartbeat_interval);
-        socket.send(JSON.stringify({ op: 2, d: { token: config.botToken, intents: 129, properties: { os: "linux", browser: "Narun", device: "Narun" } } }));
+        socket.send(JSON.stringify({ op: 2, d: { token: config.botToken, intents: 129, properties: { os: "linux", browser: config.botName, device: config.botName } } }));
       } else if (packet.op === 7 || packet.op === 9) {
         socket.close();
       } else if (packet.op === 0 && packet.t === "READY") {
         gatewayConnected = true;
         await restoreOpenVoiceSessions();
-        console.log("[USMCF BOT] Narun connected to Discord Gateway");
+        await discord(`/guilds/${config.guildId}/members/@me`, { method: "PATCH", body: JSON.stringify({ nick: config.botName }) }).catch((error) => console.error(`[USMCF BOT] Nickname update failed: ${error.message}`));
+        console.log(`[USMCF BOT] ${config.botName} connected to Discord Gateway`);
       } else if (packet.op === 0 && packet.t === "VOICE_STATE_UPDATE") {
         await handleVoiceState(packet.d);
       }
@@ -396,7 +398,7 @@ http.createServer((request, response) => {
     return;
   }
   response.statusCode = 200;
-  response.end(JSON.stringify({ service: "USMCF Discord Bot", online: true }));
+  response.end(JSON.stringify({ service: config.botName, online: true }));
 }).listen(config.port, () => {
   console.log(`[USMCF BOT] Health server listening on ${config.port}`);
   const missing = requiredConfig();

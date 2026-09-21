@@ -15,6 +15,8 @@ services:
         sync: false
       - key: DISCORD_GUILD_ID
         value: "1016036020875165797"
+      - key: DISCORD_BOT_NAME
+        value: "Kriss Kyle"
       - key: DISCORD_MISSIONS_CHANNEL_ID
         value: "1254309543828262923"
       - key: DISCORD_TRAINING_CHANNEL_ID

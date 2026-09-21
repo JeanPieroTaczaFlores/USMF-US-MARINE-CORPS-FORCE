@@ -55,7 +55,7 @@ Deno.serve(async (request) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: "Narun",
+          username: "Kriss Kyle",
           allowed_mentions: { parse: [] },
           embeds: [{ title: event.titulo, description: event.mensaje, color: Number.isInteger(event.embed_color) ? event.embed_color : 0xd9a441, footer: { text: `Evento ${event.id}` }, timestamp: event.created_at }]
         })
