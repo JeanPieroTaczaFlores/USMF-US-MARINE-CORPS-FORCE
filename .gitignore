@@ -6,3 +6,5 @@ node_modules/
 .env.local
 .npm-cache/
 supabase/.temp/
+
+.vercel/
