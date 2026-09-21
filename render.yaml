@@ -50,4 +50,4 @@ services:
       - key: REMINDER_INTERVAL_MS
         value: "3600000"
       - key: INVITE_REFRESH_INTERVAL_MS
-        value: "82800000"
+        value: "3600000"

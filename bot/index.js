@@ -23,7 +23,7 @@ const config = {
   pollMs: Math.max(3000, Number(process.env.BOT_POLL_INTERVAL_MS || 5000)),
   rosterSyncMs: Math.max(60000, Number(process.env.ROSTER_SYNC_INTERVAL_MS || 600000)),
   reminderMs: Math.max(300000, Number(process.env.REMINDER_INTERVAL_MS || 3600000)),
-  inviteRefreshMs: Math.max(3600000, Number(process.env.INVITE_REFRESH_INTERVAL_MS || 82800000)),
+  inviteRefreshMs: Math.max(3600000, Number(process.env.INVITE_REFRESH_INTERVAL_MS || 3600000)),
   port: Number(process.env.PORT || 3000),
 };
 
@@ -203,19 +203,31 @@ async function processEvent(event) {
   await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }) });
 }
 
+let inviteRefreshing = false;
+
 async function refreshDiscordInvite() {
   if (!config.inviteChannel || requiredConfig().length) return;
-  const invite = await discord(`/channels/${config.inviteChannel}/invites`, {
-    method: "POST",
-    body: JSON.stringify({ max_age: 86400, max_uses: 0, temporary: false, unique: true }),
-  });
-  const createdAt = new Date();
-  const expiresAt = new Date(createdAt.getTime() + 86400000);
-  await supabase("discord_invites", {
-    method: "POST",
-    body: JSON.stringify({ invite_url: `https://discord.gg/${invite.code}`, invite_code: invite.code, expires_at: expiresAt.toISOString(), created_at: createdAt.toISOString() }),
-  });
-  console.log(`[USMCF BOT] Discord invite refreshed; expires ${expiresAt.toISOString()}`);
+  if (inviteRefreshing) return;
+  inviteRefreshing = true;
+  try {
+    const latest = await supabase("discord_invites?select=created_at,expires_at&order=created_at.desc&limit=1");
+    const previous = latest?.[0];
+    const now = Date.now();
+    if (previous && now - Date.parse(previous.created_at) < 23 * 3600000 && Date.parse(previous.expires_at) - now > 86400000) return;
+    const invite = await discord(`/channels/${config.inviteChannel}/invites`, {
+      method: "POST",
+      body: JSON.stringify({ max_age: 604800, max_uses: 0, temporary: false, unique: true }),
+    });
+    const createdAt = new Date();
+    const expiresAt = new Date(createdAt.getTime() + 604800000);
+    await supabase("discord_invites", {
+      method: "POST",
+      body: JSON.stringify({ invite_url: `https://discord.gg/${invite.code}`, invite_code: invite.code, expires_at: expiresAt.toISOString(), created_at: createdAt.toISOString() }),
+    });
+    console.log(`[USMCF BOT] Discord invite refreshed; expires ${expiresAt.toISOString()}`);
+  } finally {
+    inviteRefreshing = false;
+  }
 }
 
 async function remindDelayedWork() {

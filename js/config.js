@@ -1,7 +1,7 @@
 // ============================================
 // USMCF — CONFIGURACIÓN
-// Auto-detecta: si SUPABASE_URL tiene credenciales reales usa Supabase,
-// si no, usa localStorage (modo local para pruebas)
+// Usa Supabase cuando está configurado. La simulación local sólo se permite
+// en localhost para no publicar cuentas de demostración como acceso real.
 // ============================================
 
 const SUPABASE_URL = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseUrl) || "https://TU-PROYECTO.supabase.co";
@@ -11,16 +11,20 @@ const SUPABASE_ANON_KEY = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseKe
 var isSupabaseConfigured =
   SUPABASE_URL.indexOf("TU-PROYECTO") === -1 &&
   SUPABASE_ANON_KEY.indexOf("TU-PUBLISHABLE-KEY") === -1;
+var isLocalPreview = ["localhost", "127.0.0.1"].indexOf(window.location.hostname) !== -1;
 
 // Inicializar cliente (Supabase o localStorage)
 var supabase;
 if (isSupabaseConfigured && window.supabase) {
   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   console.log("[USMCF] Modo: Supabase remoto");
-} else {
+} else if (isLocalPreview) {
   // Se espera que local-auth.js ya haya expuesto LocalSupabase
   supabase = window.LocalSupabase || null;
   console.log("[USMCF] Modo: localStorage (pruebas locales)");
+} else {
+  supabase = null;
+  console.warn("[USMCF] Acceso deshabilitado: Supabase no está configurado.");
 }
 
 // Rangos del sistema

@@ -131,7 +131,9 @@
   async function loadSession() {
     clearLegacyPreviewFromUrl();
     if (!supabase) {
-      setMessage("authMessage", "No se pudo iniciar el sistema de acceso.", "error");
+      ["loginTab", "registerTab", "discordLoginBtn"].forEach(function (id) { if ($(id)) $(id).disabled = true; });
+      ["loginForm", "registerForm"].forEach(function (id) { if ($(id)) $(id).classList.add("hidden"); });
+      setMessage("authMessage", "La plataforma está en preparación. El acceso se habilitará cuando la base de datos oficial esté conectada.", "error");
       return;
     }
     var result = await supabase.auth.getSession();
