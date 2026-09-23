@@ -23,47 +23,13 @@ Deno.serve(async (request) => {
     if (event.user_id !== authData.user.id && !staff) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
     if (event.estado === "enviado") return new Response(JSON.stringify({ delivered: true, duplicate: true }), { headers: { ...cors, "Content-Type": "application/json" } });
 
-    const announcements = Deno.env.get("DISCORD_ANNOUNCEMENTS_WEBHOOK_URL");
-    const routedWebhooks: Record<string, string | undefined> = {
-      announcements,
-      missions: Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL"),
-      training: Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL"),
-      points: Deno.env.get("DISCORD_POINTS_WEBHOOK_URL"),
-      support: Deno.env.get("DISCORD_SUPPORT_WEBHOOK_URL"),
-      access: Deno.env.get("DISCORD_ACCESS_WEBHOOK_URL"),
-    };
-    const webhookUrls = event.tipo === "announcement_published"
-      ? [routedWebhooks[event.target_channel_key || "announcements"] || announcements]
-      : ["mission_published", "mission_updated"].includes(event.tipo)
-        ? [Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL"), announcements]
-      : event.tipo === "training_completed"
-        ? [Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL"), announcements]
-        : event.tipo === "rank_promoted"
-          ? [Deno.env.get("DISCORD_POINTS_WEBHOOK_URL"), announcements]
-          : event.tipo.startsWith("training_") || event.tipo === "specialty_approved"
-            ? [Deno.env.get("DISCORD_TRAINING_WEBHOOK_URL")]
-            : event.tipo.startsWith("points_")
-              ? [Deno.env.get("DISCORD_POINTS_WEBHOOK_URL")]
-              : event.tipo === "platform_login"
-                ? [Deno.env.get("DISCORD_ACCESS_WEBHOOK_URL") || Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL")]
-                : [Deno.env.get("DISCORD_MISSIONS_WEBHOOK_URL")];
-    const targets = [...new Set(webhookUrls.filter(Boolean))] as string[];
-    if (!targets.length) throw new Error(`Discord webhook is not configured for ${event.tipo}`);
-
-    for (const webhookUrl of targets) {
-      const discordResponse = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: "Kriss Kyle",
-          allowed_mentions: { parse: [] },
-          embeds: [{ title: event.titulo, description: event.mensaje, color: Number.isInteger(event.embed_color) ? event.embed_color : 0xd9a441, footer: { text: `Evento ${event.id}` }, timestamp: event.created_at }]
-        })
-      });
-      if (!discordResponse.ok) throw new Error(`Discord returned ${discordResponse.status}`);
-    }
-    await admin.from("discord_events").update({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }).eq("id", event.id);
-    return new Response(JSON.stringify({ delivered: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    // Kriss Kyle is the single Discord delivery worker. The old webhook path
+    // could mark an event as failed before the Render bot had a chance to send
+    // it, producing misleading 403 errors. Requeue here; the bot publishes it
+    // with its guild permissions and records the final delivery state.
+    const { error: queueError } = await admin.from("discord_events").update({ estado: "pendiente", sent_at: null, error_text: null }).eq("id", event.id);
+    if (queueError) throw queueError;
+    return new Response(JSON.stringify({ queued: true }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (error) {
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
   }
