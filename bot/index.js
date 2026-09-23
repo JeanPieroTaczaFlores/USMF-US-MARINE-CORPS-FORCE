@@ -81,6 +81,46 @@ function memberAvatar(member) {
 let rosterSyncing = false;
 let rosterLastSyncAt = null;
 let rosterCount = 0;
+let catalogLastSyncAt = null;
+
+async function syncGuildCatalog() {
+  if (requiredConfig().length) return;
+  const syncedAt = new Date().toISOString();
+  const [roles, channels] = await Promise.all([
+    discord(`/guilds/${config.guildId}/roles`),
+    discord(`/guilds/${config.guildId}/channels`),
+  ]);
+  if (roles?.length) {
+    await supabase("discord_roles?on_conflict=id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(roles.map((role) => ({
+        id: role.id,
+        name: role.name,
+        position: Number(role.position || 0),
+        permissions: String(role.permissions || "0"),
+        managed: Boolean(role.managed),
+        synced_at: syncedAt,
+      }))),
+    });
+  }
+  if (channels?.length) {
+    await supabase("discord_channels?on_conflict=id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(channels.map((channel) => ({
+        id: channel.id,
+        name: channel.name,
+        type: Number(channel.type),
+        parent_id: channel.parent_id || null,
+        position: Number(channel.position || 0),
+        synced_at: syncedAt,
+      }))),
+    });
+  }
+  catalogLastSyncAt = syncedAt;
+  console.log(`[USMCF BOT] Discord catalog synchronized: ${roles?.length || 0} roles, ${channels?.length || 0} channels`);
+}
 
 async function syncGuildRoster() {
   if (rosterSyncing || requiredConfig().length) return;
@@ -416,7 +456,7 @@ http.createServer((request, response) => {
     const missing = requiredConfig();
     const online = missing.length === 0 && gatewayConnected && lastPollAt !== null;
     response.statusCode = online ? 200 : 503;
-    response.end(JSON.stringify({ online, missing, gatewayConnected, activeVoiceSessions: activeVoiceSessions.size, lastPollAt, lastError, rosterLastSyncAt, rosterCount }));
+    response.end(JSON.stringify({ online, missing, gatewayConnected, activeVoiceSessions: activeVoiceSessions.size, lastPollAt, lastError, rosterLastSyncAt, rosterCount, catalogLastSyncAt }));
     return;
   }
   response.statusCode = 200;
@@ -429,10 +469,12 @@ http.createServer((request, response) => {
 
 setInterval(() => poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.pollMs);
 setInterval(() => syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.rosterSyncMs);
+setInterval(() => syncGuildCatalog().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.rosterSyncMs);
 setInterval(() => remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.reminderMs);
 setInterval(() => refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.inviteRefreshMs);
 poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
+syncGuildCatalog().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 connectGateway();
