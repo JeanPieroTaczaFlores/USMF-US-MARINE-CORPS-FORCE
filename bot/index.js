@@ -146,7 +146,10 @@ function eventChannels(event) {
   if (type.startsWith("specialty_training_")) return [config.trainingChannel];
   if (type.startsWith("ticket_")) return [config.supportChannel || config.trainingChannel];
   if (type.startsWith("points_")) return [config.pointsChannel];
-  if (type === "platform_login") return [config.accessChannel || config.missionsChannel];
+  // Access alerts must not fall back to the missions channel: that channel can
+  // be restricted to operational announcements. Training is the known staff
+  // fallback until a dedicated access channel is configured in Render.
+  if (type === "platform_login") return [config.accessChannel || config.trainingChannel];
   return [config.missionsChannel];
 }
 
@@ -185,20 +188,25 @@ async function processEvent(event) {
   const profile = profiles?.[0];
   const channelIds = [...new Set(eventChannels(event).filter(Boolean))];
   for (const channelId of channelIds) {
-    await discord(`/channels/${channelId}/messages`, {
-      method: "POST",
-      body: JSON.stringify({
-        allowed_mentions: { parse: [] },
-        embeds: [{
-          title: event.titulo || "USMCF",
-          description: event.mensaje || "Actividad registrada en la plataforma.",
-          color: Number.isInteger(event.embed_color) ? event.embed_color : event.tipo === "rank_promoted" ? 0xd6b84e : event.tipo === "specialty_approved" ? 0x55765b : 0x27352b,
-          fields: profile ? [{ name: "Miembro", value: profile.nombre || "Marine", inline: true }, { name: "Rango", value: profile.rango || "Sin rango", inline: true }] : [],
-          timestamp: event.created_at,
-          footer: { text: "Plataforma USMCF · Sincronización automática" },
-        }],
-      }),
-    });
+    try {
+      await discord(`/channels/${channelId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({
+          allowed_mentions: { parse: [] },
+          embeds: [{
+            title: event.titulo || "USMCF",
+            description: event.mensaje || "Actividad registrada en la plataforma.",
+            color: Number.isInteger(event.embed_color) ? event.embed_color : event.tipo === "rank_promoted" ? 0xd6b84e : event.tipo === "specialty_approved" ? 0x55765b : 0x27352b,
+            fields: profile ? [{ name: "Miembro", value: profile.nombre || "Marine", inline: true }, { name: "Rango", value: profile.rango || "Sin rango", inline: true }] : [],
+            timestamp: event.created_at,
+            footer: { text: "Plataforma USMCF · Sincronización automática" },
+          }],
+        }),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Canal Discord ${channelId}: ${message}`);
+    }
   }
   if (profile) await syncMemberRoles(profile);
   await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }) });

@@ -27,9 +27,21 @@ Deno.serve(async (request) => {
       const requestedRole = roles.includes(body.rol) ? body.rol : "usuario";
       if (requestedRole === "super_admin" && actor.rol !== "super_admin") return json({ error: "Only Alto Mando can create another Alto Mando" }, 403);
       const officialEmail = String(body.email).toLowerCase().trim();
-      const { data: created, error: createError } = await admin.auth.admin.createUser({ email: officialEmail, password: body.password, email_confirm: true, user_metadata: { nombre: body.nombre, usuario_roblox: body.usuario_roblox, callsign: body.callsign } });
+      const { data: created, error: createError } = await admin.auth.admin.createUser({ email: officialEmail, password: body.password, email_confirm: true, user_metadata: { nombre: body.nombre, usuario_roblox: body.usuario_roblox, callsign: body.callsign }, app_metadata: { usmcf_role: requestedRole } });
       if (createError || !created.user) return json({ error: createError?.message || "User could not be created" }, 400);
-      await admin.from("profiles").update({ nombre: body.nombre, usuario_roblox: body.usuario_roblox, callsign: body.callsign || body.usuario_roblox, rol: requestedRole, rango: "Recluta", estado: "pendiente" }).eq("id", created.user.id);
+      const requiresTraining = requestedRole === "usuario";
+      const { error: profileError } = await admin.from("profiles").update({ nombre: body.nombre, usuario_roblox: body.usuario_roblox, callsign: body.callsign || body.usuario_roblox, rol: requestedRole, rango: requiresTraining ? "Recluta" : requestedRole === "staff" ? "Soldado" : "General", estado: requiresTraining ? "pendiente" : "activo" }).eq("id", created.user.id);
+      if (profileError) {
+        await admin.auth.admin.deleteUser(created.user.id);
+        return json({ error: profileError.message }, 400);
+      }
+      // Auth hooks and the profile update run in separate transactions. Remove
+      // any recruit-only work that may have been queued before command status
+      // became visible, so Staff and Administration are always exempt.
+      if (!requiresTraining) {
+        await admin.from("training_assignments").delete().eq("user_id", created.user.id);
+        await admin.from("discord_events").delete().eq("user_id", created.user.id).eq("tipo", "training_assigned");
+      }
       const { data: event } = await admin.from("discord_events").select("id").eq("user_id", created.user.id).eq("tipo", "training_assigned").order("created_at", { ascending: false }).limit(1).single();
       return json({ user_id: created.user.id, event_id: event?.id || null });
     }

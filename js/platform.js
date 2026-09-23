@@ -201,7 +201,7 @@
     $("specialtiesNav").classList.toggle("hidden", canManageUsers());
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
-    $("adminStorePanel").classList.toggle("hidden", !canManageUsers());
+    $("adminStorePanel").classList.toggle("hidden", !isStaff());
     $("announcementPanel").classList.toggle("hidden", !canManageUsers());
     $("adminSectionTitle").textContent = canManageUsers() ? "Administración" : "Centro de Staff";
     $("adminScopeCopy").textContent = canManageUsers()
@@ -993,6 +993,7 @@
 
   async function publishItem(event) {
     event.preventDefault();
+    if (!isStaff()) return setMessage("appMessage", "Solo Staff y Administración pueden publicar implementos.", "error");
     var moneyPrice = Math.max(0, parseInt($("adminItemMoney").value, 10) || 0);
     var pointPrice = Math.max(0, parseInt($("adminItemPoints").value, 10) || 0);
     if (!moneyPrice && !pointPrice) return setMessage("appMessage", "El implemento necesita un precio en dinero o puntos.", "error");
