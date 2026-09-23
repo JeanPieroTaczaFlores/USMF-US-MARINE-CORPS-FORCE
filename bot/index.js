@@ -82,6 +82,8 @@ let rosterSyncing = false;
 let rosterLastSyncAt = null;
 let rosterCount = 0;
 let catalogLastSyncAt = null;
+let logdLastSyncAt = null;
+let logdMessageCount = 0;
 
 async function syncGuildCatalog() {
   if (requiredConfig().length) return;
@@ -120,6 +122,48 @@ async function syncGuildCatalog() {
   }
   catalogLastSyncAt = syncedAt;
   console.log(`[USMCF BOT] Discord catalog synchronized: ${roles?.length || 0} roles, ${channels?.length || 0} channels`);
+}
+
+async function syncLogdMessages() {
+  if (requiredConfig().length) return;
+  const channels = await discord(`/guilds/${config.guildId}/channels`);
+  const logd = (channels || []).find((channel) => [0, 5].includes(Number(channel.type)) && String(channel.name || "").trim().toLowerCase() === "logd");
+  if (!logd) throw new Error("Discord channel #logd was not found");
+
+  const messages = [];
+  let before = null;
+  for (let page = 0; page < 20; page += 1) {
+    const batch = await discord(`/channels/${logd.id}/messages?limit=100${before ? `&before=${before}` : ""}`);
+    if (!batch?.length) break;
+    messages.push(...batch);
+    if (batch.length < 100) break;
+    before = batch[batch.length - 1].id;
+  }
+
+  const syncedAt = new Date().toISOString();
+  for (let offset = 0; offset < messages.length; offset += 200) {
+    const batch = messages.slice(offset, offset + 200).map((message) => ({
+      id: message.id,
+      channel_id: logd.id,
+      author_id: message.author?.id || null,
+      author_name: message.author?.global_name || message.author?.username || null,
+      content: String(message.content || "").slice(0, 10000),
+      embeds: message.embeds || [],
+      attachments: (message.attachments || []).map((attachment) => ({ id: attachment.id, filename: attachment.filename, content_type: attachment.content_type, url: attachment.url })),
+      message_created_at: message.timestamp,
+      synced_at: syncedAt,
+    }));
+    if (batch.length) {
+      await supabase("discord_logd_messages?on_conflict=id", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(batch),
+      });
+    }
+  }
+  logdLastSyncAt = syncedAt;
+  logdMessageCount = messages.length;
+  console.log(`[USMCF BOT] Discord #logd synchronized: ${messages.length} messages`);
 }
 
 async function syncGuildRoster() {
@@ -456,7 +500,7 @@ http.createServer((request, response) => {
     const missing = requiredConfig();
     const online = missing.length === 0 && gatewayConnected && lastPollAt !== null;
     response.statusCode = online ? 200 : 503;
-    response.end(JSON.stringify({ online, missing, gatewayConnected, activeVoiceSessions: activeVoiceSessions.size, lastPollAt, lastError, rosterLastSyncAt, rosterCount, catalogLastSyncAt }));
+    response.end(JSON.stringify({ online, missing, gatewayConnected, activeVoiceSessions: activeVoiceSessions.size, lastPollAt, lastError, rosterLastSyncAt, rosterCount, catalogLastSyncAt, logdLastSyncAt, logdMessageCount }));
     return;
   }
   response.statusCode = 200;
@@ -470,11 +514,13 @@ http.createServer((request, response) => {
 setInterval(() => poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.pollMs);
 setInterval(() => syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.rosterSyncMs);
 setInterval(() => syncGuildCatalog().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.rosterSyncMs);
+setInterval(() => syncLogdMessages().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.rosterSyncMs);
 setInterval(() => remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.reminderMs);
 setInterval(() => refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.inviteRefreshMs);
 poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 syncGuildCatalog().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
+syncLogdMessages().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 connectGateway();
