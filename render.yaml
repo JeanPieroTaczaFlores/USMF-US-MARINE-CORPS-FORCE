@@ -1,6 +1,7 @@
 services:
   - type: web
     name: usmcf-discord-bot
+    plan: free
     runtime: docker
     dockerfilePath: ./bot/Dockerfile
     dockerContext: ./bot

@@ -1,0 +1,21 @@
+[Unit]
+Description=Kriss Kyle - USMCF Discord bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=usmcfbot
+Group=usmcfbot
+WorkingDirectory=/opt/usmcf-kriss-kyle
+EnvironmentFile=/etc/usmcf-kriss-kyle.env
+ExecStart=/usr/bin/node /opt/usmcf-kriss-kyle/index.js
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+name: Kriss Kyle keepalive
+
+on:
+  schedule:
+    # Evita el minuto 0, cuando los trabajos programados suelen retrasarse.
+    - cron: "3-58/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: kriss-kyle-keepalive
+  cancel-in-progress: false
+
+jobs:
+  check-bot:
+    if: ${{ vars.KRISS_KYLE_HEALTH_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      KEEPALIVE_URL: ${{ vars.KRISS_KYLE_HEALTH_URL }}
+    steps:
+      - name: Wake and check Discord connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$KEEPALIVE_URL" =~ ^https://[a-zA-Z0-9-]+\.onrender\.com/health$ ]]; then
+            echo "KRISS_KYLE_HEALTH_URL must be a Render HTTPS /health URL" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error --output /dev/null \
+            --max-time 90 --retry 2 --retry-delay 10 --retry-all-errors \
+            "$KEEPALIVE_URL"
