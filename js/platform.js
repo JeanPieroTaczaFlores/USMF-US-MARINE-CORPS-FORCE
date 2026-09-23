@@ -28,7 +28,8 @@
     storeCategory: "todos",
     libraryCategory: "todos",
     libraryQuery: "",
-    adminQuery: ""
+    adminQuery: "",
+    editingItemId: null
   };
 
   var libraryEntries = [
@@ -870,7 +871,7 @@
     renderStaffTicketQueue();
     renderFactionDirectory();
     $("adminCatalog").innerHTML = state.adminItems.length ? state.adminItems.map(function (item) {
-      return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(item.tipo) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button></div></div>';
+      return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(item.tipo) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-edit-item="' + escapeHtml(item.id) + '">EDITAR</button><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
   }
 
@@ -991,13 +992,41 @@
     await loadPlatformData();
   }
 
+  function resetItemForm() {
+    state.editingItemId = null;
+    $("adminItemForm").reset();
+    $("adminItemStock").value = "-1";
+    $("adminItemSubmit").textContent = "PUBLICAR EN LA STORE";
+    $("cancelItemEdit").classList.add("hidden");
+    $("adminStoreTitle").textContent = "Publicar implemento";
+  }
+
+  function editStoreItem(itemId) {
+    if (!isStaff()) return;
+    var item = state.adminItems.find(function (candidate) { return String(candidate.id) === String(itemId); });
+    if (!item) return;
+    state.editingItemId = item.id;
+    $("adminItemName").value = item.nombre || "";
+    $("adminItemDescription").value = item.descripcion || "";
+    $("adminItemImage").value = item.imagen_url || "";
+    $("adminItemType").value = item.tipo || "uniforme";
+    $("adminItemStock").value = Number.isFinite(Number(item.stock)) ? String(item.stock) : "-1";
+    $("adminItemMoney").value = String(Number(item.precio_dinero || 0));
+    $("adminItemPoints").value = String(Number(item.precio_puntos || 0));
+    $("adminItemSubmit").textContent = "GUARDAR CAMBIOS";
+    $("cancelItemEdit").classList.remove("hidden");
+    $("adminStoreTitle").textContent = "Editar implemento";
+    $("adminItemName").focus();
+    $("adminStorePanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function publishItem(event) {
     event.preventDefault();
     if (!isStaff()) return setMessage("appMessage", "Solo Staff y Administración pueden publicar implementos.", "error");
     var moneyPrice = Math.max(0, parseInt($("adminItemMoney").value, 10) || 0);
     var pointPrice = Math.max(0, parseInt($("adminItemPoints").value, 10) || 0);
     if (!moneyPrice && !pointPrice) return setMessage("appMessage", "El implemento necesita un precio en dinero o puntos.", "error");
-    var result = await supabase.from("shop_items").insert({
+    var itemData = {
       nombre: $("adminItemName").value.trim(),
       descripcion: $("adminItemDescription").value.trim(),
       tipo: $("adminItemType").value,
@@ -1006,11 +1035,14 @@
       precio_puntos: pointPrice,
       imagen_url: $("adminItemImage").value.trim(),
       disponible: true
-    });
+    };
+    var result = state.editingItemId
+      ? await supabase.from("shop_items").update(itemData).eq("id", state.editingItemId)
+      : await supabase.from("shop_items").insert(itemData);
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
-    $("adminItemForm").reset();
-    $("adminItemStock").value = "-1";
-    setMessage("appMessage", "Implemento publicado en la Store.", "success");
+    var wasEditing = Boolean(state.editingItemId);
+    resetItemForm();
+    setMessage("appMessage", wasEditing ? "Implemento actualizado en la Store." : "Implemento publicado en la Store.", "success");
     await loadPlatformData();
   }
 
@@ -1108,6 +1140,7 @@
     $("cartBackdrop").addEventListener("click", closeCart);
     $("checkoutBtn").addEventListener("click", checkout);
     $("adminItemForm").addEventListener("submit", publishItem);
+    $("cancelItemEdit").addEventListener("click", resetItemForm);
     $("adminUserForm").addEventListener("submit", createAdminUser);
     $("announcementForm").addEventListener("submit", publishAnnouncement);
     $("specialtyTrainingForm").addEventListener("submit", requestSpecialtyTraining);
@@ -1194,6 +1227,8 @@
           else await loadPlatformData();
         });
       }
+      var editItemButton = event.target.closest("[data-edit-item]");
+      if (editItemButton) editStoreItem(editItemButton.dataset.editItem);
     });
     document.addEventListener("change", function (event) {
       var rank = event.target.closest("[data-rank]");

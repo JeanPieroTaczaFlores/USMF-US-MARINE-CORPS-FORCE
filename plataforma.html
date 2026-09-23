@@ -303,14 +303,15 @@
               </form>
             </article>
             <article class="platform-card" id="adminStorePanel">
-              <div class="card-heading"><div><span>STORE</span><h3>Publicar implemento</h3></div></div>
+              <div class="card-heading"><div><span>STORE</span><h3 id="adminStoreTitle">Publicar implemento</h3></div></div>
               <form id="adminItemForm" class="admin-form">
                 <input id="adminItemName" required placeholder="Nombre del implemento" />
                 <textarea id="adminItemDescription" required rows="3" placeholder="Descripción y condiciones de uso"></textarea>
                 <label class="field-control"><span>IMAGEN DEL IMPLEMENTO</span><input id="adminItemImage" type="text" placeholder="https://... o img/archivo.webp" /><small>Opcional. Puede ser una imagen oficial guardada en la web.</small></label>
                 <div class="form-row"><label class="field-control"><span>TIPO DE IMPLEMENTO</span><select id="adminItemType"><option value="uniforme">Uniforme</option><option value="insignia">Insignia</option><option value="equipo">Equipo</option><option value="reconocimiento">Reconocimiento</option></select></label><label class="field-control"><span>UNIDADES DISPONIBLES</span><input id="adminItemStock" type="number" min="-1" value="-1" /><small>Usa -1 si el stock es ilimitado.</small></label></div>
                 <div class="form-row"><label class="field-control"><span>PRECIO EN DÓLARES (USD)</span><input id="adminItemMoney" type="number" min="0" value="0" placeholder="Ej.: 120" /></label><label class="field-control"><span>PRECIO EN PUNTOS</span><input id="adminItemPoints" type="number" min="0" value="0" placeholder="Ej.: 250" /></label></div>
-                <button class="platform-primary" type="submit">PUBLICAR EN LA STORE</button>
+                <button class="platform-primary" id="adminItemSubmit" type="submit">PUBLICAR EN LA STORE</button>
+                <button class="hidden" id="cancelItemEdit" type="button">CANCELAR EDICIÓN</button>
               </form>
               <div id="adminCatalog" class="admin-catalog"></div>
             </article>
@@ -323,7 +324,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/local-auth.js?v=20260916d"></script>
   <script src="js/config.js?v=20260921a"></script>
-  <script src="js/platform.js?v=20260923a"></script>
+  <script src="js/platform.js?v=20260923b"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
