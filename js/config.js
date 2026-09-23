@@ -4,8 +4,8 @@
 // en localhost para no publicar cuentas de demostración como acceso real.
 // ============================================
 
-const SUPABASE_URL = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseUrl) || "https://TU-PROYECTO.supabase.co";
-const SUPABASE_ANON_KEY = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseKey) || "TU-PUBLISHABLE-KEY-AQUI";
+const SUPABASE_URL = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseUrl) || "https://mbwgkjwyjgzbxvaryibg.supabase.co";
+const SUPABASE_ANON_KEY = (window.USMCF_CONFIG && window.USMCF_CONFIG.supabaseKey) || "sb_publishable_jZtwGcP_Km7mbjJSv9T1wg_vJCW_nRN";
 
 // Detectar si Supabase está configurado
 var isSupabaseConfigured =
