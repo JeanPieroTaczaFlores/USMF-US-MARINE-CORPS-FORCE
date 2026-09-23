@@ -55,10 +55,7 @@
           <label>Correo institucional<input id="loginEmail" type="email" autocomplete="email" required pattern="^[^@\s]+@usmcf\.com$" title="Usa tu correo oficial @usmcf.com" placeholder="marine@usmcf.com" /></label>
           <label>Contraseña<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Tu contraseña" /></label>
           <button class="platform-primary" id="loginBtn" type="submit">ENTRAR A LA PLATAFORMA</button>
-          <button class="discord-login" id="discordLoginBtn" type="button">
-            <span aria-hidden="true">◈</span> ENTRAR DIRECTO CON DISCORD
-          </button>
-          <p class="auth-help">La vinculación con Discord crea tu perfil automáticamente. El acceso completo se habilita al aprobar tu entrenamiento.</p>
+          <p class="auth-help">El acceso se realiza exclusivamente con el correo institucional @usmcf.com.</p>
         </form>
 
         <form id="registerForm" class="auth-form hidden">
@@ -111,7 +108,7 @@
           </div>
           <article class="onboarding-banner hidden" id="onboardingBanner"><div><span>ENTRENAMIENTO ASIGNADO</span><h3>Entrenamiento Básico TRS</h3><p id="onboardingTrainer">Esperando instructor responsable.</p></div><strong id="onboardingStatus">ASIGNADO</strong></article>
           <article class="rank-progress-card" id="rankProgressCard"><div><span>PROGRESO DE RANGO</span><h3><strong id="rankProgressCurrent">—</strong><small id="rankProgressNext">Siguiente rango</small></h3></div><div class="rank-progress-track"><span id="rankProgressBar"></span></div><p id="rankProgressText">Calculando tu progreso…</p></article>
-          <article class="discord-link-card"><div><span>IDENTIDAD OFICIAL</span><h3>Cuenta Discord</h3><p id="discordIdentityStatus">Comprobando vinculación…</p><small id="discordInviteStatus">El bot publicará una invitación renovada cada 24 horas.</small></div><div class="discord-card-actions"><button class="discord-login" id="linkDiscordBtn" type="button">VINCULAR DISCORD</button><a class="secondary-action hidden" id="discordInviteLink" target="_blank" rel="noopener">ENTRAR AL SERVIDOR</a></div></article>
+          <article class="discord-link-card"><div><span>COMUNIDAD OFICIAL</span><h3>Servidor de Discord</h3><p>Consulta comunicaciones, misiones y novedades de la facción.</p><small id="discordInviteStatus">El bot publicará una invitación renovada cada 24 horas.</small></div><div class="discord-card-actions"><a class="secondary-action hidden" id="discordInviteLink" target="_blank" rel="noopener">ENTRAR AL SERVIDOR</a></div></article>
           <div class="metric-grid">
             <article class="metric-card"><span>RANGO ACTUAL</span><strong id="summaryRank">—</strong><small>Rango militar vigente</small></article>
             <article class="metric-card" id="summarySalaryCard"><span>PRÓXIMO SALARIO</span><strong id="summarySalary">—</strong><small id="summaryPayDate">Calculando fecha</small></article>
@@ -324,7 +321,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/local-auth.js?v=20260916d"></script>
   <script src="js/config.js?v=20260921a"></script>
-  <script src="js/platform.js?v=20260923b"></script>
+  <script src="js/platform.js?v=20260923c"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

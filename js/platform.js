@@ -132,7 +132,7 @@
   async function loadSession() {
     clearLegacyPreviewFromUrl();
     if (!supabase) {
-      ["loginTab", "registerTab", "discordLoginBtn"].forEach(function (id) { if ($(id)) $(id).disabled = true; });
+      ["loginTab", "registerTab"].forEach(function (id) { if ($(id)) $(id).disabled = true; });
       ["loginForm", "registerForm"].forEach(function (id) { if ($(id)) $(id).classList.add("hidden"); });
       setMessage("authMessage", "La plataforma está en preparación. El acceso se habilitará cuando la base de datos oficial esté conectada.", "error");
       return;
@@ -194,10 +194,6 @@
     var next = p.ultimo_salario ? new Date(new Date(p.ultimo_salario).getTime() + 7 * 86400000) : new Date();
     $("nextPayment").textContent = dateText(next);
     $("summaryPayDate").textContent = next <= new Date() ? "En proceso" : dateText(next);
-    var discordLinked = Boolean(p.discord_id);
-    $("discordIdentityStatus").textContent = discordLinked ? "Vinculado y verificado · ID " + p.discord_id : "Aún no vinculado. Conecta tu Discord para sincronizar rangos y roles.";
-    $("linkDiscordBtn").textContent = discordLinked ? "DISCORD VINCULADO" : "VINCULAR DISCORD";
-    $("linkDiscordBtn").disabled = discordLinked;
     $("adminNav").classList.toggle("hidden", !isStaff());
     $("specialtiesNav").classList.toggle("hidden", canManageUsers());
     $("missionCommand").classList.toggle("hidden", !isStaff());
@@ -1104,19 +1100,6 @@
     if (result.data && result.data.user && result.data.session) await enterPlatform(result.data.user);
   }
 
-  async function loginWithDiscord() {
-    if (!isSupabaseConfigured) return setMessage("authMessage", "Conecta Supabase y activa el proveedor Discord para usar la vinculación automática.");
-    var result = await supabase.auth.signInWithOAuth({ provider: "discord", options: { redirectTo: window.location.origin + window.location.pathname } });
-    if (result.error) setMessage("authMessage", errorText(result.error), "error");
-  }
-
-  async function linkDiscordIdentity() {
-    if (state.profile && state.profile.discord_id) return;
-    if (!isSupabaseConfigured) return setMessage("appMessage", "La vinculación real se habilita al conectar Supabase y Discord.");
-    var result = await supabase.auth.linkIdentity({ provider: "discord", options: { redirectTo: window.location.origin + window.location.pathname } });
-    if (result.error) setMessage("appMessage", errorText(result.error), "error");
-  }
-
   async function logout() {
     await supabase.auth.signOut();
     state.user = null; state.profile = null; state.cart = [];
@@ -1132,8 +1115,6 @@
     $("registerTab").addEventListener("click", function () { switchAuth("register"); });
     $("loginForm").addEventListener("submit", login);
     $("registerForm").addEventListener("submit", register);
-    $("discordLoginBtn").addEventListener("click", loginWithDiscord);
-    $("linkDiscordBtn").addEventListener("click", linkDiscordIdentity);
     $("logoutBtn").addEventListener("click", logout);
     $("cartButton").addEventListener("click", openCart);
     $("closeCartBtn").addEventListener("click", closeCart);
