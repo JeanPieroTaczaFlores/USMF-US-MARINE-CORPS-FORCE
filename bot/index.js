@@ -49,7 +49,8 @@ async function supabase(path, options = {}) {
   });
   if (!response.ok) throw new Error(`Supabase ${response.status}: ${await response.text()}`);
   if (response.status === 204) return null;
-  return response.json();
+  const body = await response.text();
+  return body ? JSON.parse(body) : null;
 }
 
 async function discord(path, options = {}) {
