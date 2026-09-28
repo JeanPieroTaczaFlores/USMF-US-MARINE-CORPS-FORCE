@@ -223,13 +223,13 @@ function eventChannels(event) {
     access: config.accessChannel,
   };
   if (type === "announcement_published") return [routed[event.target_channel_key] || config.announcementsChannel];
-  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];  if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return ["1413573827316682783"];
-  if (type === "training_completed") return [config.trainingChannel];
-  if (type === "rank_promoted") return [config.pointsChannel, config.announcementsChannel];
-  if (type.startsWith("training_") || type === "specialty_approved") return [config.trainingChannel];
-  if (type.startsWith("specialty_training_")) return [config.trainingChannel];
+  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];  if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return ["1212399037827911680"];
+  if (type === "training_completed") return ["1212399037827911680"];
+  if (type === "rank_promoted") return ["1212399037827911680"];
+  if (type.startsWith("training_") || type === "specialty_approved") return ["1212399037827911680"];
+  if (type.startsWith("specialty_training_")) return ["1212399037827911680"];
   if (type.startsWith("ticket_")) return [config.supportChannel || config.trainingChannel];
-  if (type.startsWith("points_")) return [config.pointsChannel];
+  if (type.startsWith("points_")) return ["1212399037827911680"];
   // Access alerts must not fall back to the missions channel: that channel can
   // be restricted to operational announcements. Training is the known staff
   // fallback until a dedicated access channel is configured in Render.
