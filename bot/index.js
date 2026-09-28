@@ -6,8 +6,8 @@ const config = {
   botToken: process.env.DISCORD_BOT_TOKEN,
   guildId: process.env.DISCORD_GUILD_ID,
   botName: process.env.DISCORD_BOT_NAME || "Kriss Kyle",
-  missionsChannel: process.env.DISCORD_MISSIONS_CHANNEL_ID,
-  trainingChannel: process.env.DISCORD_TRAINING_CHANNEL_ID,
+  
+  missionsChannel: process.env.DISCORD_MISSIONS_CHANNEL_ID,  trainingChannel: process.env.DISCORD_TRAINING_CHANNEL_ID,
   pointsChannel: process.env.DISCORD_POINTS_CHANNEL_ID,
   accessChannel: process.env.DISCORD_ACCESS_CHANNEL_ID,
   announcementsChannel: process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID,
@@ -223,8 +223,8 @@ function eventChannels(event) {
     access: config.accessChannel,
   };
   if (type === "announcement_published") return [routed[event.target_channel_key] || config.announcementsChannel];
-  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];
-  if (type === "training_completed") return [config.trainingChannel, config.announcementsChannel];
+  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];  if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return ["1413573827316682783"];
+  if (type === "training_completed") return [config.trainingChannel];
   if (type === "rank_promoted") return [config.pointsChannel, config.announcementsChannel];
   if (type.startsWith("training_") || type === "specialty_approved") return [config.trainingChannel];
   if (type.startsWith("specialty_training_")) return [config.trainingChannel];
