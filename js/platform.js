@@ -1053,7 +1053,7 @@
       var recruit = state.adminProfiles.find(function (row) { return String(row.id) === String(assignment.user_id); });
       var trainer = state.adminProfiles.find(function (row) { return String(row.id) === String(assignment.trainer_id); });
       var canFinish = assignment.estado === "en_curso" && (canManageUsers() || String(assignment.trainer_id) === String(state.user.id));
-      var actions = assignment.estado === "asignado" ? '<button type="button" data-take-training="' + escapeHtml(assignment.id) + '">TOMAR ENTRENAMIENTO</button>' : canFinish ? '<button type="button" data-finish-training="' + escapeHtml(assignment.id) + '">FINALIZAR Y GRADUAR</button>' : '';
+      var actions = assignment.estado === "asignado" ? '<button type="button" data-take-training="' + escapeHtml(assignment.id) + '">TOMAR ENTRENAMIENTO</button>' : canFinish ? '<button type="button" data-finish-training="' + escapeHtml(assignment.id) + '">FINALIZAR Y GRADUAR</button>' : assignment.estado === "finalizado" && canManageUsers() ? '<button class="danger-action" type="button" data-delete-training="' + escapeHtml(assignment.id) + '" data-training-name="' + escapeHtml(recruit ? recruit.nombre : "este miembro") + '">ELIMINAR REGISTRO</button>' : '';
       return '<div class="training-row"><div><strong>' + escapeHtml(recruit ? recruit.nombre : "Recluta") + '</strong><small>Entrenamiento Básico TRS · Roblox: ' + escapeHtml(recruit ? recruit.usuario_roblox : "Pendiente") + '</small><small>Instructor: ' + escapeHtml(trainer ? trainer.nombre : "Sin asignar") + '</small><span class="training-status">' + escapeHtml(String(assignment.estado || "asignado").replace("_", " ").toUpperCase()) + '</span></div><div class="admin-actions">' + actions + '</div></div>';
     }).join("") : '<p class="empty-state">No hay entrenamientos asignados.</p>';
   }
@@ -1219,6 +1219,15 @@
     setMessage("appMessage", message, "success");
     if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
     if (name === "finish_training" && assignment) await syncDiscordRoles(assignment.user_id, false);
+    await loadPlatformData();
+  }
+
+  async function deleteTrainingRecord(assignmentId, recruitName) {
+    if (!canManageUsers()) return setMessage("appMessage", "Solo Administración puede eliminar registros finalizados.", "error");
+    if (!window.confirm("¿Eliminar el registro TRS finalizado de " + recruitName + "? El rango y la cuenta del miembro no cambiarán.")) return;
+    var result = await supabase.from("training_assignments").delete().eq("id", assignmentId).eq("estado", "finalizado");
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", "Registro de entrenamiento eliminado. La cuenta, el rango, los puntos y el saldo permanecen intactos.", "success");
     await loadPlatformData();
   }
 
@@ -1455,6 +1464,8 @@
       if (takeTrainingButton) trainingAction("take_training", takeTrainingButton.dataset.takeTraining, "Entrenamiento tomado. Ya figuras como instructor responsable.");
       var finishTrainingButton = event.target.closest("[data-finish-training]");
       if (finishTrainingButton) trainingAction("finish_training", finishTrainingButton.dataset.finishTraining, "Entrenamiento finalizado. El recluta fue activado y ascendido automáticamente a Soldado.");
+      var deleteTrainingButton = event.target.closest("[data-delete-training]");
+      if (deleteTrainingButton) deleteTrainingRecord(deleteTrainingButton.dataset.deleteTraining, deleteTrainingButton.dataset.trainingName || "este miembro");
       var specialtyButton = event.target.closest("[data-apply-specialty]");
       if (specialtyButton) applySpecialty(specialtyButton.dataset.applySpecialty);
       var specialtyReview = event.target.closest("[data-review-specialty]");
