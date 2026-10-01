@@ -24,6 +24,24 @@ function jsonMap(name: string): Record<string, string> {
   catch { return {}; }
 }
 
+const specialtyRoleNames: Record<string, string[]> = {
+  raider: ["MARSOC MARINE RAIDERS", "MARINE RAIDER", "RAIDER"],
+  radio: ["OPERADOR DE RADIO"],
+  medico: ["MEDICO DE COMBATE", "MEDICO"],
+  tirador_ligero: ["DMR SNIPER LIGERO", "TIRADOR DESIGNADO LIGERO"],
+  tirador_pesado: ["TIRADOR DESIGNADO", "TIRADOR DESIGNADO PESADO"],
+  machine_gunner: ["MACHINNE GUNNER", "MACHINE GUNNER"],
+  combat_engineer: ["COMBAT ENGINEER", "INGENIERO DE COMBATE"],
+  artillero_vehiculo_aereo: ["ARTILLERO DE VEHICULO AEREO", "ARTILLERO"],
+  artillero_vehiculo_terrestre: ["ARTILLERO DE VEHICULO TERRESTRE", "ARTILLERO"],
+  licencia_vehiculo_pesado: ["LICENCIA VEHICULO PESADO", "CONDUCTOR"],
+  licencia_vehiculo_ligero: ["LICENCIA VEHICULO LIGERO", "CONDUCTOR"],
+};
+
+function normalizedRoleName(value: unknown) {
+  return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -74,7 +92,16 @@ Deno.serve(async (request) => {
       managedRoleKeys.map((key) => [key, Deno.env.get(key)]).filter((entry) => Boolean(entry[1])),
     ) as Record<string, string>;
     const rankRoleMap = jsonMap("DISCORD_RANK_ROLE_MAP");
-    const specialtyRoleMap = jsonMap("DISCORD_SPECIALTY_ROLE_MAP");
+    const configuredSpecialtyRoleMap = jsonMap("DISCORD_SPECIALTY_ROLE_MAP");
+    const guildRolesResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
+      headers: { Authorization: `Bot ${botToken}` },
+    });
+    const guildRoles = guildRolesResponse.ok ? await guildRolesResponse.json() : [];
+    const roleByName = new Map((Array.isArray(guildRoles) ? guildRoles : []).map((role: Record<string, unknown>) => [normalizedRoleName(role.name), String(role.id)]));
+    const discoveredSpecialtyRoleMap = Object.fromEntries(Object.entries(specialtyRoleNames)
+      .map(([key, names]) => [key, names.map((name) => roleByName.get(name)).find(Boolean)])
+      .filter((entry) => Boolean(entry[1])));
+    const specialtyRoleMap = { ...discoveredSpecialtyRoleMap, ...configuredSpecialtyRoleMap };
 
     const desired = new Set<string>();
     if (target.estado !== "activo") {
@@ -99,6 +126,7 @@ Deno.serve(async (request) => {
     const currentRoles = new Set<string>(member.roles || []);
     const managedRoles = Array.from(new Set([...Object.values(roleIds), ...Object.values(rankRoleMap), ...Object.values(specialtyRoleMap)]));
 
+    const warnings: Array<{ role_id: string; status: number }> = [];
     for (const roleId of managedRoles) {
       const shouldHave = desired.has(roleId);
       const hasRole = currentRoles.has(roleId);
@@ -107,12 +135,10 @@ Deno.serve(async (request) => {
         method: shouldHave ? "PUT" : "DELETE",
         headers,
       });
-      if (!roleResponse.ok) {
-        return response({ error: `Discord role update failed (${roleResponse.status})`, role_id: roleId }, 502);
-      }
+      if (!roleResponse.ok) warnings.push({ role_id: roleId, status: roleResponse.status });
     }
 
-    return response({ synced: true, roles: Array.from(desired) });
+    return response({ synced: warnings.length === 0, partial: warnings.length > 0, roles: Array.from(desired), warnings });
   } catch (error) {
     return response({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
   }
