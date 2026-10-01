@@ -203,10 +203,12 @@
     $("specialtiesNav").classList.toggle("hidden", canManageUsers());
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
-    $("discordRosterImportPanel").classList.toggle("hidden", !state.profile || state.profile.rol !== "super_admin");
+    var discordRosterImportPanel = $("discordRosterImportPanel");
+    if (discordRosterImportPanel) discordRosterImportPanel.classList.toggle("hidden", !state.profile || state.profile.rol !== "super_admin");
     $("adminStorePanel").classList.toggle("hidden", !isStaff());
     $("announcementPanel").classList.toggle("hidden", !canManageUsers());
-    $("libraryAdminPanel").classList.toggle("hidden", !canManageUsers());
+    var libraryAdminPanel = $("libraryAdminPanel");
+    if (libraryAdminPanel) libraryAdminPanel.classList.toggle("hidden", !canManageUsers());
     $("adminSectionTitle").textContent = canManageUsers() ? "Administración" : "Centro de Staff";
     $("adminScopeCopy").textContent = canManageUsers()
       ? "Control total de usuarios: nombre, Roblox, correo, contraseña, permisos, estado, rango, puntos, dólares, inventario, facturas y movimientos."
@@ -1380,7 +1382,8 @@
     $("registerTab").addEventListener("click", function () { switchAuth("register"); });
     $("loginForm").addEventListener("submit", login);
     $("registerForm").addEventListener("submit", register);
-    $("selfPasswordForm").addEventListener("submit", changeOwnPassword);
+    var selfPasswordForm = $("selfPasswordForm");
+    if (selfPasswordForm) selfPasswordForm.addEventListener("submit", changeOwnPassword);
     $("logoutBtn").addEventListener("click", logout);
     $("cartButton").addEventListener("click", openCart);
     $("closeCartBtn").addEventListener("click", closeCart);
@@ -1389,10 +1392,13 @@
     $("adminItemForm").addEventListener("submit", publishItem);
     $("cancelItemEdit").addEventListener("click", resetItemForm);
     $("adminUserForm").addEventListener("submit", createAdminUser);
-    $("importDiscordRosterBtn").addEventListener("click", importDiscordRoster);
-    $("rotateAllPasswordsBtn").addEventListener("click", rotateAllPasswords);
+    var importDiscordRosterBtn = $("importDiscordRosterBtn");
+    if (importDiscordRosterBtn) importDiscordRosterBtn.addEventListener("click", importDiscordRoster);
+    var rotateAllPasswordsBtn = $("rotateAllPasswordsBtn");
+    if (rotateAllPasswordsBtn) rotateAllPasswordsBtn.addEventListener("click", rotateAllPasswords);
     $("announcementForm").addEventListener("submit", publishAnnouncement);
-    $("libraryDocumentForm").addEventListener("submit", publishLibraryDocument);
+    var libraryDocumentForm = $("libraryDocumentForm");
+    if (libraryDocumentForm) libraryDocumentForm.addEventListener("submit", publishLibraryDocument);
     $("specialtyTrainingForm").addEventListener("submit", requestSpecialtyTraining);
     $("ticketForm").addEventListener("submit", createTicket);
     $("missionForm").addEventListener("submit", saveMission);
