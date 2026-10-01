@@ -153,7 +153,8 @@ async function syncGuildCatalog() {
 async function syncLogdMessages() {
   if (requiredConfig().length) return;
   const channels = await discord(`/guilds/${config.guildId}/channels`);
-  const logd = (channels || []).find((channel) => {
+  const logd = (channels || []).find((channel) => String(channel.id) === String(config.logdChannel))
+    || (channels || []).find((channel) => {
     if (![0, 5].includes(Number(channel.type))) return false;
     return normalizedChannelName(channel.name).includes("logd");
   });
