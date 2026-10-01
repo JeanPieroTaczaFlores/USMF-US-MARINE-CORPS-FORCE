@@ -23,6 +23,7 @@
     tickets: [],
     ticketComments: [],
     discordInvites: [],
+    libraryDocuments: [],
     factionMembers: [],
     cart: [],
     storeCategory: "todos",
@@ -35,7 +36,8 @@
   var libraryEntries = [
     { category: "reglas", title: "Conducta y respeto", summary: "Trato cortés, coordinación clara y cero tolerancia al comportamiento irrespetuoso.", bullets: ["Respeta a todos los miembros", "Comunicación breve durante misión", "Las ausencias deben justificarse"] },
     { category: "reglas", title: "Cadena de mando", summary: "Las órdenes de instructores, suboficiales y Alto Mando se cumplen dentro de la operación.", bullets: ["Sigue el canal de mando", "No interrumpas comunicaciones", "Reporta incidentes por la vía oficial"] },
-    { category: "manuales", title: "Ingreso y entrenamiento TRS", summary: "Proceso desde la solicitud hasta la asignación de unidad.", bullets: ["Registro y verificación", "Entrenamiento inicial TRS", "Graduación y asignación de rol"] },
+    { category: "entrenamientos", title: "Ingreso y entrenamiento TRS", summary: "Proceso desde la solicitud hasta la asignación de unidad.", bullets: ["Registro y verificación", "Entrenamiento inicial TRS", "Graduación y asignación de rol"] },
+    { category: "entrenamientos", title: "Manual de Infantería Básico", image: "img/field/training.jpg", summary: "Lectura esencial para operar con seguridad y disciplina dentro de una escuadra USMCF.", bullets: ["Formación, movimiento y cadena de mando", "Comunicaciones breves y disciplina de fuego", "Revisión de armamento, uniforme y equipo antes de misión"] },
     { category: "manuales", title: "Uniforme y equipo", summary: "Configuración visual oficial para mantener disciplina y reconocimiento de aliados.", bullets: ["MCCUU desierto o bosque", "Colores Tan / Coyote Brown", "Accesorios de Store sólo si están aprobados"] },
     { category: "equipamiento", title: "Uniforme USMCF oficial", image: "img/official-equipment/usmcf-uniforme.webp", summary: "MCCUU desierto o bosque con elementos Tan / Coyote Brown y representación visual uniforme de la facción.", bullets: ["Longship V1 SAPI en color TAN", "Casco, guantes, rodilleras, linterna y radio con auricular", "Bandera de Estados Unidos y parche de escuadra visibles"] },
     { category: "equipamiento", title: "Carga media autorizada", image: "img/official-equipment/chaleco-medio.webp", summary: "Configuración con mochila para patrulla y reconocimiento, únicamente cuando Mando la autoriza.", bullets: ["Raciones y kit médico", "Binoculares y brújula", "Mantener el frontal del chaleco ligero"] },
@@ -59,15 +61,17 @@
   ];
 
   var specialtyCatalog = [
-    { key: "raider", icon: "⚔", name: "Marine Raider", points: 100, requirement: "Evaluación MARSOC", benefits: ["Misiones especiales y de alto riesgo", "Entrenamiento avanzado", "Uniforme Kandahar autorizado"] },
+    { key: "raider", icon: "⚔", name: "Marine Raider", points: 100, requirement: "Selección y evaluación MARSOC", benefits: ["Misiones especiales y de alto riesgo", "Entrenamiento avanzado", "Uniforme Kandahar autorizado"] },
     { key: "radio", icon: "📡", name: "Operador de Radio", points: 250, requirement: "Curso de comunicaciones", benefits: ["Canal de mando exclusivo", "Coordinación de ataques", "Solicitud de refuerzos"] },
     { key: "medico", icon: "✚", name: "Médico de Combate", points: 250, requirement: "Curso de sanidad", benefits: ["Revivir y estabilizar aliados", "Prioridad de protección", "Soporte médico de escuadra"] },
     { key: "tirador_ligero", icon: "◎", name: "Tirador Designado Ligero", points: 300, requirement: "Prueba de puntería", benefits: ["Uso autorizado de M110", "Eventos de tiro", "Cobertura a media distancia"] },
     { key: "tirador_pesado", icon: "⌖", name: "Tirador Designado Pesado", points: 400, requirement: "Prueba avanzada", benefits: ["AWP y M2000 autorizados", "Largo alcance", "Posiciones de observación"] },
     { key: "machine_gunner", icon: "▰", name: "Machine Gunner", points: 300, requirement: "Curso de armas pesadas", benefits: ["PKM y M240", "Supresión y cobertura", "Control de zonas"] },
     { key: "combat_engineer", icon: "◆", name: "Combat Engineer", points: 300, requirement: "Curso de demoliciones", benefits: ["Brecha y explosivos", "Destrucción controlada", "Herramientas de ingeniería"] },
-    { key: "conductor", icon: "▣", name: "Conductor", points: 120, requirement: "Instrucción vehicular", benefits: ["MRAP y HMMWV", "Maniobras tácticas", "Transporte de escuadra"] },
-    { key: "artillero", icon: "✦", name: "Artillero", points: 120, requirement: "Instrucción de apoyo", benefits: ["Torretas y CAWS", "Fuego de apoyo", "Defensa vehicular"] }
+    { key: "artillero_vehiculo_aereo", icon: "✦", name: "Artillero de Vehículo Aéreo", points: 300, requirement: "Curso de artillería aérea", benefits: ["Armamento de aeronaves", "Cobertura aire-tierra", "Coordinación con la tripulación"] },
+    { key: "artillero_vehiculo_terrestre", icon: "✦", name: "Artillero de Vehículo Terrestre", points: 250, requirement: "Curso de artillería terrestre", benefits: ["Torretas de vehículos", "Fuego de apoyo", "Defensa de convoyes"] },
+    { key: "licencia_vehiculo_pesado", icon: "▣", name: "Licencia de Vehículo Pesado", points: 300, requirement: "Prueba de conducción pesada", benefits: ["Vehículos pesados", "Transporte logístico", "Maniobras de convoy"] },
+    { key: "licencia_vehiculo_ligero", icon: "▣", name: "Licencia de Vehículo Ligero", points: 250, requirement: "Prueba de conducción ligera", benefits: ["Vehículos ligeros", "Movilidad táctica", "Transporte de escuadra"] }
   ];
 
   function $(id) { return document.getElementById(id); }
@@ -91,6 +95,7 @@
     var message = error.message || error.error_description || String(error);
     if (/invalid login/i.test(message)) return "Correo o contraseña incorrectos.";
     if (/already registered/i.test(message)) return "Ese correo ya tiene una cuenta.";
+    if (/email not confirmed/i.test(message)) return "La cuenta existe, pero todavía no fue confirmada por Administración.";
     return message;
   }
   function setMessage(target, message, kind) {
@@ -148,7 +153,7 @@
       state.user = user;
       if (isSupabaseConfigured) {
         var identitySync = await supabase.rpc("sync_my_discord_identity");
-        if (identitySync.error) throw identitySync.error;
+        if (identitySync.error) console.warn("[USMCF] La vinculación de Discord se reintentará después:", identitySync.error.message);
       }
       state.profile = await getProfile(user.id);
       if (!state.profile) throw new Error("Tu cuenta todavía no tiene un perfil vinculado.");
@@ -198,8 +203,10 @@
     $("specialtiesNav").classList.toggle("hidden", canManageUsers());
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
+    $("discordRosterImportPanel").classList.toggle("hidden", !state.profile || state.profile.rol !== "super_admin");
     $("adminStorePanel").classList.toggle("hidden", !isStaff());
     $("announcementPanel").classList.toggle("hidden", !canManageUsers());
+    $("libraryAdminPanel").classList.toggle("hidden", !canManageUsers());
     $("adminSectionTitle").textContent = canManageUsers() ? "Administración" : "Centro de Staff";
     $("adminScopeCopy").textContent = canManageUsers()
       ? "Control total de usuarios: nombre, Roblox, correo, contraseña, permisos, estado, rango, puntos, dólares, inventario, facturas y movimientos."
@@ -244,7 +251,8 @@
       supabase.from("support_tickets").select("*").order("updated_at", { ascending: false }),
       supabase.from("support_ticket_comments").select("*").order("created_at", { ascending: true }),
       supabase.from("discord_invites").select("*").order("created_at", { ascending: false }).limit(1),
-      supabase.from("voice_sessions").select("*").order("joined_at", { ascending: false }).limit(200)
+      supabase.from("voice_sessions").select("*").order("joined_at", { ascending: false }).limit(200),
+      supabase.from("library_documents").select("*").order("created_at", { ascending: false })
     ]);
     state.transactions = results[0].data || [];
     state.items = results[1].data || [];
@@ -260,6 +268,7 @@
     state.ticketComments = results[11].data || [];
     state.discordInvites = results[12].data || [];
     state.voiceSessions = results[13].data || [];
+    state.libraryDocuments = results[14].data || [];
     state.profile = await getProfile(userId);
     hydrateIdentity();
     renderTransactions();
@@ -273,6 +282,7 @@
     renderSpecialtyTrainingRequests();
     renderTickets();
     renderDiscordInvite();
+    renderLibrary();
     $("summaryItems").textContent = state.inventory.reduce(function (sum, row) { return sum + Number(row.cantidad || 1); }, 0);
     if (isStaff()) await loadAdminData();
   }
@@ -402,7 +412,9 @@
       ? eligible.map(function (entry) { return '<option value="' + escapeHtml(entry.key) + '">' + escapeHtml(entry.name) + ' · ' + escapeHtml(points(entry.points)) + '</option>'; }).join("")
       : '<option value="">No hay cursos nuevos disponibles</option>';
     $("specialtyTrainingSubmit").disabled = !eligible.length || state.profile.estado !== "activo";
-    var mine = state.specialtyTrainingRequests.filter(function (row) { return String(row.user_id) === String(state.user.id); });
+    var mine = state.specialtyTrainingRequests.filter(function (row) {
+      return String(row.user_id) === String(state.user.id) && ["pendiente", "asignado", "en_curso"].indexOf(row.estado) !== -1;
+    });
     $("mySpecialtyTrainingRequests").innerHTML = mine.length ? mine.map(function (request) {
       var trainer = state.adminProfiles.find(function (row) { return String(row.id) === String(request.trainer_id); });
       return '<div class="training-row"><div><strong>' + escapeHtml(specialtyName(request.specialty_key)) + '</strong><small>Solicitado ' + escapeHtml(dateText(request.created_at)) + ' · Instructor: ' + escapeHtml(trainer ? trainer.nombre : "Por asignar") + '</small><small>' + escapeHtml(request.notes || "Sin comentario adicional") + '</small><span class="training-status">' + escapeHtml(String(request.estado || "pendiente").replace("_", " ").toUpperCase()) + '</span></div></div>';
@@ -439,6 +451,10 @@
     return { abierto: "ABIERTO", en_revision: "EN REVISIÓN", resuelto: "RESUELTO", cerrado: "CERRADO" }[status] || String(status || "abierto").toUpperCase();
   }
 
+  function ticketCode(ticket) {
+    return "TICKET-" + String(Number(ticket.ticket_number || 0)).padStart(5, "0");
+  }
+
   function ticketCard(ticket, staffMode) {
     var comments = state.ticketComments.filter(function (row) { return String(row.ticket_id) === String(ticket.id); });
     var owner = profileName(ticket.user_id);
@@ -446,8 +462,10 @@
       var author = comment.author_name || profileName(comment.author_id);
       return '<div class="ticket-comment ' + (String(comment.author_id) === String(ticket.user_id) ? "member" : "staff") + '"><div><strong>@' + escapeHtml(author) + '</strong><small>' + escapeHtml(dateText(comment.created_at)) + '</small></div><p>' + escapeHtml(comment.message) + '</p></div>';
     }).join("") : '<p class="empty-state">Todavía no hay respuestas.</p>';
-    var controls = staffMode && ticket.estado !== "cerrado" ? '<div class="admin-actions ticket-controls"><button type="button" data-ticket-status="en_revision" data-ticket-id="' + escapeHtml(ticket.id) + '">EN REVISIÓN</button><button type="button" data-ticket-status="resuelto" data-ticket-id="' + escapeHtml(ticket.id) + '">RESOLVER</button><button type="button" data-ticket-status="cerrado" data-ticket-id="' + escapeHtml(ticket.id) + '">CERRAR</button></div>' : '';
-    return '<details class="ticket-card"><summary><div><span>' + escapeHtml(ticket.tipo) + '</span><strong>' + escapeHtml(ticket.asunto) + '</strong><small>' + (staffMode ? escapeHtml(owner) + ' · ' : '') + escapeHtml(dateText(ticket.updated_at || ticket.created_at)) + '</small></div><b class="ticket-status ' + escapeHtml(ticket.estado) + '">' + escapeHtml(ticketStatusLabel(ticket.estado)) + '</b></summary><div class="ticket-body"><p class="ticket-opening">' + escapeHtml(ticket.detalle) + '</p><div class="ticket-thread">' + commentRows + '</div><form class="ticket-reply-form" data-ticket-reply-form="' + escapeHtml(ticket.id) + '"><input data-ticket-comment-input="' + escapeHtml(ticket.id) + '" maxlength="1000" required placeholder="Escribe un comentario o respuesta" /><button class="secondary-action" type="submit">COMENTAR</button></form>' + controls + '</div></details>';
+    var statusControls = staffMode && ticket.estado !== "cerrado" ? '<button type="button" data-ticket-status="en_revision" data-ticket-id="' + escapeHtml(ticket.id) + '">EN REVISIÓN</button><button type="button" data-ticket-status="resuelto" data-ticket-id="' + escapeHtml(ticket.id) + '">RESOLVER</button><button type="button" data-ticket-status="cerrado" data-ticket-id="' + escapeHtml(ticket.id) + '">CERRAR</button>' : '';
+    var deleteControl = staffMode && canManageUsers() ? '<button class="danger-action" type="button" data-delete-ticket="' + escapeHtml(ticket.id) + '" data-ticket-code="' + escapeHtml(ticketCode(ticket)) + '">ELIMINAR</button>' : '';
+    var controls = statusControls || deleteControl ? '<div class="admin-actions ticket-controls">' + statusControls + deleteControl + '</div>' : '';
+    return '<details class="ticket-card"><summary><div><span>' + escapeHtml(ticketCode(ticket)) + ' · ' + escapeHtml(ticket.tipo) + '</span><strong>' + escapeHtml(ticket.asunto) + '</strong><small>' + (staffMode ? escapeHtml(owner) + ' · ' : '') + escapeHtml(dateText(ticket.updated_at || ticket.created_at)) + '</small></div><b class="ticket-status ' + escapeHtml(ticket.estado) + '">' + escapeHtml(ticketStatusLabel(ticket.estado)) + '</b></summary><div class="ticket-body"><p class="ticket-opening">' + escapeHtml(ticket.detalle) + '</p><div class="ticket-thread">' + commentRows + '</div><form class="ticket-reply-form" data-ticket-reply-form="' + escapeHtml(ticket.id) + '"><input data-ticket-comment-input="' + escapeHtml(ticket.id) + '" maxlength="1000" required placeholder="Escribe un comentario o respuesta" /><button class="secondary-action" type="submit">COMENTAR</button></form>' + controls + '</div></details>';
   }
 
   function renderTickets() {
@@ -501,6 +519,15 @@
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
     setMessage("appMessage", "Estado del ticket actualizado.", "success");
+    await loadPlatformData();
+  }
+
+  async function deleteTicket(ticketId, code) {
+    if (!canManageUsers()) return;
+    if (!window.confirm("¿Eliminar definitivamente " + code + " y todos sus comentarios? Esta acción no se puede deshacer.")) return;
+    var result = await supabase.rpc("delete_support_ticket", { p_ticket_id: ticketId });
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", code + " fue eliminado definitivamente.", "success");
     await loadPlatformData();
   }
 
@@ -613,15 +640,145 @@
 
   function renderLibrary() {
     var query = state.libraryQuery.toLowerCase();
-    var entries = libraryEntries.filter(function (entry) {
+    var documents = state.libraryDocuments.filter(function (document) { return document.active !== false; }).map(function (document) {
+      return { category: document.category, title: document.title, summary: document.description || "Documento oficial publicado por Administración.", bullets: Array.isArray(document.bullets) ? document.bullets : [], image: document.image_url, documentUrl: document.document_url, documentId: document.id };
+    });
+    var entries = documents.filter(function (entry) {
       var categoryMatch = state.libraryCategory === "todos" || entry.category === state.libraryCategory;
       var text = [entry.category, entry.title, entry.summary].concat(entry.bullets).join(" ").toLowerCase();
       return categoryMatch && (!query || text.indexOf(query) !== -1);
     });
     $("libraryGrid").innerHTML = entries.length ? entries.map(function (entry) {
       var image = entry.image ? '<img class="library-card-image" src="' + escapeHtml(entry.image) + '" alt="Referencia oficial: ' + escapeHtml(entry.title) + '" loading="lazy" />' : '';
-      return '<article class="library-card">' + image + '<div class="library-card-copy"><span>' + escapeHtml(entry.category) + '</span><h3>' + escapeHtml(entry.title) + '</h3><p>' + escapeHtml(entry.summary) + '</p><ul>' + entry.bullets.map(function (bullet) { return "<li>" + escapeHtml(bullet) + "</li>"; }).join("") + '</ul></div></article>';
+      var bullets = entry.bullets.length ? '<ul>' + entry.bullets.map(function (bullet) { return "<li>" + escapeHtml(bullet) + "</li>"; }).join("") + '</ul>' : '';
+      var documentAction = entry.documentUrl ? '<a class="secondary-action library-document-action" href="' + escapeHtml(entry.documentUrl) + '" target="_blank" rel="noopener noreferrer">ABRIR DOCUMENTO</a>' : '';
+      var editAction = canManageUsers() ? '<button class="secondary-action library-document-action" type="button" data-edit-library-card="' + escapeHtml(entry.documentId) + '">MODIFICAR</button>' : '';
+      return '<article class="library-card">' + image + '<div class="library-card-copy"><span>' + escapeHtml(entry.category) + '</span><h3>' + escapeHtml(entry.title) + '</h3><p>' + escapeHtml(entry.summary) + '</p>' + bullets + documentAction + editAction + '</div></article>';
     }).join("") : '<p class="empty-state">No encontramos contenido con ese término.</p>';
+    if ($("adminLibraryDocuments")) {
+      $("adminLibraryDocuments").innerHTML = state.libraryDocuments.length ? state.libraryDocuments.map(function (document) {
+        var preview = document.image_url ? '<img class="library-admin-thumb" src="' + escapeHtml(document.image_url) + '" alt="" loading="lazy" />' : '<div class="library-admin-thumb empty">SIN IMAGEN</div>';
+        var removeImage = document.image_url ? '<label class="library-active-toggle"><input name="remove_image" type="checkbox" /> QUITAR IMAGEN ACTUAL</label>' : '';
+        var bulletsValue = Array.isArray(document.bullets) ? document.bullets.join('\n') : '';
+        var openAction = document.document_url ? '<a class="secondary-action" href="' + escapeHtml(document.document_url) + '" target="_blank" rel="noopener noreferrer">ABRIR</a>' : '';
+        return '<details class="admin-catalog-row library-editor" data-library-editor="' + escapeHtml(document.id) + '"><summary>' + preview + '<div><strong>' + escapeHtml(document.title) + '</strong><small>' + escapeHtml(document.category) + ' · ' + (document.active === false ? 'OCULTO' : 'VISIBLE') + '</small><small>PRESIONA PARA MODIFICAR TODO</small></div><span class="accordion-hint">EDITAR</span></summary><form class="admin-form library-edit-form" data-library-edit-form="' + escapeHtml(document.id) + '"><div class="form-row"><input name="title" required maxlength="140" value="' + escapeHtml(document.title) + '" placeholder="Título" /><select name="category">' + libraryCategoryOptions(document.category) + '</select></div><textarea name="description" maxlength="1000" rows="3" placeholder="Descripción">' + escapeHtml(document.description || '') + '</textarea><textarea name="bullets" maxlength="1200" rows="4" placeholder="Puntos importantes, uno por línea">' + escapeHtml(bulletsValue) + '</textarea><input name="document_url" type="url" value="' + escapeHtml(document.document_url || '') + '" placeholder="Enlace HTTPS del documento (opcional)" /><label class="library-image-picker"><span>REEMPLAZAR IMAGEN (OPCIONAL · MÁX. 5 MB)</span><input name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>' + removeImage + '<label class="library-active-toggle"><input name="active" type="checkbox" ' + (document.active === false ? '' : 'checked') + ' /> VISIBLE PARA LOS USUARIOS</label><div class="admin-actions"><button class="platform-primary compact" type="submit">GUARDAR CAMBIOS</button>' + openAction + '<button class="danger-action" type="button" data-delete-document="' + escapeHtml(document.id) + '">ELIMINAR</button></div></form></details>';
+      }).join("") : '<p class="empty-state">Todavía no hay documentos publicados por Administración.</p>';
+    }
+  }
+
+  function libraryCategoryOptions(selected) {
+    return [["entrenamientos", "Entrenamiento / TRS"], ["manuales", "Manual"], ["reglas", "Reglas"], ["equipamiento", "Equipamiento"], ["armas", "Armas"], ["loadouts", "Loadout"]].map(function (entry) {
+      return '<option value="' + entry[0] + '" ' + (entry[0] === selected ? 'selected' : '') + '>' + entry[1] + '</option>';
+    }).join("");
+  }
+
+  function safeHttpsUrl(value) {
+    try {
+      var url = new URL(String(value || ""));
+      return url.protocol === "https:" ? url.href : "";
+    } catch (error) { return ""; }
+  }
+
+  function libraryBullets(value) {
+    return String(value || "").split(/\r?\n/).map(function (line) { return line.trim(); }).filter(Boolean).slice(0, 12);
+  }
+
+  function openLibraryEditor(documentId) {
+    var editor = document.querySelector('[data-library-editor="' + documentId + '"]');
+    if (!editor) return;
+    editor.open = true;
+    editor.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function validateLibraryImage(file) {
+    if (!file) return "";
+    if (["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(file.type) === -1) return "Usa una imagen JPG, PNG, WEBP o GIF.";
+    if (file.size > 5 * 1024 * 1024) return "La imagen debe pesar como máximo 5 MB.";
+    return "";
+  }
+
+  function fileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || "")); };
+      reader.onerror = function () { reject(new Error("No se pudo leer la imagen.")); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadLibraryImage(file) {
+    var validation = validateLibraryImage(file);
+    if (validation) throw new Error(validation);
+    if (!supabase.storage || !supabase.storage.from) return { url: await fileAsDataUrl(file), path: "" };
+    var extensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+    var path = state.user.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 10) + "." + extensions[file.type];
+    var upload = await supabase.storage.from("library-assets").upload(path, file, { cacheControl: "3600", contentType: file.type, upsert: false });
+    if (upload.error) throw upload.error;
+    var publicUrl = supabase.storage.from("library-assets").getPublicUrl(path);
+    return { url: publicUrl.data.publicUrl, path: path };
+  }
+
+  async function publishLibraryDocument(event) {
+    event.preventDefault();
+    if (!canManageUsers()) return;
+    var documentUrlInput = $("libraryDocumentUrl").value.trim();
+    var documentUrl = documentUrlInput ? safeHttpsUrl(documentUrlInput) : null;
+    if (documentUrlInput && !documentUrl) return setMessage("appMessage", "El documento debe usar un enlace HTTPS válido.", "error");
+    var button = $("libraryDocumentSubmit");
+    setBusy(button, true, "PUBLICANDO…");
+    var imageFile = $("libraryDocumentImage").files[0];
+    var uploaded = null;
+    try { if (imageFile) uploaded = await uploadLibraryImage(imageFile); }
+    catch (error) { setBusy(button, false); return setMessage("appMessage", errorText(error), "error"); }
+    var result = await supabase.from("library_documents").insert({ title: $("libraryDocumentTitle").value.trim(), description: $("libraryDocumentDescription").value.trim(), bullets: libraryBullets($("libraryDocumentBullets").value), category: $("libraryDocumentCategory").value, document_url: documentUrl, image_url: uploaded ? uploaded.url : null, image_path: uploaded ? uploaded.path : null, created_by: state.user.id });
+    setBusy(button, false);
+    if (result.error) {
+      if (uploaded && uploaded.path && supabase.storage) await supabase.storage.from("library-assets").remove([uploaded.path]);
+      return setMessage("appMessage", errorText(result.error), "error");
+    }
+    $("libraryDocumentForm").reset();
+    setMessage("appMessage", "Documento publicado en la biblioteca de todos los miembros.", "success");
+    await loadPlatformData();
+  }
+
+  async function updateLibraryDocument(event, documentId) {
+    event.preventDefault();
+    if (!canManageUsers()) return;
+    var form = event.target;
+    var current = state.libraryDocuments.find(function (document) { return String(document.id) === String(documentId); });
+    if (!current) return;
+    var documentUrlInput = form.elements.document_url.value.trim();
+    var documentUrl = documentUrlInput ? safeHttpsUrl(documentUrlInput) : null;
+    if (documentUrlInput && !documentUrl) return setMessage("appMessage", "El documento debe usar un enlace HTTPS válido.", "error");
+    var button = form.querySelector('button[type="submit"]');
+    var imageFile = form.elements.image.files[0];
+    var removeCurrentImage = !imageFile && form.elements.remove_image && form.elements.remove_image.checked;
+    var uploaded = null;
+    setBusy(button, true, "GUARDANDO…");
+    try { if (imageFile) uploaded = await uploadLibraryImage(imageFile); }
+    catch (error) { setBusy(button, false); return setMessage("appMessage", errorText(error), "error"); }
+    var changes = { title: form.elements.title.value.trim(), description: form.elements.description.value.trim(), bullets: libraryBullets(form.elements.bullets.value), category: form.elements.category.value, document_url: documentUrl, active: form.elements.active.checked, updated_at: new Date().toISOString() };
+    if (uploaded) { changes.image_url = uploaded.url; changes.image_path = uploaded.path; }
+    else if (removeCurrentImage) { changes.image_url = null; changes.image_path = null; }
+    var result = await supabase.from("library_documents").update(changes).eq("id", documentId);
+    setBusy(button, false);
+    if (result.error) {
+      if (uploaded && uploaded.path && supabase.storage) await supabase.storage.from("library-assets").remove([uploaded.path]);
+      return setMessage("appMessage", errorText(result.error), "error");
+    }
+    if ((uploaded || removeCurrentImage) && current.image_path && supabase.storage) await supabase.storage.from("library-assets").remove([current.image_path]);
+    setMessage("appMessage", "Documento e imagen actualizados para todos los usuarios.", "success");
+    await loadPlatformData();
+  }
+
+  async function deleteLibraryDocument(documentId) {
+    if (!canManageUsers() || !window.confirm("¿Quitar este documento de la biblioteca?")) return;
+    var current = state.libraryDocuments.find(function (document) { return String(document.id) === String(documentId); });
+    var result = await supabase.from("library_documents").delete().eq("id", documentId);
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    if (current && current.image_path && supabase.storage) await supabase.storage.from("library-assets").remove([current.image_path]);
+    setMessage("appMessage", "Documento retirado de la biblioteca.", "success");
+    await loadPlatformData();
   }
 
   function missionStatusLabel(status) {
@@ -855,7 +1012,8 @@
       var movementText = transactions.length ? transactions.map(function (row) { return escapeHtml(row.descripcion) + " — " + escapeHtml(money(row.monto_dinero)) + " / " + escapeHtml(points(row.monto_puntos)); }).join("<br>") : "Sin movimientos";
       var grantedSpecialties = state.specialtyApplications.filter(function (row) { return String(row.user_id) === String(profile.id) && row.estado === "aprobada"; });
       var specialtyText = grantedSpecialties.length ? grantedSpecialties.map(function (row) { return escapeHtml(specialtyName(row.role_key)); }).join(" · ") : "Sin especialidades asignadas";
-      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO OPERATIVO</span><input data-profile-field="callsign" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.callsign || profile.usuario_roblox) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button></div>' : '';
+      var deleteAllowed = canManageUsers() && String(profile.id) !== String(state.user.id) && (profile.rol !== "super_admin" || state.profile.rol === "super_admin");
+      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO OPERATIVO</span><input data-profile-field="callsign" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.callsign || profile.usuario_roblox) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button>' + (deleteAllowed ? '<button class="wide danger-action" type="button" data-delete-user="' + escapeHtml(profile.id) + '" data-delete-name="' + escapeHtml(profile.nombre || profile.email) + '">ELIMINAR USUARIO DEFINITIVAMENTE</button>' : '') + '</div>' : '';
       var specialtyAdmin = canManageUsers() ? '<div class="specialty-admin-control"><label><span>ASIGNAR ESPECIALIDAD</span><select data-specialty-grant-for="' + escapeHtml(profile.id) + '">' + specialtyCatalog.map(function (entry) { return '<option value="' + escapeHtml(entry.key) + '">' + escapeHtml(entry.name) + '</option>'; }).join("") + '</select></label><button type="button" data-grant-specialty="' + escapeHtml(profile.id) + '">OTORGAR</button><button type="button" data-revoke-specialty="' + escapeHtml(profile.id) + '">RETIRAR</button><small>Actuales: ' + specialtyText + '</small></div>' : '';
       var dossier = '<details class="member-dossier"><summary>VER INVENTARIO, FACTURAS, ESPECIALIDADES Y MOVIMIENTOS</summary><div class="dossier-grid"><div><strong>INVENTARIO</strong><p>' + inventoryText + '</p></div><div><strong>FACTURAS</strong><p>' + invoiceText + '</p></div><div><strong>ESPECIALIDADES</strong><p>' + specialtyText + '</p></div><div><strong>ÚLTIMOS MOVIMIENTOS</strong><p>' + movementText + '</p></div></div></details>';
       var accordionAction = canManageUsers() ? "MODIFICAR" : "PUNTOS Y SALDO";
@@ -901,7 +1059,7 @@
   function renderSpecialtyApplicationQueue() {
     var pending = state.specialtyApplications.filter(function (row) { return row.estado === "pendiente"; });
     $("specialtyPendingCount").textContent = pending.length + (pending.length === 1 ? " PENDIENTE" : " PENDIENTES");
-    $("specialtyApplicationQueue").innerHTML = state.specialtyApplications.length ? state.specialtyApplications.map(function (application) {
+    $("specialtyApplicationQueue").innerHTML = pending.length ? pending.map(function (application) {
       var specialty = specialtyCatalog.find(function (entry) { return entry.key === application.role_key; });
       var reviewed = application.estado !== "pendiente";
       return '<div class="training-row"><div><strong>' + escapeHtml(profileName(application.user_id)) + ' · ' + escapeHtml(specialty ? specialty.name : application.role_key) + '</strong><small>Solicitada: ' + escapeHtml(dateText(application.created_at)) + (application.reviewed_at ? ' · Revisada: ' + escapeHtml(dateText(application.reviewed_at)) : '') + '</small><span class="training-status">' + escapeHtml(application.estado.toUpperCase()) + '</span></div><div class="admin-actions"><button type="button" data-review-specialty="' + escapeHtml(application.id) + '" data-specialty-status="aprobada" ' + (reviewed ? "disabled" : "") + '>APROBAR ROL</button><button type="button" data-review-specialty="' + escapeHtml(application.id) + '" data-specialty-status="rechazada" ' + (reviewed ? "disabled" : "") + '>RECHAZAR</button></div></div>';
@@ -911,7 +1069,7 @@
   function renderSpecialtyTrainingQueue() {
     var open = state.specialtyTrainingRequests.filter(function (row) { return ["pendiente", "asignado", "en_curso"].indexOf(row.estado) !== -1; });
     $("specialtyTrainingPendingCount").textContent = open.length + (open.length === 1 ? " PENDIENTE" : " PENDIENTES");
-    $("specialtyTrainingQueue").innerHTML = state.specialtyTrainingRequests.length ? state.specialtyTrainingRequests.map(function (request) {
+    $("specialtyTrainingQueue").innerHTML = open.length ? open.map(function (request) {
       var trainer = state.adminProfiles.find(function (row) { return String(row.id) === String(request.trainer_id); });
       var ageDays = Math.floor((Date.now() - new Date(request.created_at).getTime()) / 86400000);
       var overdue = ageDays >= 3 && ["pendiente", "asignado"].indexOf(request.estado) !== -1;
@@ -945,6 +1103,70 @@
     await loadAdminData();
   }
 
+  function downloadDiscordCredentials(rows) {
+    var header = ["nombre", "usuario", "correo", "contrasena_asignada", "rol", "rango", "puntos", "dinero_usd"];
+    var escapeCsv = function (value) { return '"' + String(value == null ? "" : value).replace(/"/g, '""') + '"'; };
+    var csv = "\ufeff" + [header].concat(rows.map(function (row) {
+      return [row.nombre, row.usuario, row.email, row.password, row.rol, row.rango, row.puntos, row.dinero];
+    })).map(function (line) { return line.map(escapeCsv).join(","); }).join("\r\n");
+    var url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    var anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "usmcf-accesos-privados-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importDiscordRoster() {
+    if (!state.profile || state.profile.rol !== "super_admin") return;
+    var button = $("importDiscordRosterBtn");
+    var credentials = [];
+    var failures = [];
+    setBusy(button, true, "IMPORTANDO…");
+    try {
+      for (var page = 0; page < 10; page += 1) {
+        var result = await supabase.functions.invoke("admin-users", { body: { action: "bulk_import_discord", batch_size: 20 } });
+        if (result.error || !result.data) throw new Error(result.error ? errorText(result.error) : "La importación no respondió.");
+        credentials = credentials.concat(result.data.created || []);
+        failures = failures.concat(result.data.failures || []);
+        if (!result.data.remaining || !(result.data.created || []).length) break;
+      }
+      if (credentials.length) downloadDiscordCredentials(credentials);
+      setMessage("appMessage", credentials.length + " cuentas creadas desde Discord." + (failures.length ? " " + failures.length + " registros requieren revisión." : " El CSV privado con accesos fue descargado."), failures.length ? "warning" : "success");
+      await loadPlatformData();
+    } catch (error) {
+      setMessage("appMessage", errorText(error), "error");
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
+  async function rotateAllPasswords() {
+    if (!state.profile || state.profile.rol !== "super_admin") return;
+    if (!window.confirm("Se reemplazarán las contraseñas actuales de todos los usuarios. Se descargará un único CSV privado. ¿Continuar?")) return;
+    var button = $("rotateAllPasswordsBtn");
+    var credentials = [];
+    var failures = [];
+    var ids = state.adminProfiles.map(function (profile) { return profile.id; });
+    setBusy(button, true, "GENERANDO…");
+    try {
+      for (var offset = 0; offset < ids.length; offset += 20) {
+        var result = await supabase.functions.invoke("admin-users", { body: { action: "bulk_reset_passwords", user_ids: ids.slice(offset, offset + 20) } });
+        if (result.error || !result.data) throw new Error(result.error ? errorText(result.error) : "La generación no respondió.");
+        credentials = credentials.concat(result.data.updated || []);
+        failures = failures.concat(result.data.failures || []);
+      }
+      if (credentials.length) downloadDiscordCredentials(credentials);
+      setMessage("appMessage", credentials.length + " contraseñas únicas generadas." + (failures.length ? " " + failures.length + " cuentas requieren revisión." : " El CSV privado fue descargado."), failures.length ? "warning" : "success");
+    } catch (error) {
+      setMessage("appMessage", errorText(error), "error");
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
   async function saveProfile(profileId) {
     var payload = { action: "update", user_id: profileId };
     document.querySelectorAll('[data-profile-id="' + profileId + '"]').forEach(function (field) { payload[field.dataset.profileField] = field.value; });
@@ -964,6 +1186,16 @@
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     input.value = "";
     setMessage("appMessage", "Contraseña cambiada por Administración.", "success");
+  }
+
+  async function deleteMember(profileId, profileNameValue) {
+    if (!canManageUsers() || String(profileId) === String(state.user.id)) return;
+    var confirmed = window.confirm("¿Eliminar definitivamente a " + profileNameValue + "? Se borrará su acceso y expediente de la plataforma. Esta acción no se puede deshacer.");
+    if (!confirmed) return;
+    var result = await supabase.functions.invoke("admin-users", { body: { action: "delete", user_id: profileId } });
+    if (result.error || result.data && result.data.error) return setMessage("appMessage", result.data && result.data.error ? result.data.error : errorText(result.error), "error");
+    setMessage("appMessage", "Usuario eliminado y acceso revocado.", "success");
+    await loadPlatformData();
   }
 
   async function adminSetSpecialty(profileId, enabled) {
@@ -1089,15 +1321,22 @@
     if (!isOfficialEmail(email)) return setMessage("authMessage", "Solo se aceptan correos institucionales @usmcf.com.", "error");
     var button = $("registerBtn");
     setBusy(button, true, "CREANDO…");
-    var result = await supabase.auth.signUp({
+    var result = await supabase.functions.invoke("member-registration", { body: {
       email: email,
       password: $("registerPassword").value,
-      options: { data: { nombre: $("registerName").value.trim(), usuario_roblox: $("registerRoblox").value.trim(), callsign: $("registerCallsign").value.trim() } }
-    });
+      nombre: $("registerName").value.trim(),
+      usuario_roblox: $("registerRoblox").value.trim(),
+      callsign: $("registerCallsign").value.trim()
+    } });
+    if (result.error || !result.data || result.data.error) {
+      setBusy(button, false);
+      return setMessage("authMessage", result.data && result.data.error ? result.data.error : errorText(result.error), "error");
+    }
+    var loginResult = await supabase.auth.signInWithPassword({ email: email, password: $("registerPassword").value });
     setBusy(button, false);
-    if (result.error) return setMessage("authMessage", errorText(result.error), "error");
-    setMessage("authMessage", "Solicitud creada. El staff debe aprobar tu entrenamiento antes de habilitar compras.", "success");
-    if (result.data && result.data.user && result.data.session) await enterPlatform(result.data.user);
+    if (loginResult.error) return setMessage("authMessage", errorText(loginResult.error), "error");
+    setMessage("authMessage", "Cuenta creada como Recluta pendiente. Ya puedes ingresar; Administración validará tu cuenta oficial.", "success");
+    await enterPlatform(loginResult.data.user);
   }
 
   async function logout() {
@@ -1110,11 +1349,38 @@
     switchAuth("login");
   }
 
+  async function changeOwnPassword(event) {
+    event.preventDefault();
+    setMessage("appMessage", "");
+    var currentPassword = $("currentPassword").value;
+    var newPassword = $("newPassword").value;
+    var confirmPassword = $("confirmPassword").value;
+    if (newPassword.length < 8) return setMessage("appMessage", "La nueva contraseña debe tener al menos 8 caracteres.", "error");
+    if (newPassword !== confirmPassword) return setMessage("appMessage", "La confirmación no coincide con la nueva contraseña.", "error");
+    if (currentPassword === newPassword) return setMessage("appMessage", "La contraseña nueva debe ser diferente de la actual.", "error");
+
+    var button = $("selfPasswordSubmit");
+    setBusy(button, true, "VERIFICANDO…");
+    var verification = await supabase.auth.signInWithPassword({ email: state.profile.email, password: currentPassword });
+    if (verification.error) {
+      setBusy(button, false);
+      return setMessage("appMessage", "La contraseña actual no es correcta.", "error");
+    }
+    setBusy(button, true, "ACTUALIZANDO…");
+    var result = await supabase.auth.updateUser({ password: newPassword });
+    setBusy(button, false);
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    $("selfPasswordForm").reset();
+    setMessage("appMessage", "Contraseña actualizada correctamente. Úsala en tu próximo inicio de sesión.", "success");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function bindEvents() {
     $("loginTab").addEventListener("click", function () { switchAuth("login"); });
     $("registerTab").addEventListener("click", function () { switchAuth("register"); });
     $("loginForm").addEventListener("submit", login);
     $("registerForm").addEventListener("submit", register);
+    $("selfPasswordForm").addEventListener("submit", changeOwnPassword);
     $("logoutBtn").addEventListener("click", logout);
     $("cartButton").addEventListener("click", openCart);
     $("closeCartBtn").addEventListener("click", closeCart);
@@ -1123,7 +1389,10 @@
     $("adminItemForm").addEventListener("submit", publishItem);
     $("cancelItemEdit").addEventListener("click", resetItemForm);
     $("adminUserForm").addEventListener("submit", createAdminUser);
+    $("importDiscordRosterBtn").addEventListener("click", importDiscordRoster);
+    $("rotateAllPasswordsBtn").addEventListener("click", rotateAllPasswords);
     $("announcementForm").addEventListener("submit", publishAnnouncement);
+    $("libraryDocumentForm").addEventListener("submit", publishLibraryDocument);
     $("specialtyTrainingForm").addEventListener("submit", requestSpecialtyTraining);
     $("ticketForm").addEventListener("submit", createTicket);
     $("missionForm").addEventListener("submit", saveMission);
@@ -1166,6 +1435,12 @@
       if (saveProfileButton) saveProfile(saveProfileButton.dataset.saveProfile);
       var resetPasswordButton = event.target.closest("[data-reset-password]");
       if (resetPasswordButton) resetMemberPassword(resetPasswordButton.dataset.resetPassword);
+      var deleteUserButton = event.target.closest("[data-delete-user]");
+      if (deleteUserButton) deleteMember(deleteUserButton.dataset.deleteUser, deleteUserButton.dataset.deleteName || "este usuario");
+      var deleteDocumentButton = event.target.closest("[data-delete-document]");
+      if (deleteDocumentButton) deleteLibraryDocument(deleteDocumentButton.dataset.deleteDocument);
+      var editLibraryCard = event.target.closest("[data-edit-library-card]");
+      if (editLibraryCard) openLibraryEditor(editLibraryCard.dataset.editLibraryCard);
       var grantSpecialtyButton = event.target.closest("[data-grant-specialty]");
       if (grantSpecialtyButton) adminSetSpecialty(grantSpecialtyButton.dataset.grantSpecialty, true);
       var revokeSpecialtyButton = event.target.closest("[data-revoke-specialty]");
@@ -1182,6 +1457,8 @@
       if (trainingRequestAction) specialtyTrainingAction(trainingRequestAction.dataset.trainingRequestId, trainingRequestAction.dataset.trainingRequestAction);
       var ticketStatus = event.target.closest("[data-ticket-status]");
       if (ticketStatus) updateTicketStatus(ticketStatus.dataset.ticketId, ticketStatus.dataset.ticketStatus);
+      var deleteTicketButton = event.target.closest("[data-delete-ticket]");
+      if (deleteTicketButton) deleteTicket(deleteTicketButton.dataset.deleteTicket, deleteTicketButton.dataset.ticketCode);
       var storeFilter = event.target.closest("[data-category]");
       if (storeFilter) {
         state.storeCategory = storeFilter.dataset.category;
@@ -1220,6 +1497,12 @@
       });
     });
     document.addEventListener("submit", function (event) {
+      var libraryEditForm = event.target.closest("[data-library-edit-form]");
+      if (libraryEditForm) {
+        event.preventDefault();
+        updateLibraryDocument(event, libraryEditForm.dataset.libraryEditForm);
+        return;
+      }
       var replyForm = event.target.closest("[data-ticket-reply-form]");
       if (!replyForm) return;
       event.preventDefault();
