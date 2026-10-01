@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20260916a" />
+  <link rel="stylesheet" href="css/platform.css?v=20261001a" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -240,7 +240,7 @@
 
         <section class="member-view" data-panel="biblioteca">
           <div class="section-heading"><span class="section-tag">DOCTRINA Y EQUIPAMIENTO</span><h2>Biblioteca operativa</h2><p>La información básica que antes estaba dispersa en canales, ahora organizada por tema.</p></div>
-          <div class="library-tools"><input id="librarySearch" type="search" placeholder="Buscar regla, arma, equipo o manual…" aria-label="Buscar en la biblioteca" /><div class="library-filters"><button class="library-filter active" data-library="todos">TODO</button><button class="library-filter" data-library="equipamiento">EQUIPAMIENTO</button><button class="library-filter" data-library="armas">ARMAS</button><button class="library-filter" data-library="loadouts">LOADOUTS</button><button class="library-filter" data-library="reglas">REGLAS</button><button class="library-filter" data-library="manuales">MANUALES</button></div></div>
+          <div class="library-tools"><input id="librarySearch" type="search" placeholder="Buscar regla, arma, equipo o manual…" aria-label="Buscar en la biblioteca" /><div class="library-filters"><button class="library-filter active" data-library="todos">TODO</button><button class="library-filter" data-library="entrenamientos">ENTRENAMIENTOS</button><button class="library-filter" data-library="equipamiento">EQUIPAMIENTO</button><button class="library-filter" data-library="armas">ARMAS</button><button class="library-filter" data-library="loadouts">LOADOUTS</button><button class="library-filter" data-library="reglas">REGLAS</button><button class="library-filter" data-library="manuales">MANUALES</button></div></div>
           <div id="libraryGrid" class="library-grid"></div>
         </section>
 
@@ -252,27 +252,31 @@
               <p class="muted-copy">El bot actualiza esta lista automáticamente desde el servidor. “Vinculado” significa que el miembro ya puede usar su expediente, puntos, rango y saldo en la web.</p>
               <div id="factionDirectory" class="faction-directory"></div>
             </article>
-            <article class="platform-card">
-              <div class="card-heading"><div><span>PERSONAL</span><h3>Usuarios y permisos</h3></div></div>
-              <label class="field-control admin-search"><span>BUSCAR USUARIO</span><input id="adminUserSearch" type="search" placeholder="Nombre, correo, Roblox, rango o rol" /></label>
-              <details class="admin-create-panel hidden" id="adminCreatePanel">
-                <summary>＋ AÑADIR NUEVO USUARIO</summary>
-                <form id="adminUserForm" class="admin-form">
-                  <div class="form-row"><input id="newUserName" required placeholder="Nombre del miembro" /><input id="newUserRoblox" required placeholder="Usuario de Roblox" /></div>
-                  <input id="newUserCallsign" required maxlength="24" pattern="^[A-Za-z0-9_.-]{3,24}$" placeholder="Usuario operativo, ej.: Narumi" />
-                  <input id="newUserEmail" type="email" required pattern="^[^@\s]+@usmcf\.com$" title="Solo se aceptan correos @usmcf.com" placeholder="marine@usmcf.com" />
-                  <div class="form-row"><input id="newUserPassword" type="password" minlength="8" required placeholder="Contraseña temporal" /><select id="newUserRole"><option value="usuario">Miembro</option><option value="staff">Staff</option><option value="admin">Administrador</option></select></div>
-                  <button class="platform-primary" type="submit" id="createUserBtn">CREAR USUARIO Y ASIGNAR ENTRENAMIENTO</button>
-                  <p class="auth-help">Los miembros nuevos comienzan como Recluta y reciben automáticamente el Entrenamiento Básico TRS.</p>
-                </form>
-              </details>
-              <div id="adminProfiles" class="admin-list"></div>
-            </article>
-            <article class="platform-card training-card">
-              <div class="card-heading"><div><span>FORMACIÓN</span><h3>Entrenamientos asignados</h3></div><span class="connection-badge" id="trainingPendingCount">0 PENDIENTES</span></div>
-              <p class="muted-copy">Staff o Admin toma el entrenamiento. Al finalizar, el recluta queda activo y obtiene automáticamente el rango Soldado.</p>
-              <div id="trainingQueue" class="training-queue"></div>
-            </article>
+            <details class="platform-card admin-section-disclosure" id="adminUsersPanel">
+              <summary class="admin-section-summary"><div class="card-heading"><div><span>PERSONAL</span><h3>Usuarios y permisos</h3></div><span class="disclosure-state">VER LISTA COMPLETA</span></div></summary>
+              <div class="admin-section-body">
+                <label class="field-control admin-search"><span>BUSCAR USUARIO</span><input id="adminUserSearch" type="search" placeholder="Nombre, correo, Roblox, rango o rol" /></label>
+                <details class="admin-create-panel hidden" id="adminCreatePanel">
+                  <summary>＋ AÑADIR NUEVO USUARIO</summary>
+                  <form id="adminUserForm" class="admin-form">
+                    <div class="form-row"><input id="newUserName" required placeholder="Nombre del miembro" /><input id="newUserRoblox" required placeholder="Usuario de Roblox" /></div>
+                    <input id="newUserCallsign" required maxlength="24" pattern="^[A-Za-z0-9_.-]{3,24}$" placeholder="Usuario operativo, ej.: Narumi" />
+                    <input id="newUserEmail" type="email" required pattern="^[^@\s]+@usmcf\.com$" title="Solo se aceptan correos @usmcf.com" placeholder="marine@usmcf.com" />
+                    <div class="form-row"><input id="newUserPassword" type="password" minlength="8" required placeholder="Contraseña temporal" /><select id="newUserRole"><option value="usuario">Miembro</option><option value="staff">Staff</option><option value="admin">Administrador</option></select></div>
+                    <button class="platform-primary" type="submit" id="createUserBtn">CREAR USUARIO Y ASIGNAR ENTRENAMIENTO</button>
+                    <p class="auth-help">Los miembros nuevos comienzan como Recluta y reciben automáticamente el Entrenamiento Básico TRS.</p>
+                  </form>
+                </details>
+                <div id="adminProfiles" class="admin-list"></div>
+              </div>
+            </details>
+            <details class="platform-card training-card admin-section-disclosure" id="basicTrainingPanel">
+              <summary class="admin-section-summary"><div class="card-heading"><div><span>FORMACIÓN</span><h3>Entrenamientos asignados</h3></div><div class="disclosure-badges"><span class="connection-badge" id="trainingPendingCount">0 PENDIENTES</span><span class="disclosure-state">VER LISTA COMPLETA</span></div></div></summary>
+              <div class="admin-section-body">
+                <p class="muted-copy">Staff o Admin toma el entrenamiento. Los registros finalizados pueden eliminarse para que el historial no se acumule.</p>
+                <div id="trainingQueue" class="training-queue"></div>
+              </div>
+            </details>
             <article class="platform-card training-card">
               <div class="card-heading"><div><span>CONVOCATORIAS</span><h3>Solicitudes de especialidades</h3></div><span class="connection-badge" id="specialtyPendingCount">0 PENDIENTES</span></div>
               <p class="muted-copy">Staff o Admin revisa la prueba correspondiente. Al aprobar, el bot sincroniza el rol especial en Discord.</p>
@@ -321,7 +325,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/local-auth.js?v=20260916d"></script>
   <script src="js/config.js?v=20260921a"></script>
-  <script src="js/platform.js?v=20260923c"></script>
+  <script src="js/platform.js?v=20261001a"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
