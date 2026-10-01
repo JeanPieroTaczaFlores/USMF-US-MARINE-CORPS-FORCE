@@ -6,11 +6,13 @@ const config = {
   botToken: process.env.DISCORD_BOT_TOKEN,
   guildId: process.env.DISCORD_GUILD_ID,
   botName: process.env.DISCORD_BOT_NAME || "Kriss Kyle",
-  
-  missionsChannel: process.env.DISCORD_MISSIONS_CHANNEL_ID,  trainingChannel: process.env.DISCORD_TRAINING_CHANNEL_ID,
+  missionsChannel: process.env.DISCORD_MISSIONS_CHANNEL_ID,
+  missionReportsChannel: process.env.DISCORD_MISSION_REPORTS_CHANNEL_ID,
+  trainingChannel: process.env.DISCORD_TRAINING_CHANNEL_ID,
   pointsChannel: process.env.DISCORD_POINTS_CHANNEL_ID,
   accessChannel: process.env.DISCORD_ACCESS_CHANNEL_ID,
   announcementsChannel: process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID,
+  logdChannel: process.env.DISCORD_LOGD_CHANNEL_ID || "1212399037827911680",
   supportChannel: process.env.DISCORD_SUPPORT_CHANNEL_ID,
   inviteChannel: process.env.DISCORD_INVITE_CHANNEL_ID,
   adminUserId: process.env.DISCORD_ADMIN_USER_ID,
@@ -84,6 +86,26 @@ let rosterCount = 0;
 let catalogLastSyncAt = null;
 let logdLastSyncAt = null;
 let logdMessageCount = 0;
+let botUserId = null;
+let discoveredSpecialtyRoles = {};
+
+const specialtyRoleNames = {
+  raider: ["MARSOC MARINE RAIDERS", "MARINE RAIDER", "RAIDER"],
+  radio: ["OPERADOR DE RADIO"],
+  medico: ["MEDICO DE COMBATE", "MEDICO"],
+  tirador_ligero: ["DMR SNIPER LIGERO", "TIRADOR DESIGNADO LIGERO"],
+  tirador_pesado: ["TIRADOR DESIGNADO", "TIRADOR DESIGNADO PESADO"],
+  machine_gunner: ["MACHINNE GUNNER", "MACHINE GUNNER"],
+  combat_engineer: ["COMBAT ENGINEER", "INGENIERO DE COMBATE"],
+  artillero_vehiculo_aereo: ["ARTILLERO DE VEHICULO AEREO", "ARTILLERO"],
+  artillero_vehiculo_terrestre: ["ARTILLERO DE VEHICULO TERRESTRE", "ARTILLERO"],
+  licencia_vehiculo_pesado: ["LICENCIA VEHICULO PESADO", "CONDUCTOR"],
+  licencia_vehiculo_ligero: ["LICENCIA VEHICULO LIGERO", "CONDUCTOR"],
+};
+
+function normalizedRoleName(value) {
+  return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+}
 
 async function syncGuildCatalog() {
   if (requiredConfig().length) return;
@@ -93,6 +115,10 @@ async function syncGuildCatalog() {
     discord(`/guilds/${config.guildId}/channels`),
   ]);
   if (roles?.length) {
+    const byName = new Map(roles.map((role) => [normalizedRoleName(role.name), String(role.id)]));
+    discoveredSpecialtyRoles = Object.fromEntries(Object.entries(specialtyRoleNames)
+      .map(([key, names]) => [key, names.map((name) => byName.get(name)).find(Boolean)])
+      .filter((entry) => Boolean(entry[1])));
     await supabase("discord_roles?on_conflict=id", {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
@@ -127,7 +153,10 @@ async function syncGuildCatalog() {
 async function syncLogdMessages() {
   if (requiredConfig().length) return;
   const channels = await discord(`/guilds/${config.guildId}/channels`);
-  const logd = (channels || []).find((channel) => [0, 5].includes(Number(channel.type)) && String(channel.name || "").trim().toLowerCase() === "logd");
+  const logd = (channels || []).find((channel) => {
+    if (![0, 5].includes(Number(channel.type))) return false;
+    return normalizedChannelName(channel.name).includes("logd");
+  });
   if (!logd) throw new Error("Discord channel #logd was not found");
 
   const messages = [];
@@ -212,24 +241,91 @@ async function syncGuildRoster() {
   }
 }
 
-function eventChannels(event) {
+let resolvedSupportChannel = config.supportChannel || null;
+let supportChannelPromise = null;
+let resolvedMissionReportsChannel = config.missionReportsChannel || null;
+let missionReportsChannelPromise = null;
+
+function normalizedChannelName(value) {
+  return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+async function ensureSupportChannel() {
+  if (resolvedSupportChannel) return resolvedSupportChannel;
+  if (supportChannelPromise) return supportChannelPromise;
+  supportChannelPromise = (async () => {
+    const channels = await discord(`/guilds/${config.guildId}/channels`);
+    const preferred = ["tickets-web", "tickets", "ticket", "soporte", "support", "ayuda"];
+    const existing = (channels || []).find((channel) => [0, 5].includes(Number(channel.type)) && preferred.includes(normalizedChannelName(channel.name)));
+    if (existing) return existing.id;
+    const category = (channels || []).find((channel) => Number(channel.type) === 4 && preferred.some((name) => normalizedChannelName(channel.name).includes(name)));
+    const created = await discord(`/guilds/${config.guildId}/channels`, {
+      method: "POST",
+      body: JSON.stringify({ name: "tickets-web", type: 0, parent_id: category?.id || null, topic: "Tickets y reportes enviados desde la Plataforma USMCF" }),
+    });
+    console.log(`[USMCF BOT] Support channel created: #${created.name} (${created.id})`);
+    return created.id;
+  })();
+  try {
+    resolvedSupportChannel = await supportChannelPromise;
+    return resolvedSupportChannel;
+  } finally {
+    supportChannelPromise = null;
+  }
+}
+
+async function ensureMissionReportsChannel() {
+  if (resolvedMissionReportsChannel) return resolvedMissionReportsChannel;
+  if (missionReportsChannelPromise) return missionReportsChannelPromise;
+  missionReportsChannelPromise = (async () => {
+    const channels = await discord(`/guilds/${config.guildId}/channels`);
+    const textChannels = (channels || []).filter((channel) => [0, 5].includes(Number(channel.type)));
+    const preferred = ["reporte-mision", "reporte-misiones", "reportes-mision", "reportes-de-mision", "reporte-de-mision"];
+    const exact = textChannels.find((channel) => preferred.includes(normalizedChannelName(channel.name)));
+    const fuzzy = textChannels.find((channel) => {
+      const name = normalizedChannelName(channel.name);
+      return name.includes("reporte") && name.includes("mision");
+    });
+    const selected = exact || fuzzy;
+    if (selected) {
+      console.log(`[USMCF BOT] Mission reports routed to #${selected.name} (${selected.id})`);
+      return selected.id;
+    }
+    console.warn("[USMCF BOT] Mission report channel not found; falling back to the missions channel");
+    return config.missionsChannel;
+  })();
+  try {
+    resolvedMissionReportsChannel = await missionReportsChannelPromise;
+    return resolvedMissionReportsChannel;
+  } finally {
+    missionReportsChannelPromise = null;
+  }
+}
+
+async function eventChannels(event) {
   const type = event.tipo || "";
   const routed = {
     announcements: config.announcementsChannel,
     missions: config.missionsChannel,
+    mission_reports: config.missionReportsChannel || config.missionsChannel,
     training: config.trainingChannel,
     points: config.pointsChannel,
+    logd: config.logdChannel,
     support: config.supportChannel,
     access: config.accessChannel,
   };
-  if (type === "announcement_published") return [routed[event.target_channel_key] || config.announcementsChannel];
-  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];  if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return ["1212399037827911680"];
-  if (type === "training_completed") return ["1212399037827911680"];
-  if (type === "rank_promoted") return ["1212399037827911680"];
-  if (type.startsWith("training_") || type === "specialty_approved") return ["1212399037827911680"];
-  if (type.startsWith("specialty_training_")) return ["1212399037827911680"];
-  if (type.startsWith("ticket_")) return [config.supportChannel || config.trainingChannel];
-  if (type.startsWith("points_")) return ["1212399037827911680"];
+  if (type === "announcement_published") {
+    if (event.target_channel_key === "mission_reports") return [await ensureMissionReportsChannel()];
+    return [routed[event.target_channel_key] || config.announcementsChannel];
+  }
+  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];
+  if (type === "training_completed") return [config.logdChannel];
+  if (type === "rank_promoted") return [config.logdChannel];
+  if (type.startsWith("training_") || type === "specialty_approved") return [config.logdChannel];
+  if (type.startsWith("specialty_training_")) return [config.logdChannel];
+  if (type.startsWith("ticket_")) return [await ensureSupportChannel()];
+  if (type.startsWith("points_")) return [config.logdChannel];
+  if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return [config.logdChannel];
   // Access alerts must not fall back to the missions channel: that channel can
   // be restricted to operational announcements. Training is the known staff
   // fallback until a dedicated access channel is configured in Render.
@@ -237,9 +333,22 @@ function eventChannels(event) {
   return [config.missionsChannel];
 }
 
+function bogotaDay(value) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
+  const read = (type) => parts.find((part) => part.type === type)?.value || "";
+  return `${read("year")}-${read("month")}-${read("day")}`;
+}
+
+async function shouldMentionEveryone(event) {
+  if (event.tipo !== "mission_published" || !event.mission_id || !config.announcementsChannel) return false;
+  const missions = await supabase(`missions?select=fecha&id=eq.${event.mission_id}&limit=1`);
+  return Boolean(missions?.[0]?.fecha) && bogotaDay(missions[0].fecha) === bogotaDay(new Date());
+}
+
 async function syncMemberRoles(profile) {
   if (!profile?.discord_id) return { synced: false, reason: "not_linked" };
   const applications = await supabase(`specialty_applications?select=role_key&user_id=eq.${profile.id}&estado=eq.aprobada`);
+  const specialtyRoles = { ...discoveredSpecialtyRoles, ...config.specialtyRoles };
   const desired = new Set();
   if (profile.estado !== "activo") {
     if (config.recruitRole) desired.add(config.recruitRole);
@@ -249,7 +358,7 @@ async function syncMemberRoles(profile) {
     if (["admin", "super_admin"].includes(profile.rol) && config.adminRole) desired.add(config.adminRole);
     if (config.rankRoles[profile.rango]) desired.add(config.rankRoles[profile.rango]);
     for (const application of applications || []) {
-      if (config.specialtyRoles[application.role_key]) desired.add(config.specialtyRoles[application.role_key]);
+      if (specialtyRoles[application.role_key]) desired.add(specialtyRoles[application.role_key]);
     }
   }
 
@@ -257,7 +366,7 @@ async function syncMemberRoles(profile) {
   const current = new Set(member.roles || []);
   const managed = new Set([
     config.recruitRole, config.soldierRole, config.staffRole, config.adminRole,
-    ...Object.values(config.rankRoles), ...Object.values(config.specialtyRoles),
+    ...Object.values(config.rankRoles), ...Object.values(specialtyRoles),
   ].filter(Boolean));
   for (const roleId of managed) {
     const shouldHave = desired.has(roleId);
@@ -267,16 +376,44 @@ async function syncMemberRoles(profile) {
   return { synced: true };
 }
 
+async function deleteSpecialtyRequestMessages(event, profile) {
+  if (!config.logdChannel || !profile) return;
+  if (!botUserId) botUserId = String((await discord("/users/@me")).id);
+  const course = String(event.mensaje || "").match(/curso\s+([a-z0-9_]+)/i)?.[1] || String(event.mensaje || "").trim();
+  if (!course) return;
+  const messages = await discord(`/channels/${config.logdChannel}/messages?limit=100`);
+  const identityTokens = [profile.nombre, profile.callsign].filter(Boolean).map((value) => String(value).toLowerCase());
+  for (const message of messages || []) {
+    if (String(message.author?.id) !== botUserId) continue;
+    const embed = message.embeds?.[0];
+    const title = String(embed?.title || "").toLowerCase();
+    const description = String(embed?.description || "").toLowerCase();
+    if (title !== "nuevo entrenamiento solicitado" || !description.includes(course.toLowerCase())) continue;
+    if (identityTokens.length && !identityTokens.some((token) => description.includes(token))) continue;
+    await discord(`/channels/${config.logdChannel}/messages/${message.id}`, { method: "DELETE" });
+  }
+}
+
 async function processEvent(event) {
-  const profiles = event.user_id ? await supabase(`profiles?select=id,nombre,discord_id,rol,estado,rango,puntos&id=eq.${event.user_id}`) : [];
+  const profiles = event.user_id ? await supabase(`profiles?select=id,nombre,callsign,discord_id,rol,estado,rango,puntos&id=eq.${event.user_id}`) : [];
   const profile = profiles?.[0];
-  const channelIds = [...new Set(eventChannels(event).filter(Boolean))];
+  if (["specialty_training_cleanup", "specialty_approved"].includes(event.tipo)) {
+    await deleteSpecialtyRequestMessages(event, profile);
+    if (event.tipo === "specialty_training_cleanup") {
+      await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }) });
+      return;
+    }
+  }
+  const channelIds = [...new Set((await eventChannels(event)).filter(Boolean))];
+  const mentionEveryone = await shouldMentionEveryone(event);
   for (const channelId of channelIds) {
     try {
+      const pingThisChannel = mentionEveryone && String(channelId) === String(config.announcementsChannel);
       await discord(`/channels/${channelId}/messages`, {
         method: "POST",
         body: JSON.stringify({
-          allowed_mentions: { parse: [] },
+          content: pingThisChannel ? "@everyone" : undefined,
+          allowed_mentions: { parse: pingThisChannel ? ["everyone"] : [] },
           embeds: [{
             title: event.titulo || "USMCF",
             description: event.mensaje || "Actividad registrada en la plataforma.",
@@ -371,6 +508,15 @@ async function sendAdminDm(embed) {
   });
 }
 
+async function sendMissionReport(embed) {
+  const channelId = await ensureMissionReportsChannel();
+  if (!channelId) return;
+  await discord(`/channels/${channelId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ allowed_mentions: { parse: [] }, embeds: [embed] }),
+  });
+}
+
 async function missionForVoiceChannel(channelId) {
   if (!channelId) return null;
   const rows = await supabase(`missions?select=id,titulo,voice_channel_id,voice_channel_name,estado&voice_channel_id=eq.${channelId}&estado=in.(programada,activa)&order=fecha.asc&limit=1`);
@@ -394,13 +540,16 @@ async function closeVoiceSession(discordId, channelId) {
   await supabase(`voice_sessions?id=eq.${active.id}`, { method: "PATCH", body: JSON.stringify({ left_at: leftAt.toISOString(), duration_seconds: durationSeconds, notified_at: leftAt.toISOString() }) });
   activeVoiceSessions.delete(discordId);
   const profile = await profileForDiscord(discordId);
-  await sendAdminDm({
+  const report = {
     title: "Salida del canal de voz",
     description: `${profile?.callsign || profile?.nombre || active.display_name || discordId} salió de **${active.channel_name || "voz de misión"}**.`,
     color: 0xb85f3c,
     fields: [{ name: "Misión", value: active.mission_title || "Misión asignada", inline: true }, { name: "Tiempo conectado", value: durationText(durationSeconds), inline: true }],
     timestamp: leftAt.toISOString(), footer: { text: `${config.botName} · Registro de voz USMCF` },
-  }).catch((error) => console.error(`[USMCF BOT] Admin DM failed: ${error.message}`));
+  };
+  await Promise.allSettled([sendAdminDm(report), sendMissionReport(report)]).then((results) => {
+    results.filter((result) => result.status === "rejected").forEach((result) => console.error(`[USMCF BOT] Voice exit notice failed: ${result.reason?.message || result.reason}`));
+  });
 }
 
 async function openVoiceSession(state, mission) {
@@ -414,13 +563,16 @@ async function openVoiceSession(state, mission) {
   });
   const saved = { ...(rows?.[0] || {}), display_name: displayName, mission_title: mission.titulo };
   activeVoiceSessions.set(discordId, saved);
-  await sendAdminDm({
+  const report = {
     title: "Ingreso al canal de voz",
     description: `${profile?.callsign || profile?.nombre || displayName} entró a **${mission.voice_channel_name || "voz de misión"}**.`,
     color: 0x34777f,
     fields: [{ name: "Misión", value: mission.titulo, inline: true }, { name: "Estado web", value: profile ? "Cuenta vinculada" : "Discord sin vincular", inline: true }],
     timestamp: joinedAt, footer: { text: `${config.botName} · Registro de voz USMCF` },
-  }).catch((error) => console.error(`[USMCF BOT] Admin DM failed: ${error.message}`));
+  };
+  await Promise.allSettled([sendAdminDm(report), sendMissionReport(report)]).then((results) => {
+    results.filter((result) => result.status === "rejected").forEach((result) => console.error(`[USMCF BOT] Voice join notice failed: ${result.reason?.message || result.reason}`));
+  });
 }
 
 async function handleVoiceState(state) {
@@ -523,4 +675,5 @@ syncGuildCatalog().catch((error) => { lastError = error instanceof Error ? error
 syncLogdMessages().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
+ensureSupportChannel().catch((error) => { lastError = error instanceof Error ? error.message : String(error); console.error(`[USMCF BOT] Support channel setup failed: ${lastError}`); });
 connectGateway();
