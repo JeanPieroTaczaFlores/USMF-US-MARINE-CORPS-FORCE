@@ -96,6 +96,9 @@
     if (/invalid login/i.test(message)) return "Correo o contraseña incorrectos.";
     if (/already registered/i.test(message)) return "Ese correo ya tiene una cuenta.";
     if (/email not confirmed/i.test(message)) return "La cuenta existe, pero todavía no fue confirmada por Administración.";
+    if (/cuenta est[aá] pendiente/i.test(message)) return "Tu cuenta está pendiente. Administración debe confirmar tu Entrenamiento Básico TRS antes de solicitar especialidades.";
+    if (/cuenta est[aá] suspendida/i.test(message)) return "Tu cuenta está suspendida. Solicita a Administración que revise tu estado.";
+    if (/solo los miembros pueden solicitar/i.test(message)) return "Los cursos se solicitan desde una cuenta de miembro. Staff y Administración asignan especialidades desde Integrantes.";
     return message;
   }
   function setMessage(target, message, kind) {
@@ -404,6 +407,13 @@
   }
 
   function renderSpecialtyTrainingRequests() {
+    var accessMessage = $("specialtyTrainingAccessMessage");
+    var accessReason = "";
+    if (state.profile.estado === "pendiente") accessReason = "Tu cuenta está pendiente. Completa el TRS y espera la confirmación de Staff o Administración.";
+    else if (state.profile.estado === "suspendido") accessReason = "Tu cuenta está suspendida. Administración debe reactivarla antes de solicitar cursos.";
+    else if (state.profile.rol !== "usuario") accessReason = "Staff y Administración no solicitan cursos aquí; gestionan especialidades desde Integrantes.";
+    accessMessage.textContent = accessReason;
+    accessMessage.className = "training-eligibility-message" + (accessReason ? " error" : " hidden");
     var eligible = specialtyCatalog.filter(function (entry) {
       var alreadyApproved = state.specialtyApplications.some(function (row) { return String(row.user_id) === String(state.user.id) && row.role_key === entry.key && row.estado === "aprobada"; });
       var openRequest = state.specialtyTrainingRequests.some(function (row) { return String(row.user_id) === String(state.user.id) && row.specialty_key === entry.key && ["pendiente", "asignado", "en_curso"].indexOf(row.estado) !== -1; });
@@ -413,7 +423,7 @@
     $("specialtyTrainingType").innerHTML = eligible.length
       ? eligible.map(function (entry) { return '<option value="' + escapeHtml(entry.key) + '">' + escapeHtml(entry.name) + ' · ' + escapeHtml(points(entry.points)) + '</option>'; }).join("")
       : '<option value="">No hay cursos nuevos disponibles</option>';
-    $("specialtyTrainingSubmit").disabled = !eligible.length || state.profile.estado !== "activo";
+    $("specialtyTrainingSubmit").disabled = !eligible.length || state.profile.estado !== "activo" || state.profile.rol !== "usuario";
     var mine = state.specialtyTrainingRequests.filter(function (row) {
       return String(row.user_id) === String(state.user.id) && ["pendiente", "asignado", "en_curso"].indexOf(row.estado) !== -1;
     });
@@ -425,6 +435,9 @@
 
   async function requestSpecialtyTraining(event) {
     event.preventDefault();
+    if (state.profile.estado === "pendiente") return setMessage("appMessage", "Tu cuenta está pendiente. Administración debe confirmar tu TRS antes de solicitar especialidades.", "error");
+    if (state.profile.estado === "suspendido") return setMessage("appMessage", "Tu cuenta está suspendida. Solicita a Administración que revise tu estado.", "error");
+    if (state.profile.rol !== "usuario") return setMessage("appMessage", "Staff y Administración gestionan especialidades desde Integrantes.", "error");
     var key = $("specialtyTrainingType").value;
     var specialty = specialtyCatalog.find(function (entry) { return entry.key === key; });
     if (!specialty) return setMessage("appMessage", "No tienes un curso disponible para solicitar.", "error");
