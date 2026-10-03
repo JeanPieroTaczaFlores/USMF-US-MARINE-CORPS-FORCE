@@ -23,6 +23,7 @@ const config = {
   rankRoles: parseMap(process.env.DISCORD_RANK_ROLE_MAP),
   specialtyRoles: parseMap(process.env.DISCORD_SPECIALTY_ROLE_MAP),
   pollMs: Math.max(3000, Number(process.env.BOT_POLL_INTERVAL_MS || 5000)),
+  maxDeliveryRetries: Math.max(1, Number(process.env.BOT_MAX_DELIVERY_RETRIES || 5)),
   rosterSyncMs: Math.max(60000, Number(process.env.ROSTER_SYNC_INTERVAL_MS || 600000)),
   reminderMs: Math.max(300000, Number(process.env.REMINDER_INTERVAL_MS || 3600000)),
   inviteRefreshMs: Math.max(3600000, Number(process.env.INVITE_REFRESH_INTERVAL_MS || 3600000)),
@@ -62,6 +63,15 @@ async function discord(path, options = {}) {
   });
   if (!response.ok) throw new Error(`Discord ${response.status}: ${await response.text()}`);
   return response.status === 204 ? null : response.json();
+}
+
+function deliveryNonce(eventId, channelId) {
+  let hash = 1469598103934665603n;
+  for (const char of `${eventId}:${channelId}`) {
+    hash ^= BigInt(char.codePointAt(0));
+    hash = BigInt.asUintN(63, hash * 1099511628211n);
+  }
+  return hash.toString();
 }
 
 function officialEmail(username, discordId) {
@@ -401,7 +411,7 @@ async function processEvent(event) {
   if (["specialty_training_cleanup", "specialty_approved"].includes(event.tipo)) {
     await deleteSpecialtyRequestMessages(event, profile);
     if (event.tipo === "specialty_training_cleanup") {
-      await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }) });
+      await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null, retry_count: 0, next_attempt_at: null }) });
       return;
     }
   }
@@ -415,6 +425,8 @@ async function processEvent(event) {
         body: JSON.stringify({
           content: pingThisChannel ? "@everyone" : undefined,
           allowed_mentions: { parse: pingThisChannel ? ["everyone"] : [] },
+          nonce: deliveryNonce(event.id, channelId),
+          enforce_nonce: true,
           embeds: [{
             title: event.titulo || "USMCF",
             description: event.mensaje || "Actividad registrada en la plataforma.",
@@ -431,7 +443,7 @@ async function processEvent(event) {
     }
   }
   if (profile) await syncMemberRoles(profile);
-  await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null }) });
+  await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "enviado", sent_at: new Date().toISOString(), error_text: null, retry_count: 0, next_attempt_at: null }) });
 }
 
 let inviteRefreshing = false;
@@ -631,16 +643,36 @@ let polling = false;
 let lastPollAt = null;
 let lastError = null;
 
+function retryDelayMs(attempt) {
+  return [30000, 120000, 600000, 1800000, 7200000][Math.min(Math.max(1, attempt), 5) - 1];
+}
+
+async function queuedEvents() {
+  const pending = await supabase("discord_events?select=*&estado=eq.pendiente&order=created_at.asc&limit=20");
+  try {
+    const now = encodeURIComponent(new Date().toISOString());
+    const retryable = await supabase(`discord_events?select=*&estado=eq.error&retry_count=lt.${config.maxDeliveryRetries}&next_attempt_at=lte.${now}&order=next_attempt_at.asc&limit=10`);
+    const byId = new Map([...(pending || []), ...(retryable || [])].map((event) => [event.id, event]));
+    return [...byId.values()].sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+  } catch (error) {
+    if (!String(error?.message || error).includes("retry_count") && !String(error?.message || error).includes("next_attempt_at")) throw error;
+    return pending || [];
+  }
+}
+
 async function poll() {
   if (polling || requiredConfig().length) return;
   polling = true;
   try {
-    const events = await supabase("discord_events?select=*&estado=eq.pendiente&order=created_at.asc&limit=20");
+    const events = await queuedEvents();
     for (const event of events || []) {
       try { await processEvent(event); }
       catch (error) {
         lastError = error instanceof Error ? error.message : String(error);
-        await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "error", error_text: lastError }) }).catch(() => null);
+        const attempt = Number(event.retry_count || 0) + 1;
+        const nextAttempt = new Date(Date.now() + retryDelayMs(attempt)).toISOString();
+        await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "error", error_text: lastError, retry_count: attempt, next_attempt_at: nextAttempt }) }).catch(() => null);
+        console.error(`[USMCF BOT] Discord event ${event.id} failed (attempt ${attempt}/${config.maxDeliveryRetries}); next retry ${nextAttempt}: ${lastError}`);
       }
     }
     lastPollAt = new Date().toISOString();
