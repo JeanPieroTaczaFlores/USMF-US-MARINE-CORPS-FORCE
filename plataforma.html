@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20261001a" />
+  <link rel="stylesheet" href="css/platform.css?v=20261002a" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -204,6 +204,7 @@
           <article class="platform-card specialty-training-request">
             <div class="card-heading"><div><span>FORMACIÓN CONTINUA</span><h3>Solicitar entrenamiento de especialidad</h3></div><span class="connection-badge" id="eligibleCourseCount">0 DISPONIBLES</span></div>
             <p class="muted-copy">El sistema sólo muestra cursos para los que ya tienes los puntos necesarios. Staff asignará un instructor y confirmará el resultado.</p>
+            <p class="training-eligibility-message hidden" id="specialtyTrainingAccessMessage" role="status"></p>
             <form id="specialtyTrainingForm" class="admin-form training-request-form">
               <label class="field-control"><span>CURSO SOLICITADO</span><select id="specialtyTrainingType" required></select></label>
               <label class="field-control"><span>DISPONIBILIDAD O COMENTARIO</span><textarea id="specialtyTrainingNotes" rows="3" maxlength="500" placeholder="Ej.: Disponible viernes después de las 20:00"></textarea></label>
@@ -323,9 +324,9 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/local-auth.js?v=20260916d"></script>
+  <script src="js/local-auth.js?v=20261002a"></script>
   <script src="js/config.js?v=20260921a"></script>
-  <script src="js/platform.js?v=20261001a"></script>
+  <script src="js/platform.js?v=20261002a"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
