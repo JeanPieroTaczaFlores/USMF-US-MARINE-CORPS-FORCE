@@ -203,7 +203,7 @@
     $("nextPayment").textContent = dateText(next);
     $("summaryPayDate").textContent = next <= new Date() ? "En proceso" : dateText(next);
     $("adminNav").classList.toggle("hidden", !isStaff());
-    $("specialtiesNav").classList.toggle("hidden", canManageUsers());
+    $("specialtiesNav").classList.toggle("hidden", !canRequestSpecialtyTraining());
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
     var discordRosterImportPanel = $("discordRosterImportPanel");
@@ -224,6 +224,10 @@
 
   function canManageUsers() {
     return state.profile && ["admin", "super_admin"].indexOf(state.profile.rol) !== -1;
+  }
+
+  function canRequestSpecialtyTraining() {
+    return state.profile && ["usuario", "admin", "super_admin"].indexOf(state.profile.rol) !== -1;
   }
 
   async function verifySalary() {
@@ -343,7 +347,7 @@
     $("specialtyGrid").innerHTML = specialtyCatalog.map(function (specialty) {
       var application = state.specialtyApplications.find(function (row) { return String(row.user_id) === String(state.user.id) && row.role_key === specialty.key; });
       var courseRequest = state.specialtyTrainingRequests.find(function (row) { return String(row.user_id) === String(state.user.id) && row.specialty_key === specialty.key && row.estado !== "rechazada"; });
-      var eligible = state.profile.estado === "activo" && Number(state.profile.puntos || 0) >= specialty.points;
+      var eligible = canRequestSpecialtyTraining() && state.profile.estado === "activo" && Number(state.profile.puntos || 0) >= specialty.points;
       var action = application
         ? '<span class="specialty-application-status ' + escapeHtml(application.estado) + '">' + escapeHtml(application.estado === "aprobada" ? "ROL APROBADO" : application.estado === "rechazada" ? "SOLICITUD RECHAZADA" : "EN EVALUACIÓN") + '</span>'
         : courseRequest
@@ -356,6 +360,7 @@
   async function applySpecialty(roleKey) {
     var specialty = specialtyCatalog.find(function (entry) { return entry.key === roleKey; });
     if (!specialty) return;
+    if (!canRequestSpecialtyTraining()) return setMessage("appMessage", "Staff no solicita especialidades desde este apartado.", "error");
     if (state.profile.estado !== "activo" || Number(state.profile.puntos || 0) < specialty.points) return setMessage("appMessage", "Todavía no cumples los requisitos para esta especialidad.", "error");
     switchView("entrenamiento");
     $("specialtyTrainingType").value = roleKey;
@@ -411,7 +416,7 @@
     var accessReason = "";
     if (state.profile.estado === "pendiente") accessReason = "Tu cuenta está pendiente. Completa el TRS y espera la confirmación de Staff o Administración.";
     else if (state.profile.estado === "suspendido") accessReason = "Tu cuenta está suspendida. Administración debe reactivarla antes de solicitar cursos.";
-    else if (state.profile.rol !== "usuario") accessReason = "Staff y Administración no solicitan cursos aquí; gestionan especialidades desde Integrantes.";
+    else if (!canRequestSpecialtyTraining()) accessReason = "Staff no solicita cursos aquí; gestiona entrenamientos desde Integrantes.";
     accessMessage.textContent = accessReason;
     accessMessage.className = "training-eligibility-message" + (accessReason ? " error" : " hidden");
     var eligible = specialtyCatalog.filter(function (entry) {
@@ -423,7 +428,7 @@
     $("specialtyTrainingType").innerHTML = eligible.length
       ? eligible.map(function (entry) { return '<option value="' + escapeHtml(entry.key) + '">' + escapeHtml(entry.name) + ' · ' + escapeHtml(points(entry.points)) + '</option>'; }).join("")
       : '<option value="">No hay cursos nuevos disponibles</option>';
-    $("specialtyTrainingSubmit").disabled = !eligible.length || state.profile.estado !== "activo" || state.profile.rol !== "usuario";
+    $("specialtyTrainingSubmit").disabled = !eligible.length || state.profile.estado !== "activo" || !canRequestSpecialtyTraining();
     var mine = state.specialtyTrainingRequests.filter(function (row) {
       return String(row.user_id) === String(state.user.id) && ["pendiente", "asignado", "en_curso"].indexOf(row.estado) !== -1;
     });
@@ -437,7 +442,7 @@
     event.preventDefault();
     if (state.profile.estado === "pendiente") return setMessage("appMessage", "Tu cuenta está pendiente. Administración debe confirmar tu TRS antes de solicitar especialidades.", "error");
     if (state.profile.estado === "suspendido") return setMessage("appMessage", "Tu cuenta está suspendida. Solicita a Administración que revise tu estado.", "error");
-    if (state.profile.rol !== "usuario") return setMessage("appMessage", "Staff y Administración gestionan especialidades desde Integrantes.", "error");
+    if (!canRequestSpecialtyTraining()) return setMessage("appMessage", "Staff gestiona entrenamientos desde Integrantes y no solicita especialidades aquí.", "error");
     var key = $("specialtyTrainingType").value;
     var specialty = specialtyCatalog.find(function (entry) { return entry.key === key; });
     if (!specialty) return setMessage("appMessage", "No tienes un curso disponible para solicitar.", "error");
