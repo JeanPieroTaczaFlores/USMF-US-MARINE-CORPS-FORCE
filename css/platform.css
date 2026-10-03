@@ -358,6 +358,8 @@
 .training-timeline > div.complete { border-color:#4e6b53; }
 .training-timeline > div.complete > span { border-color:#668c6d; background:#253228; color:#b9dcbd; }
 .training-confirmation-note { margin-top:1rem; padding:.75rem; border-left:3px solid var(--platform-gold); background:#1d180f; color:#abaea8; font-size:.75rem; line-height:1.55; }
+.training-eligibility-message { margin:.9rem 0 0; padding:.8rem .9rem; border:1px solid #765a2d; border-left:3px solid var(--platform-gold); background:#1d180f; color:#d8c28f; font-size:.78rem; line-height:1.55; }
+.training-eligibility-message.error { border-color:#7c3138; border-left-color:#bd4c58; background:#241114; color:#f0a8b0; }
 .wardrobe-access-card { display:flex; flex-direction:column; justify-content:center; border-color:#6a512a; background:linear-gradient(145deg,#211a10,#101310); }
 .wardrobe-access-card h3 { margin:.5rem 0; font:1.8rem "Oswald",sans-serif; text-transform:uppercase; }
 .wardrobe-access-card p { color:#969d96; font-size:.8rem; line-height:1.6; }
