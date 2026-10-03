@@ -2,6 +2,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
+async function wakeDiscordBot() {
+  const wakeUrl = Deno.env.get("BOT_WAKE_URL");
+  if (!wakeUrl) return;
+  try {
+    const response = await fetch(wakeUrl, {
+      method: "GET",
+      headers: { "User-Agent": "USMCF-Supabase-Queue/1.0" },
+      signal: AbortSignal.timeout(8000),
+    });
+    await response.body?.cancel();
+  } catch (error) {
+    console.warn("Kriss Kyle wake request did not complete:", error instanceof Error ? error.message : error);
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -27,9 +42,11 @@ Deno.serve(async (request) => {
     // could mark an event as failed before the Render bot had a chance to send
     // it, producing misleading 403 errors. Requeue here; the bot publishes it
     // with its guild permissions and records the final delivery state.
-    const { error: queueError } = await admin.from("discord_events").update({ estado: "pendiente", sent_at: null, error_text: null }).eq("id", event.id);
+    const { error: queueError } = await admin.from("discord_events").update({ estado: "pendiente", sent_at: null, error_text: null, retry_count: 0, next_attempt_at: null }).eq("id", event.id);
     if (queueError) throw queueError;
-    return new Response(JSON.stringify({ queued: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    const wakeTask = wakeDiscordBot();
+    EdgeRuntime.waitUntil(wakeTask);
+    return new Response(JSON.stringify({ queued: true, wake_requested: Boolean(Deno.env.get("BOT_WAKE_URL")) }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (error) {
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
   }
