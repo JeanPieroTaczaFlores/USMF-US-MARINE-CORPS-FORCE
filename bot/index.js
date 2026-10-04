@@ -416,7 +416,18 @@ async function deleteMisroutedPlatformLoginMessages() {
       if (String(message.author?.id) !== botUserId) continue;
       const title = String(message.embeds?.[0]?.title || "").trim().toLowerCase();
       if (title !== "ingreso a la plataforma") continue;
-      await discord(`/channels/${config.trainingChannel}/messages/${message.id}`, { method: "DELETE" });
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        try {
+          await discord(`/channels/${config.trainingChannel}/messages/${message.id}`, { method: "DELETE" });
+          break;
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error);
+          const retryAfter = detail.match(/"retry_after"\s*:\s*([0-9.]+)/)?.[1];
+          if (!detail.includes("Discord 429") || !retryAfter || attempt === 4) throw error;
+          await new Promise((resolve) => setTimeout(resolve, Math.ceil(Number(retryAfter) * 1000) + 300));
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 450));
       deleted += 1;
     }
     if (messages.length < 100) break;
