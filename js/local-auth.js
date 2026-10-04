@@ -718,7 +718,7 @@
       if (name === "request_specialty_training") {
         if (profile.estado === "pendiente") return { data: null, error: { message: "Tu cuenta está pendiente. Administración debe confirmar tu TRS." } };
         if (profile.estado === "suspendido") return { data: null, error: { message: "Tu cuenta está suspendida. Administración debe revisar tu estado." } };
-        if (profile.rol !== "usuario") return { data: null, error: { message: "Solo los miembros pueden solicitar cursos. Staff y Administración los gestionan desde Integrantes." } };
+        if (["usuario", "admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Staff no solicita cursos aquí; gestiona entrenamientos desde Integrantes." } };
         var specialtyKey = String(args && args.p_specialty_key || "");
         var requirements = { raider: 100, radio: 250, medico: 250, tirador_ligero: 300, tirador_pesado: 400, machine_gunner: 300, combat_engineer: 300, artillero_vehiculo_aereo: 300, artillero_vehiculo_terrestre: 250, licencia_vehiculo_pesado: 300, licencia_vehiculo_ligero: 250 };
         if (requirements[specialtyKey] === undefined || Number(profile.puntos || 0) < requirements[specialtyKey]) return { data: null, error: { message: "No cumples los puntos requeridos para este curso." } };
