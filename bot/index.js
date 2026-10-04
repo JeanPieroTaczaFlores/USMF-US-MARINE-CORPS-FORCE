@@ -101,6 +101,7 @@ let discoveredSpecialtyRoles = {};
 
 const specialtyRoleNames = {
   raider: ["MARSOC MARINE RAIDERS", "MARINE RAIDER", "RAIDER"],
+  combat_grenadier: ["GRANADERO DE COMBATE", "COMBAT GRENADIER", "GRENADIER"],
   radio: ["OPERADOR DE RADIO"],
   medico: ["MEDICO DE COMBATE", "MEDICO"],
   tirador_ligero: ["DMR SNIPER LIGERO", "TIRADOR DESIGNADO LIGERO"],
@@ -337,10 +338,8 @@ async function eventChannels(event) {
   if (type.startsWith("ticket_")) return [await ensureSupportChannel()];
   if (type.startsWith("points_")) return [config.logdChannel];
   if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return [config.logdChannel];
-  // Access alerts must not fall back to the missions channel: that channel can
-  // be restricted to operational announcements. Training is the known staff
-  // fallback until a dedicated access channel is configured in Render.
-  if (type === "platform_login") return [config.accessChannel || config.trainingChannel];
+  // Platform access is an audit event and belongs only in #logd.
+  if (type === "platform_login") return [config.logdChannel];
   return [config.missionsChannel];
 }
 
@@ -403,6 +402,27 @@ async function deleteSpecialtyRequestMessages(event, profile) {
     if (identityTokens.length && !identityTokens.some((token) => description.includes(token))) continue;
     await discord(`/channels/${config.logdChannel}/messages/${message.id}`, { method: "DELETE" });
   }
+}
+
+async function deleteMisroutedPlatformLoginMessages() {
+  if (!config.trainingChannel || requiredConfig().length) return;
+  if (!botUserId) botUserId = String((await discord("/users/@me")).id);
+  let before = null;
+  let deleted = 0;
+  for (let page = 0; page < 5; page += 1) {
+    const messages = await discord(`/channels/${config.trainingChannel}/messages?limit=100${before ? `&before=${before}` : ""}`);
+    if (!messages?.length) break;
+    for (const message of messages) {
+      if (String(message.author?.id) !== botUserId) continue;
+      const title = String(message.embeds?.[0]?.title || "").trim().toLowerCase();
+      if (title !== "ingreso a la plataforma") continue;
+      await discord(`/channels/${config.trainingChannel}/messages/${message.id}`, { method: "DELETE" });
+      deleted += 1;
+    }
+    if (messages.length < 100) break;
+    before = messages[messages.length - 1].id;
+  }
+  console.log(`[USMCF BOT] Removed ${deleted} misrouted platform-login messages from the training channel`);
 }
 
 async function processEvent(event) {
@@ -710,3 +730,7 @@ remindDelayedWork().catch((error) => { lastError = error instanceof Error ? erro
 refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
 ensureSupportChannel().catch((error) => { lastError = error instanceof Error ? error.message : String(error); console.error(`[USMCF BOT] Support channel setup failed: ${lastError}`); });
 connectGateway();
+deleteMisroutedPlatformLoginMessages().catch((error) => {
+  lastError = error instanceof Error ? error.message : String(error);
+  console.error(`[USMCF BOT] Misrouted login cleanup failed: ${lastError}`);
+});
