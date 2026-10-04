@@ -16,8 +16,47 @@
     rel="stylesheet"
   />
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/intro-preview.css" />
 </head>
 <body class="page-home">
+
+  <section class="cinematic-intro" id="cinematicIntro" aria-label="Presentación USMCF">
+    <div class="intro-field" aria-hidden="true"></div>
+    <div class="intro-grid" aria-hidden="true"></div>
+    <div class="intro-sweep" aria-hidden="true"></div>
+    <div class="hud-corner hud-corner--tl" aria-hidden="true"></div>
+    <div class="hud-corner hud-corner--tr" aria-hidden="true"></div>
+    <div class="hud-corner hud-corner--bl" aria-hidden="true"></div>
+    <div class="hud-corner hud-corner--br" aria-hidden="true"></div>
+
+    <div class="intro-lockup" aria-hidden="true">
+      <div class="intro-emblem">
+        <span class="emblem-ring"></span>
+        <span class="emblem-ring emblem-ring--inner"></span>
+        <span class="emblem-orbit emblem-orbit--outer"><i></i></span>
+        <span class="emblem-orbit emblem-orbit--inner"><i></i></span>
+        <img src="img/logo.png" alt="" />
+      </div>
+      <p class="intro-kicker">UNITED STATES MARINE CORPS FORCE</p>
+      <div class="intro-title" aria-label="USMCF">
+        <span>U</span><span>S</span><span>M</span><span>C</span><span>F</span>
+      </div>
+      <div class="intro-rule"><span></span></div>
+      <p class="intro-motto">HONOR <b>·</b> CORAJE <b>·</b> COMPROMISO</p>
+    </div>
+
+    <div class="hud-copy hud-copy--top" aria-hidden="true">
+      <span>SYS // USMCF-01</span><span>ACCESO AUTORIZADO</span>
+    </div>
+    <div class="hud-copy hud-copy--bottom" aria-hidden="true">
+      <span>04°39′N 74°05′W</span><span>SEMPER FIDELIS</span>
+    </div>
+    <div class="intro-status" aria-hidden="true">
+      <span class="status-dot"></span>
+      CARGANDO…
+    </div>
+    <button class="skip-intro" id="skipIntro" type="button">OMITIR INTRO ↗</button>
+  </section>
 
   <!-- ============ 1. NAVBAR ============ -->
   <header class="navbar" id="navbar">
@@ -283,5 +322,6 @@
   <script src="js/config.js?v=20260915a"></script>
   <script src="js/public-discord.js?v=20260915a"></script>
   <script src="js/main.js"></script>
+  <script src="js/intro-preview.js"></script>
 </body>
 </html>
