@@ -1,0 +1,168 @@
+:root { color-scheme: dark; --red: #c8102e; --gold: #d8bd64; --ink: #050706; }
+* { box-sizing: border-box; }
+
+.cinematic-intro {
+  position: fixed; inset: 0; z-index: 50; overflow: hidden; background: #020403;
+  opacity: 1; visibility: visible;
+  transition: opacity 780ms cubic-bezier(.22,.61,.36,1), visibility 780ms;
+}
+.cinematic-intro.is-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.intro-field {
+  position: absolute; inset: -5%;
+  background: linear-gradient(90deg, rgba(1,3,2,.98) 0%, rgba(1,3,2,.78) 42%, rgba(1,3,2,.42) 72%, rgba(1,3,2,.75) 100%), url("../img/field/hero.jpg") center 40% / cover no-repeat;
+  filter: grayscale(.55) contrast(1.2) brightness(.58);
+}
+.is-running .intro-field { animation: field-reveal 3s cubic-bezier(.2,.75,.2,1) both; }
+
+.intro-grid {
+  position: absolute; inset: 0; opacity: .18;
+  background-image: linear-gradient(rgba(216,189,100,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(216,189,100,.16) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(circle at center, #000 0 34%, transparent 76%);
+}
+.intro-grid::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.045) 4px); }
+.is-running .intro-grid { animation: grid-drift 3s linear both; }
+
+.intro-sweep {
+  position: absolute; top: 0; bottom: 0; left: -18%; width: 12%; opacity: 0; transform: skewX(-13deg);
+  background: linear-gradient(90deg, transparent, rgba(200,16,46,.92), rgba(255,90,105,.7), transparent);
+  box-shadow: 0 0 52px rgba(200,16,46,.55);
+}
+.is-running .intro-sweep { animation: sweep 620ms 2.05s cubic-bezier(.2,.7,.2,1) both; }
+
+.intro-lockup { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; padding: 40px; }
+.intro-emblem { position: relative; display: grid; place-items: center; width: clamp(108px, 12vw, 164px); aspect-ratio: 1; margin-bottom: 20px; }
+.intro-emblem img { width: 62%; position: relative; z-index: 2; opacity: 0; filter: drop-shadow(0 0 22px rgba(216,189,100,.28)); }
+.emblem-ring { position: absolute; inset: 0; border: 1px solid rgba(216,189,100,.52); border-radius: 50%; opacity: 0; }
+.emblem-ring--inner { inset: 10px; border-style: dashed; opacity: 0; }
+
+.emblem-orbit {
+  position: absolute;
+  z-index: 3;
+  inset: -7px;
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px rgba(200,16,46,.95));
+}
+.emblem-orbit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 1px;
+  background: conic-gradient(from 10deg, transparent 0 68%, rgba(200,16,46,.08) 74%, rgba(239,40,72,.78) 94%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.emblem-orbit i {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef2848;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 4px rgba(200,16,46,.13), 0 0 20px rgba(239,40,72,.95);
+}
+.emblem-orbit i::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  width: 16px;
+  height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, transparent, rgba(239,40,72,.75));
+}
+.emblem-orbit--inner { inset: 18px; filter: drop-shadow(0 0 6px rgba(216,189,100,.6)); }
+.emblem-orbit--inner::before { background: conic-gradient(from 200deg, transparent 0 72%, rgba(216,189,100,.08) 78%, rgba(216,189,100,.72) 95%, transparent 100%); }
+.emblem-orbit--inner i { width: 7px; height: 7px; top: 0; background: var(--gold); box-shadow: 0 0 14px rgba(216,189,100,.9); }
+.emblem-orbit--inner i::after { width: 11px; background: linear-gradient(90deg, transparent, rgba(216,189,100,.5)); }
+
+.intro-kicker, .intro-motto { margin: 0; font: 600 clamp(9px, .8vw, 13px)/1.3 "Oswald", sans-serif; letter-spacing: .42em; color: var(--gold); opacity: 0; }
+.intro-title { display: flex; margin: 5px 0 3px; overflow: hidden; font: 400 clamp(88px, 15vw, 228px)/.88 "Anton", Impact, sans-serif; letter-spacing: -.035em; color: #f4f4ef; text-shadow: 0 12px 44px rgba(0,0,0,.8); }
+.intro-title span { display: block; opacity: 0; transform: translateY(115%); }
+.intro-rule { width: min(630px, 70vw); height: 2px; overflow: hidden; background: rgba(255,255,255,.12); }
+.intro-rule span { display: block; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, var(--red) 20% 80%, transparent); transform: translateX(-102%); }
+.intro-motto { margin-top: 14px; color: rgba(255,255,255,.72); letter-spacing: .32em; }
+.intro-motto b { color: var(--red); }
+
+.is-running .intro-emblem img { animation: emblem-in 650ms 200ms cubic-bezier(.2,.9,.2,1) forwards; }
+.is-running .emblem-ring { animation: ring-in 800ms 80ms ease-out forwards; }
+.is-running .emblem-ring--inner { animation: ring-in 700ms 190ms ease-out forwards; }
+.is-running .emblem-orbit { opacity: 1; }
+.is-running .intro-kicker { animation: fade-up 500ms 700ms both; }
+.is-running .intro-title span { animation: letter-rise 620ms cubic-bezier(.16,1,.3,1) forwards; }
+.is-running .intro-title span:nth-child(1) { animation-delay: .82s; }
+.is-running .intro-title span:nth-child(2) { animation-delay: .88s; }
+.is-running .intro-title span:nth-child(3) { animation-delay: .94s; }
+.is-running .intro-title span:nth-child(4) { animation-delay: 1s; }
+.is-running .intro-title span:nth-child(5) { animation-delay: 1.06s; }
+.is-running .intro-rule span { animation: rule-draw 900ms 1.34s both; }
+.is-running .intro-motto { animation: fade-up 580ms 1.58s both; }
+
+.hud-corner { position: absolute; width: 72px; height: 72px; opacity: 0; }
+.hud-corner::before, .hud-corner::after { content: ""; position: absolute; background: rgba(216,189,100,.58); }
+.hud-corner::before { width: 100%; height: 1px; }
+.hud-corner::after { width: 1px; height: 100%; }
+.hud-corner--tl { top: 38px; left: 42px; }
+.hud-corner--tr { top: 38px; right: 42px; transform: rotate(90deg); }
+.hud-corner--br { right: 42px; bottom: 38px; transform: rotate(180deg); }
+.hud-corner--bl { left: 42px; bottom: 38px; transform: rotate(270deg); }
+.is-running .hud-corner { animation: fade-in 500ms 1.65s both; }
+
+.hud-copy { position: absolute; left: 58px; right: 58px; display: flex; justify-content: space-between; font: 600 9px/1 "Oswald", sans-serif; letter-spacing: .18em; color: rgba(216,189,100,.65); opacity: 0; }
+.hud-copy--top { top: 52px; }
+.hud-copy--bottom { bottom: 52px; }
+.is-running .hud-copy { animation: fade-in 450ms 1.85s both; }
+
+.intro-status { position: absolute; left: 50%; bottom: clamp(38px, 6vw, 82px); display: flex; align-items: center; gap: 10px; transform: translateX(-50%); white-space: nowrap; font: 600 10px/1 "Oswald", sans-serif; letter-spacing: .24em; color: rgba(255,255,255,.65); opacity: 0; }
+.is-running .intro-status { animation: fade-in 400ms 2.05s both; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); box-shadow: 0 0 14px var(--red); animation: pulse 700ms infinite alternate; }
+
+.skip-intro { border: 1px solid rgba(255,255,255,.24); color: rgba(255,255,255,.8); background: rgba(0,0,0,.48); backdrop-filter: blur(9px); font: 600 10px/1 "Oswald", sans-serif; letter-spacing: .17em; cursor: pointer; transition: border-color 180ms, color 180ms, opacity 180ms; }
+.skip-intro { position: absolute; right: 58px; bottom: 76px; padding: 13px 16px; opacity: 0; }
+.is-running .skip-intro { animation: fade-in 400ms 2.2s both; }
+.skip-intro:hover { border-color: var(--gold); color: var(--gold); opacity: 1; }
+
+@keyframes field-reveal { 0% { transform: scale(1.12); filter: grayscale(1) contrast(1.35) brightness(.12); } 35% { filter: grayscale(.85) contrast(1.25) brightness(.3); } 100% { transform: scale(1.02); filter: grayscale(.55) contrast(1.2) brightness(.58); } }
+@keyframes emblem-in { from { opacity: 0; transform: scale(.72); filter: blur(10px); } to { opacity: 1; transform: scale(1); filter: blur(0) drop-shadow(0 0 22px rgba(216,189,100,.28)); } }
+@keyframes ring-in { from { opacity: 0; transform: scale(.65); } to { opacity: .75; transform: scale(1); } }
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+@keyframes ring-spin-reverse { to { transform: rotate(-360deg); } }
+@keyframes orbit-in { to { opacity: 1; } }
+@keyframes orbit-clockwise { to { transform: rotate(360deg); } }
+@keyframes orbit-counter { to { transform: rotate(-360deg); } }
+@keyframes letter-rise { to { opacity: 1; transform: translateY(0); } }
+@keyframes rule-draw { to { transform: translateX(0); } }
+@keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fade-in { to { opacity: 1; } }
+@keyframes pulse { to { opacity: .25; transform: scale(.65); } }
+@keyframes sweep { 0% { left: -18%; opacity: 0; } 16% { opacity: 1; } 100% { left: 116%; opacity: 0; } }
+@keyframes grid-drift { from { background-position: 0 0, 0 0; } to { background-position: 54px 27px, 27px 54px; } }
+
+@media (max-width: 720px) {
+  .intro-lockup { padding: 22px; }
+  .intro-emblem { width: 100px; margin-bottom: 12px; }
+  .intro-title { font-size: clamp(74px, 25vw, 120px); }
+  .intro-kicker { letter-spacing: .22em; }
+  .intro-motto { letter-spacing: .16em; }
+  .hud-corner { width: 42px; height: 42px; }
+  .hud-corner--tl { top: 22px; left: 20px; }
+  .hud-corner--tr { top: 22px; right: 20px; }
+  .hud-corner--br { right: 20px; bottom: 22px; }
+  .hud-corner--bl { left: 20px; bottom: 22px; }
+  .hud-copy { left: 30px; right: 30px; }
+  .hud-copy--top { top: 31px; }
+  .hud-copy--bottom { bottom: 31px; }
+  .hud-copy span:nth-child(2) { display: none; }
+  .intro-status { bottom: 62px; max-width: 68%; white-space: normal; text-align: center; line-height: 1.35; }
+  .skip-intro { right: 20px; bottom: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-field, .intro-sweep, .intro-emblem img, .emblem-ring, .emblem-orbit, .intro-kicker, .intro-title span, .intro-rule span, .intro-motto, .hud-corner, .hud-copy, .intro-status, .skip-intro, .status-dot { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+}
