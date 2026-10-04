@@ -26,6 +26,7 @@ function jsonMap(name: string): Record<string, string> {
 
 const specialtyRoleNames: Record<string, string[]> = {
   raider: ["MARSOC MARINE RAIDERS", "MARINE RAIDER", "RAIDER"],
+  combat_grenadier: ["GRANADERO DE COMBATE", "COMBAT GRENADIER", "GRENADIER"],
   radio: ["OPERADOR DE RADIO"],
   medico: ["MEDICO DE COMBATE", "MEDICO"],
   tirador_ligero: ["DMR SNIPER LIGERO", "TIRADOR DESIGNADO LIGERO"],
