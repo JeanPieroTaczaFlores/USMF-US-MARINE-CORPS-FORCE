@@ -61,13 +61,13 @@
   ];
 
   var specialtyCatalog = [
-    { key: "raider", icon: "⚔", name: "Marine Raider", points: 100, requirement: "Selección y evaluación MARSOC", benefits: ["Misiones especiales y de alto riesgo", "Entrenamiento avanzado", "Uniforme Kandahar autorizado"] },
+    { key: "combat_grenadier", icon: "✹", name: "Granadero de Combate", points: 100, requirement: "Curso de granadas y apoyo explosivo", benefits: ["Uso táctico de granadas", "Apoyo explosivo de escuadra", "Control de zonas y cobertura"] },
     { key: "radio", icon: "📡", name: "Operador de Radio", points: 250, requirement: "Curso de comunicaciones", benefits: ["Canal de mando exclusivo", "Coordinación de ataques", "Solicitud de refuerzos"] },
     { key: "medico", icon: "✚", name: "Médico de Combate", points: 250, requirement: "Curso de sanidad", benefits: ["Revivir y estabilizar aliados", "Prioridad de protección", "Soporte médico de escuadra"] },
     { key: "tirador_ligero", icon: "◎", name: "Tirador Designado Ligero", points: 300, requirement: "Prueba de puntería", benefits: ["Uso autorizado de M110", "Eventos de tiro", "Cobertura a media distancia"] },
     { key: "tirador_pesado", icon: "⌖", name: "Tirador Designado Pesado", points: 400, requirement: "Prueba avanzada", benefits: ["AWP y M2000 autorizados", "Largo alcance", "Posiciones de observación"] },
-    { key: "machine_gunner", icon: "▰", name: "Machine Gunner", points: 300, requirement: "Curso de armas pesadas", benefits: ["PKM y M240", "Supresión y cobertura", "Control de zonas"] },
-    { key: "combat_engineer", icon: "◆", name: "Combat Engineer", points: 300, requirement: "Curso de demoliciones", benefits: ["Brecha y explosivos", "Destrucción controlada", "Herramientas de ingeniería"] },
+    { key: "machine_gunner", icon: "▰", name: "Ametrallador", points: 300, requirement: "Curso de armas pesadas", benefits: ["PKM y M240", "Supresión y cobertura", "Control de zonas"] },
+    { key: "combat_engineer", icon: "◆", name: "Ingeniero de Combate", points: 300, requirement: "Curso de demoliciones", benefits: ["Brecha y explosivos", "Destrucción controlada", "Herramientas de ingeniería"] },
     { key: "artillero_vehiculo_aereo", icon: "✦", name: "Artillero de Vehículo Aéreo", points: 300, requirement: "Curso de artillería aérea", benefits: ["Armamento de aeronaves", "Cobertura aire-tierra", "Coordinación con la tripulación"] },
     { key: "artillero_vehiculo_terrestre", icon: "✦", name: "Artillero de Vehículo Terrestre", points: 250, requirement: "Curso de artillería terrestre", benefits: ["Torretas de vehículos", "Fuego de apoyo", "Defensa de convoyes"] },
     { key: "licencia_vehiculo_pesado", icon: "▣", name: "Licencia de Vehículo Pesado", points: 300, requirement: "Prueba de conducción pesada", benefits: ["Vehículos pesados", "Transporte logístico", "Maniobras de convoy"] },
@@ -227,7 +227,7 @@
   }
 
   function canRequestSpecialtyTraining() {
-    return state.profile && ["usuario", "admin", "super_admin"].indexOf(state.profile.rol) !== -1;
+    return state.profile && ["usuario", "staff"].indexOf(state.profile.rol) !== -1;
   }
 
   async function verifySalary() {
@@ -353,14 +353,14 @@
         : courseRequest
           ? '<span class="specialty-application-status ' + escapeHtml(courseRequest.estado) + '">CURSO ' + escapeHtml(String(courseRequest.estado).replace("_", " ").toUpperCase()) + '</span>'
           : '<button class="platform-primary compact" type="button" data-apply-specialty="' + specialty.key + '" ' + (eligible ? "" : "disabled") + '>' + (eligible ? "SOLICITAR ENTRENAMIENTO" : "REQUIERE " + specialty.points + " PTS") + '</button>';
-      return '<article class="specialty-card ' + (specialty.key === "raider" ? "raider" : "") + '"><div class="specialty-card-top"><span>' + escapeHtml(specialty.icon) + '</span><small>' + escapeHtml(specialty.requirement) + '</small></div><h3>' + escapeHtml(specialty.name) + '</h3><strong>' + escapeHtml(points(specialty.points)) + '</strong><ul>' + specialty.benefits.map(function (benefit) { return '<li>' + escapeHtml(benefit) + '</li>'; }).join("") + '</ul>' + action + '</article>';
+      return '<article class="specialty-card"><div class="specialty-card-top"><span>' + escapeHtml(specialty.icon) + '</span><small>' + escapeHtml(specialty.requirement) + '</small></div><h3>' + escapeHtml(specialty.name) + '</h3><strong>' + escapeHtml(points(specialty.points)) + '</strong><ul>' + specialty.benefits.map(function (benefit) { return '<li>' + escapeHtml(benefit) + '</li>'; }).join("") + '</ul>' + action + '</article>';
     }).join("");
   }
 
   async function applySpecialty(roleKey) {
     var specialty = specialtyCatalog.find(function (entry) { return entry.key === roleKey; });
     if (!specialty) return;
-    if (!canRequestSpecialtyTraining()) return setMessage("appMessage", "Staff no solicita especialidades desde este apartado.", "error");
+    if (!canRequestSpecialtyTraining()) return setMessage("appMessage", "Administración no solicita especialidades desde este apartado.", "error");
     if (state.profile.estado !== "activo" || Number(state.profile.puntos || 0) < specialty.points) return setMessage("appMessage", "Todavía no cumples los requisitos para esta especialidad.", "error");
     switchView("entrenamiento");
     $("specialtyTrainingType").value = roleKey;
@@ -416,7 +416,7 @@
     var accessReason = "";
     if (state.profile.estado === "pendiente") accessReason = "Tu cuenta está pendiente. Completa el TRS y espera la confirmación de Staff o Administración.";
     else if (state.profile.estado === "suspendido") accessReason = "Tu cuenta está suspendida. Administración debe reactivarla antes de solicitar cursos.";
-    else if (!canRequestSpecialtyTraining()) accessReason = "Staff no solicita cursos aquí; gestiona entrenamientos desde Integrantes.";
+    else if (!canRequestSpecialtyTraining()) accessReason = "Administración no solicita cursos personales aquí; asigna especialidades desde Integrantes.";
     accessMessage.textContent = accessReason;
     accessMessage.className = "training-eligibility-message" + (accessReason ? " error" : " hidden");
     var eligible = specialtyCatalog.filter(function (entry) {
@@ -442,7 +442,7 @@
     event.preventDefault();
     if (state.profile.estado === "pendiente") return setMessage("appMessage", "Tu cuenta está pendiente. Administración debe confirmar tu TRS antes de solicitar especialidades.", "error");
     if (state.profile.estado === "suspendido") return setMessage("appMessage", "Tu cuenta está suspendida. Solicita a Administración que revise tu estado.", "error");
-    if (!canRequestSpecialtyTraining()) return setMessage("appMessage", "Staff gestiona entrenamientos desde Integrantes y no solicita especialidades aquí.", "error");
+    if (!canRequestSpecialtyTraining()) return setMessage("appMessage", "Administración asigna especialidades desde Integrantes y no solicita cursos personales aquí.", "error");
     var key = $("specialtyTrainingType").value;
     var specialty = specialtyCatalog.find(function (entry) { return entry.key === key; });
     if (!specialty) return setMessage("appMessage", "No tienes un curso disponible para solicitar.", "error");
