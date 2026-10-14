@@ -639,8 +639,14 @@
         var finishMission = db.missions.find(function (row) { return String(row.id) === String(finishMissionId); });
         if (!finishMission || finishMission.estado !== "activa") return { data: null, error: { message: "Solo se puede terminar una misión activa." } };
         var missionParticipants = db.mission_participants.filter(function (row) { return String(row.mission_id) === String(finishMission.id); });
-        if (!missionParticipants.length) return { data: null, error: { message: "La misión no tiene participantes." } };
-        if (missionParticipants.some(function (row) { return ["confirmado", "ausente"].indexOf(row.estado) === -1; })) return { data: null, error: { message: "Debes corroborar a todos los participantes antes de terminar." } };
+        var autoAbsentCount = 0;
+        missionParticipants.forEach(function (row) {
+          if (["confirmado", "ausente"].indexOf(row.estado) !== -1) return;
+          row.estado = "ausente";
+          row.reviewed_at = new Date().toISOString();
+          row.reviewed_by = profile.id;
+          autoAbsentCount += 1;
+        });
         missionParticipants.filter(function (row) { return row.estado === "confirmado" && !row.rewarded_at; }).forEach(function (row) {
           var rewardedProfile = db.profiles.find(function (candidate) { return String(candidate.id) === String(row.user_id); });
           if (!rewardedProfile) return;
@@ -653,7 +659,21 @@
         finishMission.estado = "finalizada";
         finishMission.finalizada_at = new Date().toISOString();
         saveDB(db);
-        return { data: { finished: true }, error: null };
+        return { data: { finished: true, auto_absent_count: autoAbsentCount }, error: null };
+      }
+
+      if (name === "delete_mission") {
+        if (["admin", "super_admin"].indexOf(profile.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Administración." } };
+        var deleteMissionId = args && args.p_mission_id;
+        var deleteMission = db.missions.find(function (row) { return String(row.id) === String(deleteMissionId); });
+        if (!deleteMission) return { data: null, error: { message: "Misión no encontrada." } };
+        if (deleteMission.estado !== "finalizada") return { data: null, error: { message: "Solo se pueden eliminar misiones finalizadas." } };
+        db.missions = db.missions.filter(function (row) { return String(row.id) !== String(deleteMissionId); });
+        db.mission_participants = db.mission_participants.filter(function (row) { return String(row.mission_id) !== String(deleteMissionId); });
+        db.voice_sessions = db.voice_sessions.filter(function (row) { return String(row.mission_id) !== String(deleteMissionId); });
+        db.discord_events = db.discord_events.filter(function (row) { return String(row.mission_id) !== String(deleteMissionId); });
+        saveDB(db);
+        return { data: { deleted: true }, error: null };
       }
 
       if (name === "take_training") {

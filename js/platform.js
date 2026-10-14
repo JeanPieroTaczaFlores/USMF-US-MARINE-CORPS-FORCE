@@ -876,10 +876,11 @@
         return '<div class="attendance-row"><div><strong>' + escapeHtml(profileName(participant.user_id)) + '</strong><small>' + escapeHtml(participantStatusLabel(participant.estado)) + (participant.rewarded_at ? ' · RECOMPENSA ACREDITADA' : '') + escapeHtml(voiceText) + '</small></div><div class="admin-actions"><button type="button" data-review-participant="' + escapeHtml(participant.id) + '" data-review-status="confirmado" ' + (participant.estado === "confirmado" ? "disabled" : "") + '>CONFIRMAR</button><button type="button" data-review-participant="' + escapeHtml(participant.id) + '" data-review-status="ausente" ' + (participant.estado === "ausente" ? "disabled" : "") + '>AUSENTE</button></div></div>';
       }).join("") : '<p class="empty-state">Aún no hay inscritos.</p>';
       var startButton = mission.estado === "programada" ? '<button type="button" data-start-mission="' + escapeHtml(mission.id) + '">LANZAR MISIÓN</button>' : '';
-      var finishButton = mission.estado === "activa" ? '<button type="button" class="finish-mission" data-finish-mission="' + escapeHtml(mission.id) + '" ' + (pending || !participants.length ? "disabled" : "") + '>TERMINAR Y ENTREGAR RECOMPENSAS</button>' : '';
+      var finishButton = mission.estado === "activa" ? '<button type="button" class="finish-mission" data-finish-mission="' + escapeHtml(mission.id) + '" data-pending-count="' + pending + '">FINALIZAR MISIÓN</button>' : '';
       var confirmAll = mission.estado === "activa" && pending ? '<button type="button" data-confirm-all="' + escapeHtml(mission.id) + '">CONFIRMAR TODOS LOS PENDIENTES</button>' : '';
+      var deleteButton = mission.estado === "finalizada" && canManageUsers() ? '<button type="button" class="danger-action" data-delete-mission="' + escapeHtml(mission.id) + '" data-mission-title="' + escapeHtml(mission.titulo) + '">ELIMINAR MISIÓN</button>' : '';
       var voiceChannel = mission.voice_channel_name || mission.voice_channel_id || "Sin canal asignado";
-      return '<details class="mission-admin-card" ' + (mission.estado === "activa" ? "open" : "") + '><summary><span><strong>' + escapeHtml(mission.titulo) + '</strong><small>' + escapeHtml(missionStatusLabel(mission.estado)) + ' · ' + participants.length + ' participantes · Voz: ' + escapeHtml(voiceChannel) + ' · Premio: ' + escapeHtml(points(mission.recompensa_puntos)) + ' + ' + escapeHtml(money(mission.recompensa_dinero)) + '</small></span><span>' + pending + ' por revisar</span></summary><div class="mission-admin-body"><div class="mission-command-actions"><button type="button" data-edit-mission="' + escapeHtml(mission.id) + '">EDITAR DATOS Y RECOMPENSAS</button>' + startButton + confirmAll + finishButton + '</div><div class="attendance-list">' + participantRows + '</div>' + (mission.estado === "activa" && pending ? '<p class="mission-blocker">Debes confirmar o marcar ausente a cada participante antes de cerrar.</p>' : '') + '</div></details>';
+      return '<details class="mission-admin-card" ' + (mission.estado === "activa" ? "open" : "") + '><summary><span><strong>' + escapeHtml(mission.titulo) + '</strong><small>' + escapeHtml(missionStatusLabel(mission.estado)) + ' · ' + participants.length + ' participantes · Voz: ' + escapeHtml(voiceChannel) + ' · Premio: ' + escapeHtml(points(mission.recompensa_puntos)) + ' + ' + escapeHtml(money(mission.recompensa_dinero)) + '</small></span><span>' + pending + ' por revisar</span></summary><div class="mission-admin-body"><div class="mission-command-actions"><button type="button" data-edit-mission="' + escapeHtml(mission.id) + '">EDITAR DATOS Y RECOMPENSAS</button>' + startButton + confirmAll + finishButton + deleteButton + '</div><div class="attendance-list">' + participantRows + '</div>' + (mission.estado === "activa" && pending ? '<p class="mission-blocker">Puedes revisar las asistencias una por una. Si finalizas ahora, los ' + pending + ' pendientes quedarán como ausentes y no recibirán recompensa.</p>' : '') + '</div></details>';
     }).join("") : '<p class="empty-state">Crea la primera misión desde el formulario.</p>';
   }
 
@@ -996,6 +997,24 @@
       if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     }
     setMessage("appMessage", "Todos los participantes pendientes fueron confirmados.", "success");
+    await loadPlatformData();
+  }
+
+  async function finishMission(missionId, pendingCount) {
+    var pending = Number(pendingCount || 0);
+    var warning = pending
+      ? "Hay " + pending + " asistencia" + (pending === 1 ? "" : "s") + " sin revisar. Al finalizar quedará" + (pending === 1 ? "" : "n") + " como ausente" + (pending === 1 ? "" : "s") + " y no recibirá" + (pending === 1 ? "" : "n") + " recompensa. ¿Deseas continuar?"
+      : "¿Finalizar esta misión y entregar las recompensas a los participantes confirmados?";
+    if (!window.confirm(warning)) return;
+    missionRpc("finish_mission", { p_mission_id: missionId }, pending ? "Misión finalizada. Los pendientes quedaron ausentes y las recompensas se entregaron solo a los confirmados." : "Misión finalizada. Recompensas entregadas a los asistentes confirmados.");
+  }
+
+  async function deleteMission(missionId, missionTitle) {
+    if (!canManageUsers()) return;
+    if (!window.confirm('¿Eliminar definitivamente la misión "' + missionTitle + '"? Se borrarán sus inscripciones y registros asociados. Esta acción no se puede deshacer.')) return;
+    var result = await supabase.rpc("delete_mission", { p_mission_id: missionId });
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", "Misión eliminada definitivamente.", "success");
     await loadPlatformData();
   }
 
@@ -1461,7 +1480,9 @@
       var confirmAll = event.target.closest("[data-confirm-all]");
       if (confirmAll) confirmAllParticipants(confirmAll.dataset.confirmAll);
       var finishMissionButton = event.target.closest("[data-finish-mission]");
-      if (finishMissionButton) missionRpc("finish_mission", { p_mission_id: finishMissionButton.dataset.finishMission }, "Misión terminada. Recompensas entregadas a los asistentes confirmados.");
+      if (finishMissionButton) finishMission(finishMissionButton.dataset.finishMission, finishMissionButton.dataset.pendingCount);
+      var deleteMissionButton = event.target.closest("[data-delete-mission]");
+      if (deleteMissionButton) deleteMission(deleteMissionButton.dataset.deleteMission, deleteMissionButton.dataset.missionTitle || "esta misión");
       var adjustMemberButton = event.target.closest("[data-adjust-member]");
       if (adjustMemberButton) adjustMember(adjustMemberButton.dataset.adjustMember);
       var saveProfileButton = event.target.closest("[data-save-profile]");
