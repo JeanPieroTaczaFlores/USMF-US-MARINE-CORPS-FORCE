@@ -251,7 +251,7 @@
       supabase.from("shop_items").select("*").eq("disponible", true).order("precio_dinero", { ascending: true }),
       supabase.from("user_inventory").select("*").eq("user_id", userId).order("comprado_at", { ascending: false }),
       supabase.from("orders").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
-      supabase.from("missions").select("*").order("fecha", { ascending: true }),
+      supabase.from("missions").select("*").order("created_at", { ascending: false }).order("fecha", { ascending: false }),
       supabase.from("mission_participants").select("*").order("joined_at", { ascending: true }),
       supabase.from("discord_events").select("*").order("created_at", { ascending: false }).limit(12),
       supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false }),
@@ -842,7 +842,7 @@
     var myEntries = state.missionParticipants.filter(function (row) { return String(row.user_id) === String(state.user.id); });
     $("missionSummary").innerHTML = '<article><span>OPERACIONES ACTIVAS</span><strong>' + activeCount + '</strong></article><article><span>MIS INSCRIPCIONES</span><strong>' + myEntries.length + '</strong></article><article><span>ASISTENCIAS CONFIRMADAS</span><strong>' + myEntries.filter(function (row) { return row.estado === "confirmado"; }).length + '</strong></article>';
 
-    $("missionGrid").innerHTML = state.missions.length ? state.missions.map(function (mission) {
+    function missionCardHtml(mission) {
       var participants = state.missionParticipants.filter(function (row) { return String(row.mission_id) === String(mission.id); });
       var mine = participants.find(function (row) { return String(row.user_id) === String(state.user.id); });
       var canJoin = state.profile.estado === "activo" && ["programada", "activa"].indexOf(mission.estado) !== -1 && !mine;
@@ -853,7 +853,13 @@
       var equipment = missionEquipment(mission);
       var equipmentBlock = equipment.length ? '<div class="mission-equipment"><strong>EQUIPAMIENTO PARA ESTA MISIÓN</strong><ul>' + equipment.map(function (item) { var owned = ownsEquipment(item); return '<li><span>' + escapeHtml(item) + '</span><small class="' + (owned ? "ready" : "check") + '">' + (owned ? "EN INVENTARIO" : "VERIFICAR") + '</small></li>'; }).join("") + '</ul></div>' : '<div class="mission-equipment"><strong>EQUIPAMIENTO PARA ESTA MISIÓN</strong><p>El mando aún no publicó una lista.</p></div>';
       return '<article class="mission-card ' + escapeHtml(mission.estado) + '"><div class="mission-card-top"><span class="mission-status">' + escapeHtml(missionStatusLabel(mission.estado)) + '</span><span>' + participants.length + ' participantes</span></div><h3>' + escapeHtml(mission.titulo) + '</h3><p>' + escapeHtml(mission.descripcion || "Sin descripción operativa.") + '</p><div class="mission-meta"><span><strong>FECHA</strong>' + escapeHtml(dateText(mission.fecha)) + '</span><span><strong>RECOMPENSA</strong>' + escapeHtml(points(mission.recompensa_puntos)) + ' · ' + escapeHtml(money(mission.recompensa_dinero)) + '</span></div>' + equipmentBlock + '<div class="mission-card-actions">' + myStatus + action + editAction + '</div></article>';
-    }).join("") : '<p class="empty-state">No hay misiones publicadas.</p>';
+    }
+
+    var currentMissions = state.missions.filter(function (mission) { return mission.estado !== "finalizada"; });
+    var oldMissions = state.missions.filter(function (mission) { return mission.estado === "finalizada"; });
+    var currentHtml = currentMissions.map(missionCardHtml).join("");
+    var archiveHtml = oldMissions.length ? '<details class="mission-archive"><summary><span>MISIONES ANTIGUAS</span><strong>' + oldMissions.length + '</strong></summary><div class="mission-archive-grid">' + oldMissions.map(missionCardHtml).join("") + '</div></details>' : '';
+    $("missionGrid").innerHTML = state.missions.length ? (currentHtml || '<p class="empty-state">No hay misiones nuevas o activas.</p>') + archiveHtml : '<p class="empty-state">No hay misiones publicadas.</p>';
 
     $("discordConnection").textContent = isSupabaseConfigured ? "DISCORD SEGURO" : "SIMULACIÓN LOCAL";
     $("discordEventLog").innerHTML = state.discordEvents.length ? state.discordEvents.map(function (event) {
@@ -864,7 +870,7 @@
   }
 
   function renderMissionAdmin() {
-    $("missionAdminList").innerHTML = state.missions.length ? state.missions.map(function (mission) {
+    function adminMissionHtml(mission) {
       var participants = state.missionParticipants.filter(function (row) { return String(row.mission_id) === String(mission.id); });
       var pending = participants.filter(function (row) { return ["confirmado", "ausente"].indexOf(row.estado) === -1; }).length;
       var participantRows = participants.length ? participants.map(function (participant) {
@@ -881,7 +887,13 @@
       var deleteButton = mission.estado === "finalizada" && canManageUsers() ? '<button type="button" class="danger-action" data-delete-mission="' + escapeHtml(mission.id) + '" data-mission-title="' + escapeHtml(mission.titulo) + '">ELIMINAR MISIÓN</button>' : '';
       var voiceChannel = mission.voice_channel_name || mission.voice_channel_id || "Sin canal asignado";
       return '<details class="mission-admin-card" ' + (mission.estado === "activa" ? "open" : "") + '><summary><span><strong>' + escapeHtml(mission.titulo) + '</strong><small>' + escapeHtml(missionStatusLabel(mission.estado)) + ' · ' + participants.length + ' participantes · Voz: ' + escapeHtml(voiceChannel) + ' · Premio: ' + escapeHtml(points(mission.recompensa_puntos)) + ' + ' + escapeHtml(money(mission.recompensa_dinero)) + '</small></span><span>' + pending + ' por revisar</span></summary><div class="mission-admin-body"><div class="mission-command-actions"><button type="button" data-edit-mission="' + escapeHtml(mission.id) + '">EDITAR DATOS Y RECOMPENSAS</button>' + startButton + confirmAll + finishButton + deleteButton + '</div><div class="attendance-list">' + participantRows + '</div>' + (mission.estado === "activa" && pending ? '<p class="mission-blocker">Puedes revisar las asistencias una por una. Si finalizas ahora, los ' + pending + ' pendientes quedarán como ausentes y no recibirán recompensa.</p>' : '') + '</div></details>';
-    }).join("") : '<p class="empty-state">Crea la primera misión desde el formulario.</p>';
+    }
+
+    var currentMissions = state.missions.filter(function (mission) { return mission.estado !== "finalizada"; });
+    var oldMissions = state.missions.filter(function (mission) { return mission.estado === "finalizada"; });
+    var currentHtml = currentMissions.map(adminMissionHtml).join("");
+    var archiveHtml = oldMissions.length ? '<details class="mission-archive admin-archive"><summary><span>MISIONES ANTIGUAS</span><strong>' + oldMissions.length + '</strong></summary><div class="mission-admin-list">' + oldMissions.map(adminMissionHtml).join("") + '</div></details>' : '';
+    $("missionAdminList").innerHTML = state.missions.length ? (currentHtml || '<p class="empty-state">No hay misiones nuevas o activas.</p>') + archiveHtml : '<p class="empty-state">Crea la primera misión desde el formulario.</p>';
   }
 
   function formatDuration(seconds) {
