@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20261002a" />
+  <link rel="stylesheet" href="css/platform.css?v=20261019a" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -304,6 +304,15 @@
                 <button class="platform-primary" id="announcementSubmit" type="submit">ENVIAR AL BOT DE DISCORD</button>
               </form>
             </article>
+            <details class="platform-card admin-section-disclosure purchase-history-card hidden" id="adminPurchasePanel">
+              <summary class="admin-section-summary"><div class="card-heading"><div><span>LOGÍSTICA Y AUDITORÍA</span><h3>Historial de compras</h3></div><div class="disclosure-badges"><span class="connection-badge" id="purchaseHistoryCount">0 COMPRAS</span><span class="disclosure-state">VER HISTORIAL</span></div></div></summary>
+              <div class="admin-section-body">
+                <p class="muted-copy">Consulta quién compró, qué implementos recibió, la factura, la fecha y el total pagado en USD o puntos.</p>
+                <div class="purchase-summary" id="purchaseHistorySummary"></div>
+                <label class="field-control admin-search"><span>BUSCAR COMPRA</span><input id="adminPurchaseSearch" type="search" placeholder="Usuario, factura o implemento" /></label>
+                <div id="adminPurchaseHistory" class="purchase-history"></div>
+              </div>
+            </details>
             <article class="platform-card" id="adminStorePanel">
               <div class="card-heading"><div><span>STORE</span><h3 id="adminStoreTitle">Publicar implemento</h3></div></div>
               <form id="adminItemForm" class="admin-form">
@@ -327,7 +336,8 @@
   <script src="js/local-auth.js?v=20261002a"></script>
   <script src="js/config.js?v=20260921a"></script>
   <script src="js/store-admin.js?v=20261019a"></script>
-  <script src="js/platform.js?v=20261019b"></script>
+  <script src="js/purchase-history.js?v=20261019a"></script>
+  <script src="js/platform.js?v=20261019c"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
