@@ -12,6 +12,7 @@
     adminItems: [],
     adminInventory: [],
     adminOrders: [],
+    adminOrderItems: [],
     adminTransactions: [],
     missions: [],
     missionParticipants: [],
@@ -30,6 +31,7 @@
     libraryCategory: "todos",
     libraryQuery: "",
     adminQuery: "",
+    purchaseQuery: "",
     editingItemId: null
   };
 
@@ -209,6 +211,7 @@
     var discordRosterImportPanel = $("discordRosterImportPanel");
     if (discordRosterImportPanel) discordRosterImportPanel.classList.toggle("hidden", !state.profile || state.profile.rol !== "super_admin");
     $("adminStorePanel").classList.toggle("hidden", !isStaff());
+    $("adminPurchasePanel").classList.toggle("hidden", !canManageUsers());
     $("announcementPanel").classList.toggle("hidden", !canManageUsers());
     var libraryAdminPanel = $("libraryAdminPanel");
     if (libraryAdminPanel) libraryAdminPanel.classList.toggle("hidden", !canManageUsers());
@@ -303,6 +306,7 @@
       supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false }),
       supabase.from("user_inventory").select("*").order("comprado_at", { ascending: false }),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("order_items").select("*").order("nombre", { ascending: true }),
       supabase.from("transactions").select("*").order("created_at", { ascending: false }),
       supabase.from("faction_members").select("*").order("display_name", { ascending: true })
     ]);
@@ -311,8 +315,9 @@
     state.trainingAssignments = results[2].data || [];
     state.adminInventory = results[3].data || [];
     state.adminOrders = results[4].data || [];
-    state.adminTransactions = results[5].data || [];
-    state.factionMembers = results[6].data || [];
+    state.adminOrderItems = results[5].data || [];
+    state.adminTransactions = results[6].data || [];
+    state.factionMembers = results[7].data || [];
     renderAdmin();
     renderMissions();
   }
@@ -1076,10 +1081,36 @@
     renderSpecialtyTrainingQueue();
     renderStaffTicketQueue();
     renderFactionDirectory();
+    renderPurchaseHistory();
     var catalogItems = storeAdmin.visibleCatalogItems(state.adminItems);
     $("adminCatalog").innerHTML = catalogItems.length ? catalogItems.map(function (item) {
       return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(storeCategoryLabel(item.tipo)) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-edit-item="' + escapeHtml(item.id) + '">EDITAR</button><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button><button class="danger-action" type="button" data-delete-item="' + escapeHtml(item.id) + '" data-item-name="' + escapeHtml(item.nombre) + '">ELIMINAR</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
+  }
+
+  function renderPurchaseHistory() {
+    if (!canManageUsers()) return;
+    var helper = window.USMCFPurchaseHistory;
+    var rows = helper.buildRows(state.adminOrders, state.adminOrderItems, state.adminProfiles);
+    var visibleRows = helper.filterRows(rows, state.purchaseQuery);
+    var summary = helper.summarize(rows);
+    $("purchaseHistoryCount").textContent = summary.orders + (summary.orders === 1 ? " COMPRA" : " COMPRAS");
+    $("purchaseHistorySummary").innerHTML = [
+      '<div><span>ÓRDENES</span><strong>' + summary.orders.toLocaleString("es-PE") + '</strong></div>',
+      '<div><span>UNIDADES</span><strong>' + summary.units.toLocaleString("es-PE") + '</strong></div>',
+      '<div><span>TOTAL USD</span><strong>' + escapeHtml(money(summary.money)) + '</strong></div>',
+      '<div><span>TOTAL PUNTOS</span><strong>' + escapeHtml(points(summary.points)) + '</strong></div>'
+    ].join("");
+    $("adminPurchaseHistory").innerHTML = visibleRows.length ? visibleRows.map(function (row) {
+      var order = row.order;
+      var itemText = row.items.length ? row.items.map(function (item) {
+        return '<li><strong>' + escapeHtml(item.nombre) + '</strong><span>×' + Number(item.quantity || 1) + '</span></li>';
+      }).join("") : '<li><strong>Sin detalle disponible</strong></li>';
+      var totalText = (Number(order.total_dinero || 0) ? money(order.total_dinero) : "") +
+        (Number(order.total_dinero || 0) && Number(order.total_puntos || 0) ? " + " : "") +
+        (Number(order.total_puntos || 0) ? points(order.total_puntos) : "");
+      return '<details class="purchase-record"><summary><div><span>' + escapeHtml(order.invoice_number) + '</span><strong>' + escapeHtml(row.buyerName) + '</strong><small>@' + escapeHtml(row.handle) + ' · ' + escapeHtml(dateText(order.created_at)) + '</small></div><div class="purchase-total"><strong>' + escapeHtml(totalText || "Sin costo") + '</strong><small>' + escapeHtml(String(order.estado || "pagada").toUpperCase()) + '</small></div></summary><div class="purchase-detail"><ul>' + itemText + '</ul><p>ID: ' + escapeHtml(order.id) + '</p></div></details>';
+    }).join("") : '<p class="empty-state">No hay compras que coincidan con la búsqueda.</p>';
   }
 
   function renderFactionDirectory() {
@@ -1489,6 +1520,7 @@
     $("cancelMissionEdit").addEventListener("click", resetMissionForm);
     $("librarySearch").addEventListener("input", function (event) { state.libraryQuery = event.target.value; renderLibrary(); });
     $("adminUserSearch").addEventListener("input", function (event) { state.adminQuery = event.target.value; renderAdmin(); });
+    $("adminPurchaseSearch").addEventListener("input", function (event) { state.purchaseQuery = event.target.value; renderPurchaseHistory(); });
     document.addEventListener("toggle", function (event) {
       var opened = event.target;
       if (!opened.matches || !opened.matches(".member-accordion") || !opened.open) return;
