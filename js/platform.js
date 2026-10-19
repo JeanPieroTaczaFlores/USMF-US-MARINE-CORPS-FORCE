@@ -567,7 +567,7 @@
       var price = item.precio_dinero > 0 ? money(item.precio_dinero) : points(item.precio_puntos);
       var stock = item.stock < 0 ? "Stock permanente" : item.stock + " disponibles";
       var visual = item.imagen_url ? '<img src="' + escapeHtml(item.imagen_url) + '" alt="' + escapeHtml(item.nombre) + '" loading="lazy" />' : escapeHtml(item.tipo.charAt(0).toUpperCase());
-      return '<article class="store-card' + (storeLocked ? ' locked' : '') + '"><div class="store-card-visual">' + visual + '</div><div class="store-card-body"><span>' + escapeHtml(item.tipo) + '</span><h3>' + escapeHtml(item.nombre) + '</h3><p>' + escapeHtml(item.descripcion || "Implemento oficial USMCF.") + '</p><div class="store-card-footer"><div class="store-price"><strong>' + escapeHtml(price) + '</strong><small>' + escapeHtml(stock) + '</small></div><button class="add-cart" type="button" data-add="' + escapeHtml(item.id) + '" ' + (storeLocked || item.stock === 0 ? "disabled" : "") + '>' + (storeLocked ? 'REQUIERE TRS' : 'AGREGAR') + '</button></div></div></article>';
+      return '<article class="store-card' + (storeLocked ? ' locked' : '') + '"><div class="store-card-visual">' + visual + '</div><div class="store-card-body"><span>' + escapeHtml(storeCategoryLabel(item.tipo)) + '</span><h3>' + escapeHtml(item.nombre) + '</h3><p>' + escapeHtml(item.descripcion || "Implemento oficial USMCF.") + '</p><div class="store-card-footer"><div class="store-price"><strong>' + escapeHtml(price) + '</strong><small>' + escapeHtml(stock) + '</small></div><button class="add-cart" type="button" data-add="' + escapeHtml(item.id) + '" ' + (storeLocked || item.stock === 0 ? "disabled" : "") + '>' + (storeLocked ? 'REQUIERE TRS' : 'AGREGAR') + '</button></div></div></article>';
     }).join("") : '<p class="empty-state">No hay artículos publicados en esta categoría.</p>';
   }
 
@@ -1076,7 +1076,7 @@
     renderStaffTicketQueue();
     renderFactionDirectory();
     $("adminCatalog").innerHTML = state.adminItems.length ? state.adminItems.map(function (item) {
-      return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(item.tipo) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-edit-item="' + escapeHtml(item.id) + '">EDITAR</button><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button></div></div>';
+      return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(storeCategoryLabel(item.tipo)) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-edit-item="' + escapeHtml(item.id) + '">EDITAR</button><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button><button class="danger-action" type="button" data-delete-item="' + escapeHtml(item.id) + '" data-item-name="' + escapeHtml(item.nombre) + '">ELIMINAR</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
   }
 
@@ -1289,6 +1289,11 @@
     $("adminStoreTitle").textContent = "Publicar implemento";
   }
 
+  function storeCategoryLabel(category) {
+    var labels = { miras: "Miras", handguard: "Handguard", culatas: "Culatas", linternas: "Linternas", laseres: "Láseres", parches: "Parches" };
+    return labels[category] || String(category || "Implemento");
+  }
+
   function editStoreItem(itemId) {
     if (!isStaff()) return;
     var item = state.adminItems.find(function (candidate) { return String(candidate.id) === String(itemId); });
@@ -1331,6 +1336,23 @@
     var wasEditing = Boolean(state.editingItemId);
     resetItemForm();
     setMessage("appMessage", wasEditing ? "Implemento actualizado en la Store." : "Implemento publicado en la Store.", "success");
+    await loadPlatformData();
+  }
+
+  async function deleteStoreItem(itemId, itemName) {
+    if (!isStaff()) return setMessage("appMessage", "Solo Staff y Administración pueden eliminar implementos.", "error");
+    if (!window.confirm("¿Eliminar " + itemName + " de la Store? Si ya fue comprado, se ocultará sin borrar inventarios ni facturas.")) return;
+    var result = await supabase.from("shop_items").delete().eq("id", itemId);
+    if (result.error && result.error.code === "23503") {
+      result = await supabase.from("shop_items").update({ disponible: false }).eq("id", itemId);
+      if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+      setMessage("appMessage", "El implemento ya pertenece a miembros. Se retiró de la Store y se conservaron sus inventarios y facturas.", "success");
+    } else if (result.error) {
+      return setMessage("appMessage", errorText(result.error), "error");
+    } else {
+      setMessage("appMessage", "Implemento eliminado de la Store.", "success");
+    }
+    if (String(state.editingItemId || "") === String(itemId)) resetItemForm();
     await loadPlatformData();
   }
 
@@ -1555,6 +1577,8 @@
       }
       var editItemButton = event.target.closest("[data-edit-item]");
       if (editItemButton) editStoreItem(editItemButton.dataset.editItem);
+      var deleteItemButton = event.target.closest("[data-delete-item]");
+      if (deleteItemButton) deleteStoreItem(deleteItemButton.dataset.deleteItem, deleteItemButton.dataset.itemName || "este implemento");
     });
     document.addEventListener("change", function (event) {
       var rank = event.target.closest("[data-rank]");
