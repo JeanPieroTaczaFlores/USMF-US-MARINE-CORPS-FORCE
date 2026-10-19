@@ -56,13 +56,56 @@ async function supabase(path, options = {}) {
   return body ? JSON.parse(body) : null;
 }
 
-async function discord(path, options = {}) {
+let discordRequestQueue = Promise.resolve();
+let discordBlockedUntil = 0;
+let lastDiscordRequestAt = 0;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+}
+
+function parseRetryAfter(response, bodyText) {
+  const header = Number(response.headers.get("retry-after"));
+  if (Number.isFinite(header) && header > 0) return Math.ceil(header * 1000);
+  try {
+    const body = JSON.parse(bodyText);
+    const value = Number(body.retry_after);
+    if (Number.isFinite(value) && value > 0) return Math.ceil(value * 1000);
+  } catch {}
+  // Cloudflare 1015 does not normally include Discord's JSON retry_after.
+  return bodyText.includes("Error 1015") || bodyText.includes("rate limited") ? 15 * 60 * 1000 : 60 * 1000;
+}
+
+async function executeDiscordRequest(path, options) {
+  const blockedFor = discordBlockedUntil - Date.now();
+  if (blockedFor > 0) await wait(blockedFor);
+  const spacing = 1000 - (Date.now() - lastDiscordRequestAt);
+  if (spacing > 0) await wait(spacing);
+  lastDiscordRequestAt = Date.now();
+
   const response = await fetch(`https://discord.com/api/v10${path}`, {
     ...options,
     headers: { Authorization: `Bot ${config.botToken}`, "Content-Type": "application/json", ...(options.headers || {}) },
   });
-  if (!response.ok) throw new Error(`Discord ${response.status}: ${await response.text()}`);
+  if (!response.ok) {
+    const bodyText = await response.text();
+    if (response.status === 429) {
+      const retryAfterMs = parseRetryAfter(response, bodyText);
+      discordBlockedUntil = Math.max(discordBlockedUntil, Date.now() + retryAfterMs);
+      const error = new Error(`Discord 429: límite temporal; reintento en ${Math.ceil(retryAfterMs / 1000)} s`);
+      error.discordRateLimited = true;
+      error.retryAfterMs = retryAfterMs;
+      throw error;
+    }
+    throw new Error(`Discord ${response.status}: ${bodyText.slice(0, 500)}`);
+  }
   return response.status === 204 ? null : response.json();
+}
+
+function discord(path, options = {}) {
+  const request = discordRequestQueue.then(() => executeDiscordRequest(path, options));
+  discordRequestQueue = request.catch(() => null);
+  return request;
 }
 
 function deliveryNonce(eventId, channelId) {
@@ -171,14 +214,17 @@ async function syncLogdMessages() {
   });
   if (!logd) throw new Error("Discord channel #logd was not found");
 
+  const latestSaved = await supabase(`discord_logd_messages?select=id&channel_id=eq.${logd.id}&order=message_created_at.desc&limit=1`);
   const messages = [];
-  let before = null;
-  for (let page = 0; page < 20; page += 1) {
-    const batch = await discord(`/channels/${logd.id}/messages?limit=100${before ? `&before=${before}` : ""}`);
+  let after = latestSaved?.[0]?.id || null;
+  // Sync incrementally. The previous full 2,000-message scan every ten minutes
+  // caused unnecessary Discord traffic and eventually Cloudflare 1015 blocks.
+  for (let page = 0; page < 5; page += 1) {
+    const batch = await discord(`/channels/${logd.id}/messages?limit=100${after ? `&after=${after}` : ""}`);
     if (!batch?.length) break;
     messages.push(...batch);
     if (batch.length < 100) break;
-    before = batch[batch.length - 1].id;
+    after = batch.reduce((latest, message) => BigInt(message.id) > BigInt(latest) ? message.id : latest, after || "0");
   }
 
   const syncedAt = new Date().toISOString();
@@ -203,8 +249,8 @@ async function syncLogdMessages() {
     }
   }
   logdLastSyncAt = syncedAt;
-  logdMessageCount = messages.length;
-  console.log(`[USMCF BOT] Discord #logd synchronized: ${messages.length} messages`);
+  logdMessageCount += messages.length;
+  console.log(`[USMCF BOT] Discord #logd synchronized incrementally: ${messages.length} new messages`);
 }
 
 async function syncGuildRoster() {
@@ -470,7 +516,10 @@ async function processEvent(event) {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Canal Discord ${channelId}: ${message}`);
+      const wrapped = new Error(`Canal Discord ${channelId}: ${message}`);
+      wrapped.discordRateLimited = Boolean(error?.discordRateLimited);
+      wrapped.retryAfterMs = Number(error?.retryAfterMs || 0);
+      throw wrapped;
     }
   }
   if (profile) await syncMemberRoles(profile);
@@ -678,13 +727,19 @@ function retryDelayMs(attempt) {
   return [30000, 120000, 600000, 1800000, 7200000][Math.min(Math.max(1, attempt), 5) - 1];
 }
 
+function eventPriority(event) {
+  if (["mission_published", "mission_updated", "announcement_published"].includes(event.tipo)) return 0;
+  if (event.tipo === "platform_login") return 2;
+  return 1;
+}
+
 async function queuedEvents() {
   const pending = await supabase("discord_events?select=*&estado=eq.pendiente&order=created_at.asc&limit=20");
   try {
     const now = encodeURIComponent(new Date().toISOString());
     const retryable = await supabase(`discord_events?select=*&estado=eq.error&retry_count=lt.${config.maxDeliveryRetries}&next_attempt_at=lte.${now}&order=next_attempt_at.asc&limit=10`);
     const byId = new Map([...(pending || []), ...(retryable || [])].map((event) => [event.id, event]));
-    return [...byId.values()].sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+    return [...byId.values()].sort((left, right) => eventPriority(left) - eventPriority(right) || Date.parse(left.created_at) - Date.parse(right.created_at));
   } catch (error) {
     if (!String(error?.message || error).includes("retry_count") && !String(error?.message || error).includes("next_attempt_at")) throw error;
     return pending || [];
@@ -701,9 +756,13 @@ async function poll() {
       catch (error) {
         lastError = error instanceof Error ? error.message : String(error);
         const attempt = Number(event.retry_count || 0) + 1;
-        const nextAttempt = new Date(Date.now() + retryDelayMs(attempt)).toISOString();
+        const retryAfterMs = Number(error?.retryAfterMs || 0);
+        const nextAttempt = new Date(Date.now() + Math.max(retryDelayMs(attempt), retryAfterMs)).toISOString();
         await supabase(`discord_events?id=eq.${event.id}`, { method: "PATCH", body: JSON.stringify({ estado: "error", error_text: lastError, retry_count: attempt, next_attempt_at: nextAttempt }) }).catch(() => null);
         console.error(`[USMCF BOT] Discord event ${event.id} failed (attempt ${attempt}/${config.maxDeliveryRetries}); next retry ${nextAttempt}: ${lastError}`);
+        // A Cloudflare/global limit affects every endpoint. Stop this batch instead
+        // of hammering Discord with the remaining queued events.
+        if (error?.discordRateLimited) break;
       }
     }
     lastPollAt = new Date().toISOString();
@@ -734,14 +793,16 @@ setInterval(() => syncLogdMessages().catch((error) => { lastError = error instan
 setInterval(() => remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.reminderMs);
 setInterval(() => refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), config.inviteRefreshMs);
 poll().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
-syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
-syncGuildCatalog().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
-syncLogdMessages().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
-remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
-refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); });
-ensureSupportChannel().catch((error) => { lastError = error instanceof Error ? error.message : String(error); console.error(`[USMCF BOT] Support channel setup failed: ${lastError}`); });
 connectGateway();
-deleteMisroutedPlatformLoginMessages().catch((error) => {
+// Do not launch every maintenance job at once on startup. Render restarts used
+// to create a burst of Discord API calls before queued announcements ran.
+setTimeout(() => syncGuildCatalog().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), 30000);
+setTimeout(() => syncGuildRoster().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), 60000);
+setTimeout(() => syncLogdMessages().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), 90000);
+setTimeout(() => remindDelayedWork().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), 120000);
+setTimeout(() => refreshDiscordInvite().catch((error) => { lastError = error instanceof Error ? error.message : String(error); }), 150000);
+setTimeout(() => ensureSupportChannel().catch((error) => { lastError = error instanceof Error ? error.message : String(error); console.error(`[USMCF BOT] Support channel setup failed: ${lastError}`); }), 180000);
+setTimeout(() => deleteMisroutedPlatformLoginMessages().catch((error) => {
   lastError = error instanceof Error ? error.message : String(error);
   console.error(`[USMCF BOT] Misrouted login cleanup failed: ${lastError}`);
-});
+}), 210000);
