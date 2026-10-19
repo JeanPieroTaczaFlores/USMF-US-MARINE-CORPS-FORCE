@@ -1,0 +1,7 @@
+{
+  "name": "usmcf-force",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/store-admin.test.cjs && node --check js/store-admin.js && node --check js/platform.js"
+  }
+}
