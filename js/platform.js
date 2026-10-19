@@ -1047,6 +1047,7 @@
 
   function renderAdmin() {
     if (!isStaff()) return;
+    var storeAdmin = window.USMCFStoreAdmin;
     var query = state.adminQuery.trim().toLowerCase();
     var visibleProfiles = state.adminProfiles.filter(function (profile) {
       return !query || [profile.nombre, profile.callsign, profile.usuario_roblox, profile.email, profile.rango, profile.rol, profile.estado].join(" ").toLowerCase().indexOf(query) !== -1;
@@ -1075,7 +1076,8 @@
     renderSpecialtyTrainingQueue();
     renderStaffTicketQueue();
     renderFactionDirectory();
-    $("adminCatalog").innerHTML = state.adminItems.length ? state.adminItems.map(function (item) {
+    var catalogItems = storeAdmin.visibleCatalogItems(state.adminItems);
+    $("adminCatalog").innerHTML = catalogItems.length ? catalogItems.map(function (item) {
       return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(storeCategoryLabel(item.tipo)) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-edit-item="' + escapeHtml(item.id) + '">EDITAR</button><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button><button class="danger-action" type="button" data-delete-item="' + escapeHtml(item.id) + '" data-item-name="' + escapeHtml(item.nombre) + '">ELIMINAR</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
   }
@@ -1341,13 +1343,15 @@
 
   async function deleteStoreItem(itemId, itemName) {
     if (!isStaff()) return setMessage("appMessage", "Solo Staff y Administración pueden eliminar implementos.", "error");
-    if (!window.confirm("¿Eliminar " + itemName + " de la Store? Si ya fue comprado, se ocultará sin borrar inventarios ni facturas.")) return;
+    if (!window.confirm("¿Eliminar " + itemName + " de la Store? Si ya fue comprado, desaparecerá del panel pero se conservará en inventarios y facturas.")) return;
+    var storeAdmin = window.USMCFStoreAdmin;
     var result = await supabase.from("shop_items").delete().eq("id", itemId);
-    if (result.error && result.error.code === "23503") {
-      result = await supabase.from("shop_items").update({ disponible: false }).eq("id", itemId);
+    var outcome = storeAdmin.deletionOutcome(result.error);
+    if (outcome === "archive") {
+      result = await supabase.from("shop_items").update(storeAdmin.archivePayload()).eq("id", itemId);
       if (result.error) return setMessage("appMessage", errorText(result.error), "error");
-      setMessage("appMessage", "El implemento ya pertenece a miembros. Se retiró de la Store y se conservaron sus inventarios y facturas.", "success");
-    } else if (result.error) {
+      setMessage("appMessage", "Implemento eliminado del panel. Sus inventarios y facturas históricas se conservaron.", "success");
+    } else if (outcome === "error") {
       return setMessage("appMessage", errorText(result.error), "error");
     } else {
       setMessage("appMessage", "Implemento eliminado de la Store.", "success");
