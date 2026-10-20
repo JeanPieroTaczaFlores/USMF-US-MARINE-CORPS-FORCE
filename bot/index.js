@@ -85,7 +85,12 @@ async function executeDiscordRequest(path, options) {
 
   const response = await fetch(`https://discord.com/api/v10${path}`, {
     ...options,
-    headers: { Authorization: `Bot ${config.botToken}`, "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: {
+      Authorization: `Bot ${config.botToken}`,
+      "Content-Type": "application/json",
+      "User-Agent": "DiscordBot (https://github.com/JeanPieroTaczaFlores/USMF-US-MARINE-CORPS-FORCE, 1.0.0)",
+      ...(options.headers || {}),
+    },
   });
   if (!response.ok) {
     const bodyText = await response.text();
