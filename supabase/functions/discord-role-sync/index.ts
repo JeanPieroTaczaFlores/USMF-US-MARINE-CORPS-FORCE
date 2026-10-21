@@ -12,6 +12,11 @@ const managedRoleKeys = [
   "DISCORD_ROLE_ADMIN_ID",
 ] as const;
 
+const discordHeaders = (token: string) => ({
+  Authorization: `Bot ${token}`,
+  "User-Agent": "DiscordBot (https://github.com/JeanPieroTaczaFlores/USMF-US-MARINE-CORPS-FORCE, 1.0.0)",
+});
+
 function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -77,7 +82,7 @@ Deno.serve(async (request) => {
 
     const { data: target, error: targetError } = await admin
       .from("profiles")
-      .select("id,discord_id,rol,estado,rango")
+      .select("id,discord_id,rol,estado,rango,command_role_id")
       .eq("id", targetId)
       .single();
     if (targetError || !target) return response({ error: "User not found" }, 404);
@@ -89,13 +94,17 @@ Deno.serve(async (request) => {
       .eq("user_id", targetId)
       .eq("estado", "aprobada");
 
+    const { data: commandRoles } = await admin
+      .from("command_roles")
+      .select("id,discord_role_id,active");
+
     const roleIds = Object.fromEntries(
       managedRoleKeys.map((key) => [key, Deno.env.get(key)]).filter((entry) => Boolean(entry[1])),
     ) as Record<string, string>;
     const rankRoleMap = jsonMap("DISCORD_RANK_ROLE_MAP");
     const configuredSpecialtyRoleMap = jsonMap("DISCORD_SPECIALTY_ROLE_MAP");
     const guildRolesResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
-      headers: { Authorization: `Bot ${botToken}` },
+      headers: discordHeaders(botToken),
     });
     const guildRoles = guildRolesResponse.ok ? await guildRolesResponse.json() : [];
     const roleByName = new Map((Array.isArray(guildRoles) ? guildRoles : []).map((role: Record<string, unknown>) => [normalizedRoleName(role.name), String(role.id)]));
@@ -115,9 +124,11 @@ Deno.serve(async (request) => {
       for (const application of specialtyApplications || []) {
         if (specialtyRoleMap[application.role_key]) desired.add(specialtyRoleMap[application.role_key]);
       }
+      const commandRole = (commandRoles || []).find((role) => role.id === target.command_role_id && role.active);
+      if (commandRole?.discord_role_id) desired.add(commandRole.discord_role_id);
     }
 
-    const headers = { Authorization: `Bot ${botToken}` };
+    const headers = discordHeaders(botToken);
     const memberUrl = `https://discord.com/api/v10/guilds/${guildId}/members/${target.discord_id}`;
     const memberResponse = await fetch(memberUrl, { headers });
     if (!memberResponse.ok) {
@@ -125,7 +136,7 @@ Deno.serve(async (request) => {
     }
     const member = await memberResponse.json();
     const currentRoles = new Set<string>(member.roles || []);
-    const managedRoles = Array.from(new Set([...Object.values(roleIds), ...Object.values(rankRoleMap), ...Object.values(specialtyRoleMap)]));
+    const managedRoles = Array.from(new Set([...Object.values(roleIds), ...Object.values(rankRoleMap), ...Object.values(specialtyRoleMap), ...(commandRoles || []).map((role) => role.discord_role_id).filter(Boolean)]));
 
     const warnings: Array<{ role_id: string; status: number }> = [];
     for (const roleId of managedRoles) {
@@ -139,7 +150,15 @@ Deno.serve(async (request) => {
       if (!roleResponse.ok) warnings.push({ role_id: roleId, status: roleResponse.status });
     }
 
-    return response({ synced: warnings.length === 0, partial: warnings.length > 0, roles: Array.from(desired), warnings });
+    return response({
+      synced: warnings.length === 0,
+      partial: warnings.length > 0,
+      roles: Array.from(desired),
+      warnings,
+      hint: warnings.some((warning) => warning.status === 403)
+        ? "Mueve el rol Kriss Kyle por encima de los roles que debe asignar en la jerarquía de Discord."
+        : undefined,
+    });
   } catch (error) {
     return response({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
   }
