@@ -59,7 +59,11 @@ Deno.serve(async (request) => {
         if (emailError) return json({ error: emailError.message }, 400);
         body.email = officialEmail;
       }
-      const update = Object.fromEntries(["nombre", "callsign", "usuario_roblox", "email", "rol", "estado", "rango"].filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
+      if (body.command_role_id) {
+        const { data: commandRole } = await admin.from("command_roles").select("id").eq("id", body.command_role_id).eq("active", true).maybeSingle();
+        if (!commandRole) return json({ error: "El cargo del Pentágono seleccionado no existe o está inactivo." }, 400);
+      }
+      const update = Object.fromEntries(["nombre", "callsign", "usuario_roblox", "email", "rol", "estado", "rango", "command_role_id"].filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
       const { error: updateError } = await admin.from("profiles").update(update).eq("id", target.id);
       if (updateError) return json({ error: updateError.message }, 400);
       return json({ updated: true });
