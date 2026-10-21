@@ -388,6 +388,7 @@ async function eventChannels(event) {
   if (type.startsWith("specialty_training_")) return [config.logdChannel];
   if (type.startsWith("ticket_")) return [await ensureSupportChannel()];
   if (type.startsWith("points_")) return [config.logdChannel];
+  if (type.startsWith("command_role_")) return [config.logdChannel];
   if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return [config.logdChannel];
   // Platform access is an audit event and belongs only in #logd.
   if (type === "platform_login") return [config.logdChannel];
@@ -408,7 +409,10 @@ async function shouldMentionEveryone(event) {
 
 async function syncMemberRoles(profile) {
   if (!profile?.discord_id) return { synced: false, reason: "not_linked" };
-  const applications = await supabase(`specialty_applications?select=role_key&user_id=eq.${profile.id}&estado=eq.aprobada`);
+  const [applications, commandRoles] = await Promise.all([
+    supabase(`specialty_applications?select=role_key&user_id=eq.${profile.id}&estado=eq.aprobada`),
+    supabase("command_roles?select=id,discord_role_id,active"),
+  ]);
   const specialtyRoles = { ...discoveredSpecialtyRoles, ...config.specialtyRoles };
   const desired = new Set();
   if (profile.estado !== "activo") {
@@ -421,6 +425,8 @@ async function syncMemberRoles(profile) {
     for (const application of applications || []) {
       if (specialtyRoles[application.role_key]) desired.add(specialtyRoles[application.role_key]);
     }
+    const commandRole = (commandRoles || []).find((role) => String(role.id) === String(profile.command_role_id || "") && role.active);
+    if (commandRole?.discord_role_id) desired.add(commandRole.discord_role_id);
   }
 
   const member = await discord(`/guilds/${config.guildId}/members/${profile.discord_id}`);
@@ -428,6 +434,7 @@ async function syncMemberRoles(profile) {
   const managed = new Set([
     config.recruitRole, config.soldierRole, config.staffRole, config.adminRole,
     ...Object.values(config.rankRoles), ...Object.values(specialtyRoles),
+    ...(commandRoles || []).map((role) => role.discord_role_id),
   ].filter(Boolean));
   for (const roleId of managed) {
     const shouldHave = desired.has(roleId);
@@ -488,7 +495,7 @@ async function deleteMisroutedPlatformLoginMessages() {
 }
 
 async function processEvent(event) {
-  const profiles = event.user_id ? await supabase(`profiles?select=id,nombre,callsign,discord_id,rol,estado,rango,puntos&id=eq.${event.user_id}`) : [];
+  const profiles = event.user_id ? await supabase(`profiles?select=id,nombre,callsign,discord_id,rol,estado,rango,puntos,command_role_id&id=eq.${event.user_id}`) : [];
   const profile = profiles?.[0];
   if (["specialty_training_cleanup", "specialty_approved"].includes(event.tipo)) {
     await deleteSpecialtyRequestMessages(event, profile);
