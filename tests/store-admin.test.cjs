@@ -34,3 +34,12 @@ test("la página carga el controlador antes de la plataforma", () => {
   assert.ok(helper >= 0, "falta js/store-admin.js");
   assert.ok(platform > helper, "store-admin.js debe cargarse antes que platform.js");
 });
+
+test("la Store acepta archivos de imagen permanentes y advierte sobre Discord", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "plataforma.html"), "utf8");
+  const platform = fs.readFileSync(path.join(__dirname, "..", "js", "platform.js"), "utf8");
+  assert.match(html, /id="adminItemImageFile"[^>]+type="file"/);
+  assert.match(platform, /store-assets/);
+  assert.match(platform, /discordapp/);
+  assert.match(platform, /IMAGEN NO DISPONIBLE/);
+});
