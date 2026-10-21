@@ -30,7 +30,7 @@ if (isSupabaseConfigured && window.supabase) {
 // Rangos del sistema
 const RANGOS = [
   { rango: 'Recluta', salario: 0, categoria: 'enlistado' },
-  { rango: 'Soldado', salario: 80, categoria: 'enlistado' },
+  { rango: 'Soldado', salario: 100, categoria: 'enlistado' },
   { rango: 'Soldado de Primera', salario: 120, categoria: 'enlistado' },
   { rango: 'Cabo de Lanza', salario: 160, categoria: 'enlistado' },
   { rango: 'Cabo', salario: 200, categoria: 'enlistado' },

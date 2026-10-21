@@ -14,6 +14,7 @@
     adminOrders: [],
     adminOrderItems: [],
     adminTransactions: [],
+    commandRoles: [],
     missions: [],
     missionParticipants: [],
     voiceSessions: [],
@@ -194,12 +195,16 @@
     var unlimitedAdmin = canManageUsers();
     $("topBalance").textContent = unlimitedAdmin ? "∞ USD" : money(p.dinero);
     $("balanceLabel").textContent = unlimitedAdmin ? "FONDOS DE MANDO" : "SALDO EN USD";
-    $("salaryNav").classList.toggle("hidden", unlimitedAdmin);
-    $("summarySalaryCard").classList.toggle("hidden", unlimitedAdmin);
+    $("salaryNav").classList.remove("hidden");
+    $("summarySalaryCard").classList.remove("hidden");
     var rank = (window.RANGOS || []).find(function (entry) { return entry.rango === p.rango; });
-    $("salaryAmount").textContent = money(rank ? rank.salario : 0);
-    $("summarySalary").textContent = money(rank ? rank.salario : 0);
-    $("salaryRank").textContent = "Tarifa de " + (p.rango || "rango sin asignar");
+    var commandRole = state.commandRoles.find(function (entry) { return String(entry.id) === String(p.command_role_id || ""); });
+    var baseSalary = Number(rank ? rank.salario : 0);
+    var roleBonus = Number(commandRole && commandRole.active ? commandRole.weekly_bonus : 0);
+    var totalSalary = baseSalary + roleBonus;
+    $("salaryAmount").textContent = money(totalSalary);
+    $("summarySalary").textContent = money(totalSalary);
+    $("salaryRank").textContent = "Rango: " + money(baseSalary) + (commandRole ? " · " + commandRole.name + ": +" + money(roleBonus) : " · Sin cargo del Pentágono");
     $("lastPayment").textContent = p.ultimo_salario ? dateText(p.ultimo_salario) : "Primer pago pendiente";
     var next = p.ultimo_salario ? new Date(new Date(p.ultimo_salario).getTime() + 7 * 86400000) : new Date();
     $("nextPayment").textContent = dateText(next);
@@ -212,6 +217,7 @@
     if (discordRosterImportPanel) discordRosterImportPanel.classList.toggle("hidden", !state.profile || state.profile.rol !== "super_admin");
     $("adminStorePanel").classList.toggle("hidden", !isStaff());
     $("adminPurchasePanel").classList.toggle("hidden", !canManageUsers());
+    $("commandRolesPanel").classList.toggle("hidden", !canManageUsers());
     $("announcementPanel").classList.toggle("hidden", !canManageUsers());
     var libraryAdminPanel = $("libraryAdminPanel");
     if (libraryAdminPanel) libraryAdminPanel.classList.toggle("hidden", !canManageUsers());
@@ -234,7 +240,7 @@
   }
 
   async function verifySalary() {
-    if (!state.profile || state.profile.estado !== "activo" || canManageUsers()) return;
+    if (!state.profile || state.profile.estado !== "activo") return;
     var result = await supabase.rpc("pay_my_salary");
     if (result.error) {
       if (isSupabaseConfigured) setMessage("appMessage", "La consulta de salario no está disponible todavía: " + errorText(result.error), "error");
@@ -264,7 +270,8 @@
       supabase.from("support_ticket_comments").select("*").order("created_at", { ascending: true }),
       supabase.from("discord_invites").select("*").order("created_at", { ascending: false }).limit(1),
       supabase.from("voice_sessions").select("*").order("joined_at", { ascending: false }).limit(200),
-      supabase.from("library_documents").select("*").order("created_at", { ascending: false })
+      supabase.from("library_documents").select("*").order("created_at", { ascending: false }),
+      supabase.from("command_roles").select("*").order("sort_order", { ascending: true })
     ]);
     state.transactions = results[0].data || [];
     state.items = results[1].data || [];
@@ -281,6 +288,7 @@
     state.discordInvites = results[12].data || [];
     state.voiceSessions = results[13].data || [];
     state.libraryDocuments = results[14].data || [];
+    state.commandRoles = results[15].data || [];
     state.profile = await getProfile(userId);
     hydrateIdentity();
     renderTransactions();
@@ -571,9 +579,18 @@
     $("storeGrid").innerHTML = filtered.length ? filtered.map(function (item) {
       var price = item.precio_dinero > 0 ? money(item.precio_dinero) : points(item.precio_puntos);
       var stock = item.stock < 0 ? "Stock permanente" : item.stock + " disponibles";
-      var visual = item.imagen_url ? '<img src="' + escapeHtml(item.imagen_url) + '" alt="' + escapeHtml(item.nombre) + '" loading="lazy" />' : escapeHtml(item.tipo.charAt(0).toUpperCase());
+      var fallback = '<div class="store-image-placeholder"><strong>' + escapeHtml(item.tipo.charAt(0).toUpperCase()) + '</strong><small>IMAGEN NO DISPONIBLE</small></div>';
+      var visual = item.imagen_url ? '<img src="' + escapeHtml(item.imagen_url) + '" alt="' + escapeHtml(item.nombre) + '" loading="lazy" data-store-image data-fallback="' + escapeHtml(item.tipo.charAt(0).toUpperCase()) + '" />' : fallback;
       return '<article class="store-card' + (storeLocked ? ' locked' : '') + '"><div class="store-card-visual">' + visual + '</div><div class="store-card-body"><span>' + escapeHtml(storeCategoryLabel(item.tipo)) + '</span><h3>' + escapeHtml(item.nombre) + '</h3><p>' + escapeHtml(item.descripcion || "Implemento oficial USMCF.") + '</p><div class="store-card-footer"><div class="store-price"><strong>' + escapeHtml(price) + '</strong><small>' + escapeHtml(stock) + '</small></div><button class="add-cart" type="button" data-add="' + escapeHtml(item.id) + '" ' + (storeLocked || item.stock === 0 ? "disabled" : "") + '>' + (storeLocked ? 'REQUIERE TRS' : 'AGREGAR') + '</button></div></div></article>';
     }).join("") : '<p class="empty-state">No hay artículos publicados en esta categoría.</p>';
+    document.querySelectorAll("[data-store-image]").forEach(function (image) {
+      image.addEventListener("error", function () {
+        var replacement = document.createElement("div");
+        replacement.className = "store-image-placeholder";
+        replacement.innerHTML = "<strong>" + escapeHtml(image.dataset.fallback || "I") + "</strong><small>IMAGEN NO DISPONIBLE</small>";
+        image.replaceWith(replacement);
+      }, { once: true });
+    });
   }
 
   function addToCart(itemId) {
@@ -919,7 +936,13 @@
     var result = await supabase.functions.invoke("discord-role-sync", { body: { user_id: userId } });
     if (result && result.error && isSupabaseConfigured && !silent) {
       setMessage("appMessage", "Los cambios se guardaron en la web, pero el rol de Discord no pudo sincronizarse todavía.", "error");
+      return false;
     }
+    if (result && result.data && result.data.partial && !silent) {
+      setMessage("appMessage", result.data.hint || "El cargo quedó guardado en la web, pero Discord rechazó uno o más roles.", "error");
+      return false;
+    }
+    return true;
   }
 
   async function joinMission(missionId) {
@@ -1059,7 +1082,8 @@
     });
     $("adminProfiles").innerHTML = visibleProfiles.length ? visibleProfiles.map(function (profile) {
       var rankOptions = (window.RANGOS || []).map(function (rank) { return '<option value="' + escapeHtml(rank.rango) + '" ' + (rank.rango === profile.rango ? "selected" : "") + '>' + escapeHtml(rank.rango) + '</option>'; }).join("");
-      var roleOptions = [["usuario", "Miembro"], ["staff", "Staff"], ["admin", "Administrador"], ["super_admin", "Alto Mando"]].map(function (entry) { return '<option value="' + entry[0] + '" ' + (profile.rol === entry[0] ? "selected" : "") + '>' + entry[1] + '</option>'; }).join("");
+      var roleOptions = [["usuario", "Miembro"], ["staff", "Staff"], ["admin", "Administrador"], ["super_admin", "Super Admin"]].map(function (entry) { return '<option value="' + entry[0] + '" ' + (profile.rol === entry[0] ? "selected" : "") + '>' + entry[1] + '</option>'; }).join("");
+      var commandRoleOptions = '<option value="">Sin cargo del Pentágono</option>' + state.commandRoles.map(function (entry) { return '<option value="' + escapeHtml(entry.id) + '" ' + (String(profile.command_role_id || "") === String(entry.id) ? "selected" : "") + '>' + escapeHtml(entry.name) + ' (+' + escapeHtml(money(entry.weekly_bonus)) + '/semana)</option>'; }).join("");
       var statusOptions = [["pendiente", "Pendiente"], ["activo", "Activo"], ["suspendido", "Suspendido"]].map(function (entry) { return '<option value="' + entry[0] + '" ' + (profile.estado === entry[0] ? "selected" : "") + '>' + entry[1] + '</option>'; }).join("");
       var inventory = state.adminInventory.filter(function (row) { return String(row.user_id) === String(profile.id); });
       var orders = state.adminOrders.filter(function (row) { return String(row.user_id) === String(profile.id); });
@@ -1070,7 +1094,7 @@
       var grantedSpecialties = state.specialtyApplications.filter(function (row) { return String(row.user_id) === String(profile.id) && row.estado === "aprobada"; });
       var specialtyText = grantedSpecialties.length ? grantedSpecialties.map(function (row) { return escapeHtml(specialtyName(row.role_key)); }).join(" · ") : "Sin especialidades asignadas";
       var deleteAllowed = canManageUsers() && String(profile.id) !== String(state.user.id) && (profile.rol !== "super_admin" || state.profile.rol === "super_admin");
-      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO OPERATIVO</span><input data-profile-field="callsign" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.callsign || profile.usuario_roblox) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button>' + (deleteAllowed ? '<button class="wide danger-action" type="button" data-delete-user="' + escapeHtml(profile.id) + '" data-delete-name="' + escapeHtml(profile.nombre || profile.email) + '">ELIMINAR USUARIO DEFINITIVAMENTE</button>' : '') + '</div>' : '';
+      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO OPERATIVO</span><input data-profile-field="callsign" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.callsign || profile.usuario_roblox) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO DE PLATAFORMA</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>CARGO DEL PENTÁGONO</span><select data-profile-field="command_role_id" data-profile-id="' + escapeHtml(profile.id) + '">' + commandRoleOptions + '</select><small>Este cargo no cambia el permiso administrativo y suma su bono al salario semanal.</small></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button>' + (deleteAllowed ? '<button class="wide danger-action" type="button" data-delete-user="' + escapeHtml(profile.id) + '" data-delete-name="' + escapeHtml(profile.nombre || profile.email) + '">ELIMINAR USUARIO DEFINITIVAMENTE</button>' : '') + '</div>' : '';
       var specialtyAdmin = canManageUsers() ? '<div class="specialty-admin-control"><label><span>ASIGNAR ESPECIALIDAD</span><select data-specialty-grant-for="' + escapeHtml(profile.id) + '">' + specialtyCatalog.map(function (entry) { return '<option value="' + escapeHtml(entry.key) + '">' + escapeHtml(entry.name) + '</option>'; }).join("") + '</select></label><button type="button" data-grant-specialty="' + escapeHtml(profile.id) + '">OTORGAR</button><button type="button" data-revoke-specialty="' + escapeHtml(profile.id) + '">RETIRAR</button><small>Actuales: ' + specialtyText + '</small></div>' : '';
       var dossier = '<details class="member-dossier"><summary>VER INVENTARIO, FACTURAS, ESPECIALIDADES Y MOVIMIENTOS</summary><div class="dossier-grid"><div><strong>INVENTARIO</strong><p>' + inventoryText + '</p></div><div><strong>FACTURAS</strong><p>' + invoiceText + '</p></div><div><strong>ESPECIALIDADES</strong><p>' + specialtyText + '</p></div><div><strong>ÚLTIMOS MOVIMIENTOS</strong><p>' + movementText + '</p></div></div></details>';
       var accordionAction = canManageUsers() ? "MODIFICAR" : "PUNTOS Y SALDO";
@@ -1082,10 +1106,29 @@
     renderStaffTicketQueue();
     renderFactionDirectory();
     renderPurchaseHistory();
+    renderCommandRoles();
     var catalogItems = storeAdmin.visibleCatalogItems(state.adminItems);
     $("adminCatalog").innerHTML = catalogItems.length ? catalogItems.map(function (item) {
       return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(item.nombre) + '</strong><small>' + escapeHtml(storeCategoryLabel(item.tipo)) + ' · ' + (item.precio_dinero ? money(item.precio_dinero) : points(item.precio_puntos)) + ' · ' + (item.disponible ? "publicado" : "oculto") + '</small></div><div class="admin-actions"><button type="button" data-edit-item="' + escapeHtml(item.id) + '">EDITAR</button><button type="button" data-toggle-item="' + escapeHtml(item.id) + '" data-next="' + String(!item.disponible) + '">' + (item.disponible ? "OCULTAR" : "PUBLICAR") + '</button><button class="danger-action" type="button" data-delete-item="' + escapeHtml(item.id) + '" data-item-name="' + escapeHtml(item.nombre) + '">ELIMINAR</button></div></div>';
     }).join("") : '<p class="empty-state">No hay implementos creados.</p>';
+  }
+
+  function renderCommandRoles() {
+    var target = $("commandRoleCatalog");
+    if (!target || !canManageUsers()) return;
+    target.innerHTML = state.commandRoles.map(function (role) {
+      return '<div class="admin-catalog-row"><div><strong>' + escapeHtml(role.name) + '</strong><small>Rol Discord: ' + escapeHtml(role.discord_role_id || "Sin vincular") + '</small></div><div class="admin-actions"><label><span>BONO SEMANAL USD</span><input type="number" min="0" step="1" value="' + Number(role.weekly_bonus || 0) + '" data-command-role-bonus="' + escapeHtml(role.id) + '" /></label><button type="button" data-save-command-role="' + escapeHtml(role.id) + '">GUARDAR</button></div></div>';
+    }).join("") || '<p class="empty-state">No hay cargos del Pentágono configurados.</p>';
+  }
+
+  async function saveCommandRole(roleId) {
+    if (!canManageUsers()) return;
+    var input = document.querySelector('[data-command-role-bonus="' + roleId + '"]');
+    var bonus = Math.max(0, parseInt(input && input.value, 10) || 0);
+    var result = await supabase.from("command_roles").update({ weekly_bonus: bonus, updated_at: new Date().toISOString() }).eq("id", roleId);
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", "Bono semanal del cargo actualizado. Se aplicará en el próximo pago.", "success");
+    await loadPlatformData();
   }
 
   function renderPurchaseHistory() {
@@ -1253,11 +1296,11 @@
 
   async function saveProfile(profileId) {
     var payload = { action: "update", user_id: profileId };
-    document.querySelectorAll('[data-profile-id="' + profileId + '"]').forEach(function (field) { payload[field.dataset.profileField] = field.value; });
+    document.querySelectorAll('[data-profile-id="' + profileId + '"]').forEach(function (field) { payload[field.dataset.profileField] = field.dataset.profileField === "command_role_id" && !field.value ? null : field.value; });
     if (!isOfficialEmail(payload.email)) return setMessage("appMessage", "El correo del perfil debe terminar en @usmcf.com.", "error");
     var result = await supabase.functions.invoke("admin-users", { body: payload });
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
-    setMessage("appMessage", "Perfil, permisos y rango actualizados.", "success");
+    setMessage("appMessage", "Perfil, permiso, rango y cargo del Pentágono actualizados.", "success");
     await syncDiscordRoles(profileId, false);
     await loadPlatformData();
   }
@@ -1335,6 +1378,7 @@
     $("adminItemName").value = item.nombre || "";
     $("adminItemDescription").value = item.descripcion || "";
     $("adminItemImage").value = item.imagen_url || "";
+    $("adminItemImageFile").value = "";
     $("adminItemType").value = item.tipo || "uniforme";
     $("adminItemStock").value = Number.isFinite(Number(item.stock)) ? String(item.stock) : "-1";
     $("adminItemMoney").value = String(Number(item.precio_dinero || 0));
@@ -1346,12 +1390,46 @@
     $("adminStorePanel").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  async function uploadStoreImage(file) {
+    var extensionByType = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+    var extension = extensionByType[file.type];
+    if (!extension) throw new Error("La imagen debe ser PNG, JPG, WEBP o GIF.");
+    if (file.size > 5 * 1024 * 1024) throw new Error("La imagen supera el máximo de 5 MB.");
+    if (!supabase.storage || typeof supabase.storage.from !== "function") throw new Error("La carga de imágenes solo está disponible en la plataforma conectada.");
+    var randomPart = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2);
+    var owner = state.profile && state.profile.id ? state.profile.id : "staff";
+    var path = owner + "/" + randomPart + "." + extension;
+    var upload = await supabase.storage.from("store-assets").upload(path, file, {
+      cacheControl: "31536000",
+      contentType: file.type,
+      upsert: false
+    });
+    if (upload.error) throw upload.error;
+    var publicResult = supabase.storage.from("store-assets").getPublicUrl(upload.data.path);
+    if (!publicResult.data || !publicResult.data.publicUrl) throw new Error("No se pudo generar la URL permanente de la imagen.");
+    return publicResult.data.publicUrl;
+  }
+
   async function publishItem(event) {
     event.preventDefault();
     if (!isStaff()) return setMessage("appMessage", "Solo Staff y Administración pueden publicar implementos.", "error");
     var moneyPrice = Math.max(0, parseInt($("adminItemMoney").value, 10) || 0);
     var pointPrice = Math.max(0, parseInt($("adminItemPoints").value, 10) || 0);
     if (!moneyPrice && !pointPrice) return setMessage("appMessage", "El implemento necesita un precio en dinero o puntos.", "error");
+    var imageFile = $("adminItemImageFile").files[0];
+    var imageUrl = $("adminItemImage").value.trim();
+    if (!imageFile && /(?:cdn|media)\.discordapp\.(?:com|net)/i.test(imageUrl)) {
+      return setMessage("appMessage", "Ese enlace de Discord caducará. Descarga la imagen y súbela con el selector de archivo.", "error");
+    }
+    if (imageFile) {
+      try {
+        setBusy($("adminItemSubmit"), true, "SUBIENDO IMAGEN…");
+        imageUrl = await uploadStoreImage(imageFile);
+      } catch (uploadError) {
+        setBusy($("adminItemSubmit"), false);
+        return setMessage("appMessage", errorText(uploadError), "error");
+      }
+    }
     var itemData = {
       nombre: $("adminItemName").value.trim(),
       descripcion: $("adminItemDescription").value.trim(),
@@ -1359,12 +1437,13 @@
       stock: parseInt($("adminItemStock").value, 10),
       precio_dinero: moneyPrice,
       precio_puntos: pointPrice,
-      imagen_url: $("adminItemImage").value.trim(),
+      imagen_url: imageUrl,
       disponible: true
     };
     var result = state.editingItemId
       ? await supabase.from("shop_items").update(itemData).eq("id", state.editingItemId)
       : await supabase.from("shop_items").insert(itemData);
+    setBusy($("adminItemSubmit"), false);
     if (result.error) return setMessage("appMessage", errorText(result.error), "error");
     var wasEditing = Boolean(state.editingItemId);
     resetItemForm();
@@ -1407,10 +1486,6 @@
 
   function switchView(view) {
     if (view === "administracion" && !isStaff()) return;
-    if (view === "salario" && canManageUsers()) {
-      setMessage("appMessage", "Administración usa fondos de mando sin límite y no recibe salario.", "success");
-      view = "resumen";
-    }
     var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", entrenamiento: "MI ENTRENAMIENTO", especialidades: "ESPECIALIDADES", tickets: "TICKETS Y REPORTES", biblioteca: "BIBLIOTECA OPERATIVA", administracion: canManageUsers() ? "INTEGRANTES" : "CENTRO DE STAFF" };
     document.querySelectorAll(".member-nav-btn").forEach(function (button) { button.classList.toggle("active", button.dataset.view === view); });
     document.querySelectorAll(".member-view").forEach(function (panel) { panel.classList.toggle("active", panel.dataset.panel === view); });
@@ -1557,6 +1632,8 @@
       if (adjustMemberButton) adjustMember(adjustMemberButton.dataset.adjustMember);
       var saveProfileButton = event.target.closest("[data-save-profile]");
       if (saveProfileButton) saveProfile(saveProfileButton.dataset.saveProfile);
+      var saveCommandRoleButton = event.target.closest("[data-save-command-role]");
+      if (saveCommandRoleButton) saveCommandRole(saveCommandRoleButton.dataset.saveCommandRole);
       var resetPasswordButton = event.target.closest("[data-reset-password]");
       if (resetPasswordButton) resetMemberPassword(resetPasswordButton.dataset.resetPassword);
       var deleteUserButton = event.target.closest("[data-delete-user]");

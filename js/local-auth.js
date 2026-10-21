@@ -62,7 +62,7 @@
     try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { db = null; }
     if (!db || !db.profiles) db = initDB();
     // Auto-reparar tablas faltantes
-    var defaults = { missions: [], mission_participants: [], voice_sessions: [], training_assignments: [], specialty_applications: [], specialty_training_requests: [], support_tickets: [], support_ticket_comments: [], discord_invites: [], faction_members: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [] };
+    var defaults = { missions: [], mission_participants: [], voice_sessions: [], training_assignments: [], specialty_applications: [], specialty_training_requests: [], support_tickets: [], support_ticket_comments: [], discord_invites: [], faction_members: [], transactions: [], opinions: [], notifications: [], discord_events: [], shop_items: [], user_inventory: [], orders: [], order_items: [], command_roles: [] };
     for (var key in defaults) {
       if (!db[key]) db[key] = defaults[key];
     }
@@ -80,6 +80,7 @@
       if (!p.last_login) p.last_login = p.created_at || new Date().toISOString();
       if (p.ultimo_salario === undefined) p.ultimo_salario = null;
       if (!p.callsign) p.callsign = p.usuario_roblox || String(p.nombre || "Marine").split(/\s+/)[0];
+      if (p.command_role_id === undefined) p.command_role_id = null;
     });
     db.missions.forEach(function (mission) {
       if (!Array.isArray(mission.required_equipment)) mission.required_equipment = ["Uniforme MCCUU", "Chaleco medio", "M4A1 con silenciador"];
@@ -88,6 +89,7 @@
       if (!mission.voice_channel_name) mission.voice_channel_name = "Sala de Operaciones";
     });
     if (!db.shop_items.length) seedShop(db);
+    if (!db.command_roles.length) seedCommandRoles(db);
     db.profiles.forEach(function (profile) { applyAutoPromotion(profile, db); });
     saveDB(db);
     return db;
@@ -113,7 +115,8 @@
       shop_items: [],
       user_inventory: [],
       orders: [],
-      order_items: []
+      order_items: [],
+      command_roles: []
     };
 
     var now = new Date().toISOString();
@@ -154,6 +157,7 @@
     );
 
     seedShop(db);
+    seedCommandRoles(db);
 
     saveDB(db);
     return db;
@@ -168,6 +172,19 @@
     ];
     items.forEach(function (item) {
       db.shop_items.push(Object.assign({ id: uid(), disponible: true, imagen_url: "", created_at: new Date().toISOString() }, item));
+    });
+  }
+
+  function seedCommandRoles(db) {
+    [
+      ["Alto Mando", "1346337407628345434"],
+      ["Staff en Jefe", "1510498357838086184"],
+      ["Staff", "1079948911382372432"],
+      ["Staff en Prueba", "1165781171507044402"],
+      ["Gestor de Misiones", "1346333945679056958"],
+      ["Consultor", "1346336089127780385"]
+    ].forEach(function (entry, index) {
+      db.command_roles.push({ id: uid(), name: entry[0], discord_role_id: entry[1], weekly_bonus: 0, active: true, sort_order: index + 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
     });
   }
 
@@ -498,7 +515,7 @@
             if (!targetProfile) return { data: null, error: { message: "Usuario no encontrado." } };
             if (body.email !== undefined && !/^[^@\s]+@usmcf\.com$/i.test(String(body.email).trim())) return { data: null, error: { message: "Solo se aceptan correos institucionales @usmcf.com." } };
             var oldEmail = targetProfile.email;
-            ["nombre", "callsign", "usuario_roblox", "email", "rol", "estado", "rango"].forEach(function (field) { if (body[field] !== undefined) targetProfile[field] = body[field]; });
+            ["nombre", "callsign", "usuario_roblox", "email", "rol", "estado", "rango", "command_role_id"].forEach(function (field) { if (body[field] !== undefined) targetProfile[field] = body[field]; });
             if (oldEmail !== targetProfile.email) {
               var storedPasswords = getPasswords();
               storedPasswords[targetProfile.email] = storedPasswords[oldEmail];
@@ -543,18 +560,20 @@
       }
 
       if (name === "pay_my_salary") {
-        if (["admin", "super_admin"].indexOf(profile.rol) !== -1) return { data: { paid: false, unlimited: true, amount: 0, next_at: null }, error: null };
         var salary = (window.RANGOS || []).find(function (r) { return r.rango === profile.rango; });
-        var amount = salary ? salary.salario : 0;
+        var commandRole = db.command_roles.find(function (role) { return String(role.id) === String(profile.command_role_id || "") && role.active; });
+        var baseSalary = salary ? salary.salario : 0;
+        var roleBonus = commandRole ? Number(commandRole.weekly_bonus || 0) : 0;
+        var amount = baseSalary + roleBonus;
         var last = profile.ultimo_salario ? new Date(profile.ultimo_salario) : null;
         if (last && (Date.now() - last.getTime()) < 7 * 86400000) {
           return { data: { paid: false, amount: 0, next_at: new Date(last.getTime() + 7 * 86400000).toISOString() }, error: null };
         }
         profile.dinero += amount;
         profile.ultimo_salario = new Date().toISOString();
-        db.transactions.push({ id: uid(), user_id: profile.id, tipo: "salario", descripcion: "Salario semanal — " + profile.rango, monto_dinero: amount, monto_puntos: 0, created_at: new Date().toISOString() });
+        db.transactions.push({ id: uid(), user_id: profile.id, tipo: "salario", descripcion: "Salario semanal — " + profile.rango + (commandRole ? " + " + commandRole.name : ""), monto_dinero: amount, monto_puntos: 0, created_at: new Date().toISOString() });
         saveDB(db);
-        return { data: { paid: true, amount: amount, next_at: new Date(Date.now() + 7 * 86400000).toISOString() }, error: null };
+        return { data: { paid: true, amount: amount, base_salary: baseSalary, role_bonus: roleBonus, next_at: new Date(Date.now() + 7 * 86400000).toISOString() }, error: null };
       }
 
       if (name === "join_mission") {
