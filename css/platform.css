@@ -133,6 +133,9 @@
 .store-card { display:flex; flex-direction:column; min-height:280px; border:1px solid var(--platform-line); background:var(--platform-panel); overflow:hidden; }
 .store-card-visual { height:105px; display:grid; place-items:center; background:radial-gradient(circle at 50% 100%,rgba(214,184,78,.15),transparent 65%),repeating-linear-gradient(135deg,#151915 0 8px,#121512 8px 16px); color:rgba(214,184,78,.55); font:2.4rem "Anton",sans-serif; }
 .store-card-visual img { width:100%; height:100%; object-fit:cover; }
+.store-image-placeholder { width:100%; height:100%; display:grid; place-content:center; gap:.3rem; text-align:center; background:radial-gradient(circle at 50% 100%,rgba(214,184,78,.13),transparent 65%),repeating-linear-gradient(135deg,#151915 0 8px,#121512 8px 16px); }
+.store-image-placeholder strong { color:rgba(214,184,78,.62); font:2.35rem "Anton",sans-serif; }
+.store-image-placeholder small { color:#979b92; font:.58rem "Roboto Mono",monospace; letter-spacing:.12em; }
 .store-card-body { display:flex; flex:1; flex-direction:column; padding:1.1rem; }
 .store-card-body > span { color:var(--platform-gold); font:700 .67rem "Oswald",sans-serif; text-transform:uppercase; letter-spacing:.1em; }
 .store-card-body h3 { margin:.3rem 0; font:1.05rem "Oswald",sans-serif; }
@@ -261,6 +264,8 @@
 .admin-form { display:grid; gap:.65rem; margin-bottom:1.2rem; }
 .admin-form input,.admin-form textarea,.admin-form select { width:100%; border:1px solid #313731; background:#0c0f0d; color:#fff; padding:.75rem .8rem; font:inherit; outline:0; }
 .admin-form input:focus,.admin-form textarea:focus,.admin-form select:focus { border-color:var(--platform-gold); }
+.admin-catalog-row .admin-actions label { display:grid; gap:.3rem; color:var(--platform-gold-soft); font:800 .6rem "Inter",sans-serif; letter-spacing:.08em; }
+.admin-catalog-row .admin-actions input { width:9rem; border:1px solid #343a34; background:#0b0e0c; color:#fff; padding:.55rem; }
 .field-control { display:grid; gap:.38rem; min-width:0; }
 .field-control > span,.profile-editor label > span,.member-management label > span { color:var(--platform-gold-soft); font:800 .64rem "Inter",sans-serif; letter-spacing:.1em; }
 .field-control > small { color:#7f877f; font:500 .68rem/1.4 "Inter",sans-serif; }
