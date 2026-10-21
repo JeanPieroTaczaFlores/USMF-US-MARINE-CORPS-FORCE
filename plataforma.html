@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20261019a" />
+  <link rel="stylesheet" href="css/platform.css?v=20261020a" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -304,6 +304,13 @@
                 <button class="platform-primary" id="announcementSubmit" type="submit">ENVIAR AL BOT DE DISCORD</button>
               </form>
             </article>
+            <details class="platform-card admin-section-disclosure hidden" id="commandRolesPanel">
+              <summary class="admin-section-summary"><div class="card-heading"><div><span>PENTÁGONO</span><h3>Cargos y bonos semanales</h3></div><span class="disclosure-state">CONFIGURAR</span></div></summary>
+              <div class="admin-section-body">
+                <p class="muted-copy">El permiso de la plataforma y el cargo del Pentágono son independientes. Cada miembro cobra su salario por rango, más el bono del cargo y, adicionalmente, las recompensas de misión.</p>
+                <div id="commandRoleCatalog" class="admin-catalog"></div>
+              </div>
+            </details>
             <details class="platform-card admin-section-disclosure purchase-history-card hidden" id="adminPurchasePanel">
               <summary class="admin-section-summary"><div class="card-heading"><div><span>LOGÍSTICA Y AUDITORÍA</span><h3>Historial de compras</h3></div><div class="disclosure-badges"><span class="connection-badge" id="purchaseHistoryCount">0 COMPRAS</span><span class="disclosure-state">VER HISTORIAL</span></div></div></summary>
               <div class="admin-section-body">
@@ -318,7 +325,8 @@
               <form id="adminItemForm" class="admin-form">
                 <input id="adminItemName" required placeholder="Nombre del implemento" />
                 <textarea id="adminItemDescription" required rows="3" placeholder="Descripción y condiciones de uso"></textarea>
-                <label class="field-control"><span>IMAGEN DEL IMPLEMENTO</span><input id="adminItemImage" type="text" placeholder="https://... o img/archivo.webp" /><small>Opcional. Puede ser una imagen oficial guardada en la web.</small></label>
+                <label class="field-control"><span>SUBIR IMAGEN DEL IMPLEMENTO</span><input id="adminItemImageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /><small>PNG, JPG, WEBP o GIF; máximo 5 MB. Se guardará permanentemente en Supabase.</small></label>
+                <label class="field-control"><span>URL DE IMAGEN (OPCIONAL)</span><input id="adminItemImage" type="url" placeholder="https://..." /><small>No uses enlaces de Discord: caducan y dejan la imagen rota.</small></label>
                 <div class="form-row"><label class="field-control"><span>TIPO DE IMPLEMENTO</span><select id="adminItemType" required><option value="" selected disabled>Selecciona una categoría</option><option value="miras">Miras</option><option value="handguard">Handguard</option><option value="culatas">Culatas</option><option value="linternas">Linternas</option><option value="laseres">Láseres</option><option value="parches">Parches</option></select></label><label class="field-control"><span>UNIDADES DISPONIBLES</span><input id="adminItemStock" type="number" min="-1" value="-1" /><small>Usa -1 si el stock es ilimitado.</small></label></div>
                 <div class="form-row"><label class="field-control"><span>PRECIO EN DÓLARES (USD)</span><input id="adminItemMoney" type="number" min="0" value="0" placeholder="Ej.: 120" /></label><label class="field-control"><span>PRECIO EN PUNTOS</span><input id="adminItemPoints" type="number" min="0" value="0" placeholder="Ej.: 250" /></label></div>
                 <button class="platform-primary" id="adminItemSubmit" type="submit">PUBLICAR EN LA STORE</button>
@@ -334,10 +342,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/local-auth.js?v=20261002a"></script>
-  <script src="js/config.js?v=20260921a"></script>
+  <script src="js/config.js?v=20261020a"></script>
   <script src="js/store-admin.js?v=20261019a"></script>
   <script src="js/purchase-history.js?v=20261019a"></script>
-  <script src="js/platform.js?v=20261019c"></script>
+  <script src="js/platform.js?v=20261020a"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
