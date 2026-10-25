@@ -77,6 +77,24 @@ Deno.serve(async (request) => {
       if (passwordError) return json({ error: passwordError.message }, 400);
       return json({ password_updated: true });
     }
+    if (body.action === "delete") {
+      const targetId = String(body.user_id || "").trim();
+      if (!targetId) return json({ error: "User is required" }, 400);
+      if (targetId === authData.user.id) return json({ error: "No puedes eliminar tu propia cuenta." }, 400);
+
+      const { data: target, error: targetError } = await admin.from("profiles").select("id,rol").eq("id", targetId).single();
+      if (targetError || !target) return json({ error: "User not found" }, 404);
+      if (target.rol === "super_admin" && actor.rol !== "super_admin") return json({ error: "Solo un Super Admin puede eliminar a otro Super Admin." }, 403);
+      if (target.rol === "super_admin") {
+        const { count, error: countError } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("rol", "super_admin").eq("estado", "activo");
+        if (countError) return json({ error: countError.message }, 400);
+        if ((count || 0) <= 1) return json({ error: "No puedes eliminar al último Super Admin activo." }, 409);
+      }
+
+      const { error: deleteError } = await admin.auth.admin.deleteUser(targetId);
+      if (deleteError) return json({ error: deleteError.message }, 400);
+      return json({ deleted: true, user_id: targetId });
+    }
     return json({ error: "Unsupported action" }, 400);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
