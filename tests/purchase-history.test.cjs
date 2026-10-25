@@ -36,6 +36,21 @@ test("calcula totales de auditoría", () => {
   assert.deepEqual(history.summarize(rows), { orders: 2, money: 120, points: 250, units: 3 });
 });
 
+test("conserva la identidad del comprador cuando el usuario fue eliminado", () => {
+  const deletedOrder = {
+    id: "order-3",
+    user_id: null,
+    invoice_number: "USMCF-003",
+    buyer_name: "Marine retirado",
+    buyer_callsign: "retirado",
+    buyer_email: "retirado@usmcf.com"
+  };
+  const rows = history.buildRows([deletedOrder], [], []);
+  assert.equal(rows[0].buyerName, "Marine retirado");
+  assert.equal(rows[0].handle, "retirado");
+  assert.deepEqual(history.filterRows(rows, "retirado@usmcf.com").map((row) => row.order.id), ["order-3"]);
+});
+
 test("la página carga el historial antes de la plataforma", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "plataforma.html"), "utf8");
   const helper = html.indexOf('src="js/purchase-history.js');
