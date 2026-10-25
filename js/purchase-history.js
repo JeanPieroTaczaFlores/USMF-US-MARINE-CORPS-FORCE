@@ -13,9 +13,9 @@
       var items = (orderItems || []).filter(function (item) {
         return String(item.order_id) === String(order.id);
       });
-      var buyerName = profile.nombre || profile.callsign || profile.usuario_roblox || "Usuario eliminado";
-      var handle = profile.callsign || profile.usuario_roblox || "sin-usuario";
-      var searchable = [order.invoice_number, order.estado, buyerName, handle]
+      var buyerName = profile.nombre || profile.callsign || profile.usuario_roblox || order.buyer_name || "Usuario eliminado";
+      var handle = profile.callsign || profile.usuario_roblox || order.buyer_callsign || "sin-usuario";
+      var searchable = [order.invoice_number, order.estado, buyerName, handle, order.buyer_email || ""]
         .concat(items.map(function (item) { return item.nombre; }))
         .join(" ")
         .toLowerCase();
