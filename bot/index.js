@@ -383,7 +383,7 @@ async function eventChannels(event) {
   }
   if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];
   if (type === "training_completed") return [config.logdChannel];
-  if (type === "rank_promoted") return [config.logdChannel];
+  if (type.startsWith("rank_")) return [config.logdChannel];
   if (type.startsWith("training_") || type === "specialty_approved") return [config.logdChannel];
   if (type.startsWith("specialty_training_")) return [config.logdChannel];
   if (type.startsWith("ticket_")) return [await ensureSupportChannel()];
