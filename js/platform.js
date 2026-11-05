@@ -22,6 +22,7 @@
     trainingAssignments: [],
     specialtyApplications: [],
     specialtyTrainingRequests: [],
+    rankPromotionRequests: [],
     tickets: [],
     ticketComments: [],
     discordInvites: [],
@@ -266,6 +267,7 @@
       supabase.from("training_assignments").select("*").order("assigned_at", { ascending: false }),
       supabase.from("specialty_applications").select("*").order("created_at", { ascending: false }),
       supabase.from("specialty_training_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("officer_promotion_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("support_tickets").select("*").order("updated_at", { ascending: false }),
       supabase.from("support_ticket_comments").select("*").order("created_at", { ascending: true }),
       supabase.from("discord_invites").select("*").order("created_at", { ascending: false }).limit(1),
@@ -283,12 +285,13 @@
     state.trainingAssignments = results[7].data || [];
     state.specialtyApplications = results[8].data || [];
     state.specialtyTrainingRequests = results[9].data || [];
-    state.tickets = results[10].data || [];
-    state.ticketComments = results[11].data || [];
-    state.discordInvites = results[12].data || [];
-    state.voiceSessions = results[13].data || [];
-    state.libraryDocuments = results[14].data || [];
-    state.commandRoles = results[15].data || [];
+    state.rankPromotionRequests = results[10].data || [];
+    state.tickets = results[11].data || [];
+    state.ticketComments = results[12].data || [];
+    state.discordInvites = results[13].data || [];
+    state.voiceSessions = results[14].data || [];
+    state.libraryDocuments = results[15].data || [];
+    state.commandRoles = results[16].data || [];
     state.profile = await getProfile(userId);
     hydrateIdentity();
     renderTransactions();
@@ -339,14 +342,50 @@
 
   function renderRankProgress() {
     var thresholds = window.RANK_THRESHOLDS || [];
+    var ranks = window.RANGOS || [];
     var currentPoints = Number(state.profile.puntos || 0);
     var currentIndex = thresholds.map(function (entry) { return entry.rango; }).indexOf(state.profile.rango);
     var next = thresholds.find(function (entry) { return entry.puntos > currentPoints; });
+    var currentRank = ranks.find(function (entry) { return entry.rango === state.profile.rango; });
+    var officerRanks = ranks.filter(function (entry) { return entry.categoria === "oficial"; });
+    var officerIndex = officerRanks.map(function (entry) { return entry.rango; }).indexOf(state.profile.rango);
+    var nextOfficerRank = officerIndex >= 0 ? officerRanks[officerIndex + 1] : null;
+    var pendingPromotion = state.rankPromotionRequests.find(function (entry) {
+      return String(entry.user_id) === String(state.user.id) && entry.estado === "pendiente";
+    });
+    var promotionAction = $("rankPromotionAction");
+    var promotionButton = $("rankPromotionSubmit");
+    var promotionNotes = $("rankPromotionNotes");
+    promotionAction.classList.add("hidden");
     $("rankProgressCurrent").textContent = state.profile.rango || "Sin rango";
-    if (!next || currentIndex === -1 && /Teniente|Capitán|Mayor|Coronel|General/.test(state.profile.rango || "")) {
-      $("rankProgressNext").textContent = "Carrera de oficial: validación de mando";
+    if (currentRank && currentRank.categoria === "oficial") {
+      $("rankProgressNext").textContent = nextOfficerRank ? "Siguiente: " + nextOfficerRank.rango : "Rango máximo alcanzado";
       $("rankProgressBar").style.width = "100%";
-      $("rankProgressText").textContent = "Los rangos de oficial exigen guerras y capacitación; no se entregan automáticamente por puntos.";
+      $("rankProgressText").textContent = nextOfficerRank
+        ? "Los ascensos de oficial requieren postulación y confirmación de Staff o Administración; nunca se otorgan automáticamente por puntos."
+        : "Has alcanzado el último rango de la carrera de oficial.";
+      promotionAction.classList.toggle("hidden", !nextOfficerRank);
+      if (nextOfficerRank) {
+        $("rankPromotionTitle").textContent = "POSTULAR A " + nextOfficerRank.rango.toUpperCase();
+        if (pendingPromotion) {
+          $("rankPromotionStatus").textContent = "Solicitud enviada el " + dateText(pendingPromotion.created_at) + ". Esperando revisión de mando.";
+          promotionButton.textContent = "POSTULACIÓN PENDIENTE";
+          promotionButton.disabled = true;
+          promotionNotes.disabled = true;
+          promotionNotes.value = pendingPromotion.notes || "";
+        } else {
+          $("rankPromotionStatus").textContent = "Adjunta tus méritos y solicita la revisión del siguiente rango.";
+          promotionButton.textContent = "POSTULAR AL SIGUIENTE RANGO";
+          promotionButton.disabled = state.profile.estado !== "activo";
+          promotionNotes.disabled = state.profile.estado !== "activo";
+        }
+      }
+      return;
+    }
+    if (!next) {
+      $("rankProgressNext").textContent = "Ingreso a oficial: designación de mando";
+      $("rankProgressBar").style.width = "100%";
+      $("rankProgressText").textContent = "Completaste la progresión automática. El ingreso a la carrera de oficial debe ser asignado por Administración.";
       return;
     }
     var previous = thresholds.filter(function (entry) { return entry.puntos <= currentPoints; }).slice(-1)[0] || { puntos: 0 };
@@ -354,6 +393,28 @@
     $("rankProgressNext").textContent = "Siguiente: " + next.rango;
     $("rankProgressBar").style.width = progress + "%";
     $("rankProgressText").textContent = currentPoints.toLocaleString("es-PE") + " / " + next.puntos.toLocaleString("es-PE") + " pts · faltan " + Math.max(0, next.puntos - currentPoints).toLocaleString("es-PE") + " puntos";
+  }
+
+  async function requestOfficerPromotion() {
+    var button = $("rankPromotionSubmit");
+    if (!button || button.disabled) return;
+    setBusy(button, true, "ENVIANDO…");
+    var result = await supabase.rpc("request_officer_promotion", { p_notes: $("rankPromotionNotes").value.trim() });
+    setBusy(button, false);
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", "Postulación enviada. Staff y Administración deben confirmar el ascenso.", "success");
+    if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
+    await loadPlatformData();
+  }
+
+  async function reviewOfficerPromotion(requestId, action) {
+    if (!isStaff()) return;
+    var result = await supabase.rpc("review_officer_promotion", { p_request_id: requestId, p_action: action });
+    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    if (result.data && result.data.event_id) await sendDiscordEvent(result.data.event_id);
+    if (action === "aprobar" && result.data && result.data.user_id) await syncDiscordRoles(result.data.user_id, false);
+    setMessage("appMessage", action === "aprobar" ? "Ascenso de oficial confirmado y enviado a Discord." : "Postulación de ascenso rechazada.", "success");
+    await loadPlatformData();
   }
 
   function renderSpecialties() {
@@ -1102,6 +1163,7 @@
     }).join("") : '<p class="empty-state">No hay usuarios que coincidan con la búsqueda.</p>';
     renderTrainingQueue();
     renderSpecialtyApplicationQueue();
+    renderOfficerPromotionQueue();
     renderSpecialtyTrainingQueue();
     renderStaffTicketQueue();
     renderFactionDirectory();
@@ -1205,12 +1267,20 @@
     }).join("") : '<p class="empty-state">No hay entrenamientos de especialidad solicitados.</p>';
   }
 
+  function renderOfficerPromotionQueue() {
+    var pending = state.rankPromotionRequests.filter(function (request) { return request.estado === "pendiente"; });
+    $("officerPromotionPendingCount").textContent = pending.length + (pending.length === 1 ? " PENDIENTE" : " PENDIENTES");
+    $("officerPromotionQueue").innerHTML = pending.length ? pending.map(function (request) {
+      return '<div class="training-row"><div><strong>' + escapeHtml(profileName(request.user_id)) + ' · ' + escapeHtml(request.from_rank) + ' → ' + escapeHtml(request.target_rank) + '</strong><small>Solicitada: ' + escapeHtml(dateText(request.created_at)) + '</small><small>' + escapeHtml(request.notes || "Sin comentario adicional") + '</small><span class="training-status">PENDIENTE DE MANDO</span></div><div class="admin-actions"><button type="button" data-review-rank-promotion="' + escapeHtml(request.id) + '" data-rank-promotion-action="aprobar">CONFIRMAR ASCENSO</button><button type="button" data-review-rank-promotion="' + escapeHtml(request.id) + '" data-rank-promotion-action="rechazar">RECHAZAR</button></div></div>';
+    }).join("") : '<p class="empty-state">No hay postulaciones de ascenso de oficial pendientes.</p>';
+  }
+
   function renderStaffTicketQueue() {
     var open = state.tickets.filter(function (ticket) { return ["abierto", "en_revision"].indexOf(ticket.estado) !== -1; });
     $("ticketQueueCount").textContent = open.length + (open.length === 1 ? " ABIERTO" : " ABIERTOS");
     $("staffTicketQueue").innerHTML = state.tickets.length ? state.tickets.map(function (ticket) { return ticketCard(ticket, true); }).join("") : '<p class="empty-state">No hay tickets o reportes.</p>';
     var basicPending = state.trainingAssignments.filter(function (row) { return row.estado !== "finalizado"; }).length;
-    var total = basicPending + open.length + state.specialtyTrainingRequests.filter(function (row) { return ["pendiente", "asignado"].indexOf(row.estado) !== -1; }).length;
+    var total = basicPending + open.length + state.specialtyTrainingRequests.filter(function (row) { return ["pendiente", "asignado"].indexOf(row.estado) !== -1; }).length + state.rankPromotionRequests.filter(function (row) { return row.estado === "pendiente"; }).length;
     $("staffPendingBadge").textContent = total;
     $("staffPendingBadge").classList.toggle("hidden", !total);
   }
@@ -1552,16 +1622,13 @@
     if (currentPassword === newPassword) return setMessage("appMessage", "La contraseña nueva debe ser diferente de la actual.", "error");
 
     var button = $("selfPasswordSubmit");
-    setBusy(button, true, "VERIFICANDO…");
-    var verification = await supabase.auth.signInWithPassword({ email: state.profile.email, password: currentPassword });
-    if (verification.error) {
-      setBusy(button, false);
-      return setMessage("appMessage", "La contraseña actual no es correcta.", "error");
-    }
     setBusy(button, true, "ACTUALIZANDO…");
-    var result = await supabase.auth.updateUser({ password: newPassword });
+    var result = await supabase.auth.updateUser({ current_password: currentPassword, password: newPassword });
     setBusy(button, false);
-    if (result.error) return setMessage("appMessage", errorText(result.error), "error");
+    if (result.error) {
+      if (/password|credentials|invalid/i.test(result.error.message || "")) return setMessage("appMessage", "La contraseña actual no es correcta o la nueva no cumple los requisitos.", "error");
+      return setMessage("appMessage", errorText(result.error), "error");
+    }
     $("selfPasswordForm").reset();
     setMessage("appMessage", "Contraseña actualizada correctamente. Úsala en tu próximo inicio de sesión.", "success");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1574,6 +1641,8 @@
     $("registerForm").addEventListener("submit", register);
     var selfPasswordForm = $("selfPasswordForm");
     if (selfPasswordForm) selfPasswordForm.addEventListener("submit", changeOwnPassword);
+    var rankPromotionSubmit = $("rankPromotionSubmit");
+    if (rankPromotionSubmit) rankPromotionSubmit.addEventListener("click", requestOfficerPromotion);
     $("logoutBtn").addEventListener("click", logout);
     $("cartButton").addEventListener("click", openCart);
     $("closeCartBtn").addEventListener("click", closeCart);
@@ -1656,6 +1725,8 @@
       if (specialtyButton) applySpecialty(specialtyButton.dataset.applySpecialty);
       var specialtyReview = event.target.closest("[data-review-specialty]");
       if (specialtyReview) reviewSpecialtyApplication(specialtyReview.dataset.reviewSpecialty, specialtyReview.dataset.specialtyStatus);
+      var rankPromotionReview = event.target.closest("[data-review-rank-promotion]");
+      if (rankPromotionReview) reviewOfficerPromotion(rankPromotionReview.dataset.reviewRankPromotion, rankPromotionReview.dataset.rankPromotionAction);
       var trainingRequestAction = event.target.closest("[data-training-request-action]");
       if (trainingRequestAction) specialtyTrainingAction(trainingRequestAction.dataset.trainingRequestId, trainingRequestAction.dataset.trainingRequestAction);
       var ticketStatus = event.target.closest("[data-ticket-status]");
