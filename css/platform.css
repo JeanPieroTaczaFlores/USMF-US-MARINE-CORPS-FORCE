@@ -375,6 +375,20 @@
 .rank-progress-track { height:10px; overflow:hidden; border:1px solid #384038; background:#090c0a; }
 .rank-progress-track span { display:block; width:0; height:100%; background:linear-gradient(90deg,#8a692c,var(--platform-gold-soft)); transition:width .4s ease; }
 .rank-progress-card > p { grid-column:2; margin:0; color:#929992; font-size:.72rem; }
+.rank-promotion-action { grid-column:1/-1; display:grid; grid-template-columns:minmax(180px,.7fr) minmax(220px,1.3fr) auto; gap:.65rem; align-items:end; padding-top:.85rem; border-top:1px solid #313831; }
+.rank-promotion-action.hidden { display:none; }
+.rank-promotion-action strong,.rank-promotion-action small { display:block; }
+.rank-promotion-action strong { color:var(--platform-gold-soft); font:800 .7rem "Inter",sans-serif; letter-spacing:.08em; }
+.rank-promotion-action small { margin-top:.2rem; color:#858d85; font-size:.68rem; }
+.rank-promotion-action textarea { width:100%; min-height:54px; resize:vertical; border:1px solid #384038; background:#090c0a; color:#d9ddd8; padding:.65rem; font:600 .72rem "Inter",sans-serif; }
+.rank-promotion-action .specialty-application-status { align-self:center; justify-self:end; }
+.security-card { margin-top:1rem; }
+.security-card > summary { display:flex; justify-content:space-between; align-items:center; gap:1rem; cursor:pointer; list-style:none; }
+.security-card > summary::-webkit-details-marker { display:none; }
+.security-card > summary span:first-child { color:var(--platform-gold); font:800 .62rem "Inter",sans-serif; letter-spacing:.11em; }
+.security-card > summary h3 { margin:.25rem 0 0; }
+.security-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) auto; gap:.65rem; align-items:end; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--platform-line); }
+.security-form input { width:100%; border:1px solid #343a34; background:#0b0e0c; color:#d9ddd8; padding:.7rem; }
 .discord-link-card { margin:0 0 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; border:1px solid rgba(88,101,242,.35); background:linear-gradient(110deg,rgba(88,101,242,.12),#111512 55%); padding:1rem 1.2rem; }
 .discord-link-card span { color:#9da5ff; font:800 .62rem "Inter",sans-serif; letter-spacing:.12em; }
 .discord-link-card h3 { margin:.25rem 0; font:1.2rem "Oswald",sans-serif; text-transform:uppercase; }
@@ -478,8 +492,10 @@
   .platform-auth { padding-inline:1rem; }
   .platform-auth-copy h1 { font-size:3.35rem; }
   .auth-card { padding:1.3rem; }
-  .form-row,.metric-grid,.store-grid,.mission-summary,.specialty-grid,.rank-progress-card { grid-template-columns:1fr; }
+  .form-row,.metric-grid,.store-grid,.mission-summary,.specialty-grid,.rank-progress-card,.rank-promotion-action,.security-form { grid-template-columns:1fr; }
   .rank-progress-card > p { grid-column:1; }
+  .rank-promotion-action { grid-column:1; }
+  .rank-promotion-action .specialty-application-status { justify-self:start; }
   .member-topline,.summary-hero,.store-toolbar,.discord-link-card { align-items:flex-start; flex-direction:column; }
   .discord-link-card .discord-login { width:100%; }
   .discord-card-actions { width:100%; flex-direction:column; align-items:stretch; }
