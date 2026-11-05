@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/platform.css?v=20261020a" />
+  <link rel="stylesheet" href="css/platform.css?v=20261105a" />
 </head>
 <body class="platform-body">
   <header class="navbar platform-navbar" id="navbar">
@@ -107,7 +107,7 @@
             <div class="service-number"><span>USUARIO OPERATIVO</span><strong id="profileHandle">@Marine</strong></div>
           </div>
           <article class="onboarding-banner hidden" id="onboardingBanner"><div><span>ENTRENAMIENTO ASIGNADO</span><h3>Entrenamiento Básico TRS</h3><p id="onboardingTrainer">Esperando instructor responsable.</p></div><strong id="onboardingStatus">ASIGNADO</strong></article>
-          <article class="rank-progress-card" id="rankProgressCard"><div><span>PROGRESO DE RANGO</span><h3><strong id="rankProgressCurrent">—</strong><small id="rankProgressNext">Siguiente rango</small></h3></div><div class="rank-progress-track"><span id="rankProgressBar"></span></div><p id="rankProgressText">Calculando tu progreso…</p></article>
+          <article class="rank-progress-card" id="rankProgressCard"><div><span>PROGRESO DE RANGO</span><h3><strong id="rankProgressCurrent">—</strong><small id="rankProgressNext">Siguiente rango</small></h3></div><div class="rank-progress-track"><span id="rankProgressBar"></span></div><p id="rankProgressText">Calculando tu progreso…</p><div class="rank-promotion-action hidden" id="rankPromotionAction"><div><strong id="rankPromotionTitle">POSTULACIÓN DE OFICIAL</strong><small id="rankPromotionStatus">El siguiente ascenso requiere confirmación de mando.</small></div><textarea id="rankPromotionNotes" maxlength="500" rows="2" placeholder="Resume tus guerras, capacitaciones o méritos para el ascenso (opcional)"></textarea><button class="platform-primary compact" id="rankPromotionSubmit" type="button">POSTULAR AL SIGUIENTE RANGO</button></div></article>
           <article class="discord-link-card"><div><span>COMUNIDAD OFICIAL</span><h3>Servidor de Discord</h3><p>Consulta comunicaciones, misiones y novedades de la facción.</p><small id="discordInviteStatus">El bot publicará una invitación renovada cada 24 horas.</small></div><div class="discord-card-actions"><a class="secondary-action hidden" id="discordInviteLink" target="_blank" rel="noopener">ENTRAR AL SERVIDOR</a></div></article>
           <div class="metric-grid">
             <article class="metric-card"><span>RANGO ACTUAL</span><strong id="summaryRank">—</strong><small>Rango militar vigente</small></article>
@@ -119,6 +119,15 @@
             <article class="platform-card"><div class="card-heading"><div><span>ACTIVIDAD RECIENTE</span><h3>Movimientos</h3></div></div><div id="recentTransactions" class="activity-list"></div></article>
             <article class="platform-card briefing-card"><span>ACCESO RÁPIDO</span><h3>Documentación esencial</h3><p>Reglas, armamento, uniforme y loadouts de especialidades reunidos en una biblioteca consultable.</p><button class="text-action" data-go="biblioteca" type="button">ABRIR BIBLIOTECA →</button></article>
           </div>
+          <details class="platform-card security-card">
+            <summary><div><span>SEGURIDAD DE LA CUENTA</span><h3>Cambiar contraseña</h3></div><span class="disclosure-state">ABRIR</span></summary>
+            <form id="selfPasswordForm" class="security-form">
+              <label class="field-control"><span>CONTRASEÑA ACTUAL</span><input id="currentPassword" type="password" autocomplete="current-password" required /></label>
+              <label class="field-control"><span>NUEVA CONTRASEÑA</span><input id="newPassword" type="password" minlength="8" autocomplete="new-password" required placeholder="Mínimo 8 caracteres" /></label>
+              <label class="field-control"><span>CONFIRMAR CONTRASEÑA</span><input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required /></label>
+              <button class="platform-primary" id="selfPasswordSubmit" type="submit">CAMBIAR MI CONTRASEÑA</button>
+            </form>
+          </details>
         </section>
 
         <section class="member-view" data-panel="salario">
@@ -283,6 +292,11 @@
               <p class="muted-copy">Staff o Admin revisa la prueba correspondiente. Al aprobar, el bot sincroniza el rol especial en Discord.</p>
               <div id="specialtyApplicationQueue" class="training-queue"></div>
             </article>
+            <article class="platform-card training-card" id="officerPromotionQueuePanel">
+              <div class="card-heading"><div><span>CARRERA DE OFICIAL</span><h3>Postulaciones de ascenso</h3></div><span class="connection-badge" id="officerPromotionPendingCount">0 PENDIENTES</span></div>
+              <p class="muted-copy">Los rangos de oficial no se entregan automáticamente por puntos. Staff o Administración revisa los méritos y confirma el siguiente rango.</p>
+              <div id="officerPromotionQueue" class="training-queue"></div>
+            </article>
             <article class="platform-card training-card" id="specialtyTrainingQueuePanel">
               <div class="card-heading"><div><span>CURSOS SOLICITADOS</span><h3>Entrenamientos de especialidad</h3></div><span class="connection-badge" id="specialtyTrainingPendingCount">0 PENDIENTES</span></div>
               <p class="muted-copy">Staff toma la solicitud, imparte el curso y confirma la especialidad. Las solicitudes con tres días sin atención generan recordatorio en Discord.</p>
@@ -345,7 +359,7 @@
   <script src="js/config.js?v=20261020a"></script>
   <script src="js/store-admin.js?v=20261019a"></script>
   <script src="js/purchase-history.js?v=20261019a"></script>
-  <script src="js/platform.js?v=20261020a"></script>
+  <script src="js/platform.js?v=20261105a"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
