@@ -511,3 +511,16 @@
   .purchase-record > summary { align-items:flex-start; flex-direction:column; }
   .purchase-total { text-align:left; }
 }
+/* Credenciales privadas: sección aislada para Staff y Administración. */
+.credential-notice { border-left: 3px solid #d6b84e; margin-bottom: 18px; }
+.credential-notice strong { color: #e6cc67; letter-spacing: .08em; }
+.credential-notice p { color: #a5aaa4; margin: 8px 0 0; }
+.credential-list { display: grid; gap: 12px; margin-top: 18px; }
+.credential-row { align-items: center; background: rgba(255,255,255,.018); border: 1px solid #2c332d; display: grid; gap: 14px; grid-template-columns: minmax(210px,1fr) minmax(260px,1.1fr) minmax(280px,1.25fr); padding: 16px; }
+.credential-row small { color: #8f9690; display: block; margin-top: 4px; }
+.credential-secret, .credential-link { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.credential-secret input, .credential-link select { background: #0b0f0c; border: 1px solid #3a433b; color: #eef0ed; min-height: 40px; padding: 8px 10px; }
+.credential-secret input { min-width: 190px; }
+.credential-link select { flex: 1 1 220px; }
+.credential-unavailable { color: #a9afa9; font-size: .78rem; letter-spacing: .06em; }
+@media (max-width: 980px) { .credential-row { grid-template-columns: 1fr; } }
