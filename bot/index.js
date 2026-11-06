@@ -381,7 +381,7 @@ async function eventChannels(event) {
     if (event.target_channel_key === "mission_reports") return [await ensureMissionReportsChannel()];
     return [routed[event.target_channel_key] || config.announcementsChannel];
   }
-  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel, config.announcementsChannel];
+  if (["mission_published", "mission_updated"].includes(type)) return [config.missionsChannel];
   if (type === "training_completed") return [config.logdChannel];
   if (type.startsWith("rank_")) return [config.logdChannel];
   if (type.startsWith("training_") || type === "specialty_approved") return [config.logdChannel];
@@ -392,7 +392,7 @@ async function eventChannels(event) {
   if (["mission_join", "mission_started", "mission_attendance_reviewed", "mission_finished"].includes(type)) return [config.logdChannel];
   // Platform access is an audit event and belongs only in #logd.
   if (type === "platform_login") return [config.logdChannel];
-  return [config.missionsChannel];
+  return [config.logdChannel];
 }
 
 function bogotaDay(value) {
@@ -402,7 +402,7 @@ function bogotaDay(value) {
 }
 
 async function shouldMentionEveryone(event) {
-  if (event.tipo !== "mission_published" || !event.mission_id || !config.announcementsChannel) return false;
+  if (event.tipo !== "mission_published" || !event.mission_id || !config.missionsChannel) return false;
   const missions = await supabase(`missions?select=fecha&id=eq.${event.mission_id}&limit=1`);
   return Boolean(missions?.[0]?.fecha) && bogotaDay(missions[0].fecha) === bogotaDay(new Date());
 }
@@ -508,7 +508,7 @@ async function processEvent(event) {
   const mentionEveryone = await shouldMentionEveryone(event);
   for (const channelId of channelIds) {
     try {
-      const pingThisChannel = mentionEveryone && String(channelId) === String(config.announcementsChannel);
+      const pingThisChannel = mentionEveryone && String(channelId) === String(config.missionsChannel);
       await discord(`/channels/${channelId}/messages`, {
         method: "POST",
         body: JSON.stringify({
