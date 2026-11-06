@@ -30,7 +30,7 @@ async function wakeDiscordBot() {
 function webhookNames(event: Record<string, unknown>) {
   const type = String(event.tipo || "");
   if (type === "mission_published" || type === "mission_updated") {
-    return ["DISCORD_MISSIONS_WEBHOOK_URL", "DISCORD_ANNOUNCEMENTS_WEBHOOK_URL"];
+    return ["DISCORD_MISSIONS_WEBHOOK_URL"];
   }
   if (type !== "announcement_published") return [];
   const routes: Record<string, string> = {
