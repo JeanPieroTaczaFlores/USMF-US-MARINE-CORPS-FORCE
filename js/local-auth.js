@@ -492,7 +492,31 @@
         if (name === "admin-users") {
           var session = getSession();
           var actor = session && db.profiles.find(function (row) { return String(row.id) === String(session.id); });
-          if (!actor || ["admin", "super_admin"].indexOf(actor.rol) === -1) return { data: null, error: { message: "Acceso exclusivo de Administración." } };
+          if (body.action === "invalidate_own_credential") return { data: { invalidated: true }, error: null };
+          if (!actor || ["staff", "admin", "super_admin"].indexOf(actor.rol) === -1) return { data: null, error: { message: "Acceso de Staff requerido." } };
+          if (body.action === "list_credentials") {
+            var visiblePasswords = getPasswords();
+            return { data: {
+              credentials: db.profiles.map(function (profile) {
+                return Object.assign({}, profile, { credential: visiblePasswords[profile.email] ? { password: visiblePasswords[profile.email], source: "admin_create", updated_at: profile.created_at } : null });
+              }),
+              faction_members: db.faction_members
+            }, error: null };
+          }
+          if (body.action === "link_discord") {
+            var linkedProfile = db.profiles.find(function (row) { return String(row.id) === String(body.user_id); });
+            var linkedMember = db.faction_members.find(function (row) { return String(row.discord_id) === String(body.discord_id); });
+            if (!linkedProfile || !linkedMember) return { data: null, error: { message: "No se encontró la cuenta o el miembro de Discord." } };
+            var previousOwner = db.profiles.find(function (row) { return String(row.discord_id || "") === String(body.discord_id) && String(row.id) !== String(linkedProfile.id); });
+            if (previousOwner && !body.force) return { data: { error: "Ese Discord ya está vinculado a otra cuenta.", conflict: previousOwner }, error: null };
+            if (previousOwner) previousOwner.discord_id = null;
+            db.faction_members.forEach(function (row) { if (String(row.profile_id || "") === String(linkedProfile.id)) row.profile_id = null; });
+            linkedProfile.discord_id = linkedMember.discord_id;
+            linkedMember.profile_id = linkedProfile.id;
+            saveDB(db);
+            return { data: { linked: true, moved_from: previousOwner || null }, error: null };
+          }
+          if (actor.rol === "staff" && body.action !== "reset_password") return { data: null, error: { message: "Acceso exclusivo de Administración." } };
           if (body.action === "create") {
             var email = String(body.email || "").toLowerCase().trim();
             if (!/^[^@\s]+@usmcf\.com$/i.test(email)) return { data: null, error: { message: "Solo se aceptan correos institucionales @usmcf.com." } };
@@ -528,11 +552,13 @@
           if (body.action === "reset_password") {
             var passwordTarget = db.profiles.find(function (row) { return String(row.id) === String(body.user_id); });
             if (!passwordTarget) return { data: null, error: { message: "Usuario no encontrado." } };
+            if (actor.rol === "staff" && passwordTarget.rol !== "usuario") return { data: null, error: { message: "Staff solo puede renovar claves de miembros." } };
+            if (!body.password) body.password = "USMCF-" + Math.random().toString(36).slice(2, 12) + "!";
             if (String(body.password || "").length < 8) return { data: null, error: { message: "La contraseña debe tener al menos 8 caracteres." } };
             var passwordStore = getPasswords();
             passwordStore[passwordTarget.email] = String(body.password);
             savePasswords(passwordStore);
-            return { data: { password_updated: true }, error: null };
+            return { data: { password_updated: true, password: String(body.password) }, error: null };
           }
         }
         return { data: null, error: { message: "Función local no disponible." } };

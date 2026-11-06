@@ -28,6 +28,8 @@
     discordInvites: [],
     libraryDocuments: [],
     factionMembers: [],
+    credentials: [],
+    credentialQuery: "",
     cart: [],
     storeCategory: "todos",
     libraryCategory: "todos",
@@ -211,6 +213,7 @@
     $("nextPayment").textContent = dateText(next);
     $("summaryPayDate").textContent = next <= new Date() ? "En proceso" : dateText(next);
     $("adminNav").classList.toggle("hidden", !isStaff());
+    $("credentialsNav").classList.toggle("hidden", !isStaff());
     $("specialtiesNav").classList.toggle("hidden", !canRequestSpecialtyTraining());
     $("missionCommand").classList.toggle("hidden", !isStaff());
     $("adminCreatePanel").classList.toggle("hidden", !canManageUsers());
@@ -329,8 +332,63 @@
     state.adminOrderItems = results[5].data || [];
     state.adminTransactions = results[6].data || [];
     state.factionMembers = results[7].data || [];
+    await loadCredentials();
     renderAdmin();
     renderMissions();
+  }
+
+  async function loadCredentials() {
+    if (!isStaff()) return;
+    var result = await supabase.functions.invoke("admin-users", { body: { action: "list_credentials" } });
+    if (result.error || !result.data) {
+      state.credentials = [];
+      return setMessage("appMessage", "No se pudo cargar el apartado de contraseñas: " + errorText(result.error), "error");
+    }
+    state.credentials = result.data.credentials || [];
+    state.factionMembers = result.data.faction_members || state.factionMembers;
+    renderCredentials();
+  }
+
+  function renderCredentials() {
+    var target = $("credentialProfiles");
+    if (!target || !isStaff()) return;
+    var query = state.credentialQuery.trim().toLowerCase();
+    var rows = state.credentials.filter(function (profile) {
+      var member = state.factionMembers.find(function (row) { return String(row.discord_id) === String(profile.discord_id || ""); });
+      return !query || [profile.nombre, profile.callsign, profile.usuario_roblox, profile.email, member && member.username, member && member.display_name].join(" ").toLowerCase().indexOf(query) !== -1;
+    });
+    target.innerHTML = rows.length ? rows.map(function (profile) {
+      var member = state.factionMembers.find(function (row) { return String(row.discord_id) === String(profile.discord_id || ""); });
+      var credential = profile.credential;
+      var password = credential && credential.password ? credential.password : "";
+      var options = '<option value="">Seleccionar miembro de Discord</option>' + state.factionMembers.map(function (row) {
+        var label = row.display_name || row.username || row.discord_id;
+        var linked = row.profile_id && String(row.profile_id) !== String(profile.id) ? " · vinculado a otra cuenta" : "";
+        return '<option value="' + escapeHtml(row.discord_id) + '" ' + (String(row.discord_id) === String(profile.discord_id || "") ? "selected" : "") + '>' + escapeHtml(label + linked) + '</option>';
+      }).join("");
+      return '<article class="credential-row"><div class="credential-identity"><strong>' + escapeHtml(profile.nombre || profile.email) + '</strong><small>@' + escapeHtml(profile.callsign || profile.usuario_roblox) + ' · ' + escapeHtml(profile.email) + '</small><small>Discord: ' + escapeHtml(member ? (member.display_name || member.username) : "Sin vincular") + '</small></div><div class="credential-secret">' + (password ? '<input readonly type="password" value="' + escapeHtml(password) + '" data-credential-value="' + escapeHtml(profile.id) + '" /><button type="button" data-reveal-credential="' + escapeHtml(profile.id) + '">VER</button><button type="button" data-copy-credential="' + escapeHtml(profile.id) + '">COPIAR</button><small>Temporal · ' + escapeHtml(dateText(credential.updated_at)) + '</small>' : '<strong class="credential-unavailable">CLAVE ACTUAL NO RECUPERABLE</strong><small>La contraseña existente sigue intacta.</small>') + '<button class="danger-action" type="button" data-generate-password="' + escapeHtml(profile.id) + '" data-credential-name="' + escapeHtml(profile.nombre || profile.email) + '">GENERAR NUEVA</button></div><div class="credential-link"><select data-discord-link-for="' + escapeHtml(profile.id) + '">' + options + '</select><button type="button" data-link-discord="' + escapeHtml(profile.id) + '">VINCULAR DISCORD</button></div></article>';
+    }).join("") : '<p class="empty-state">No hay cuentas que coincidan con la búsqueda.</p>';
+  }
+
+  async function generateCredential(profileId, name) {
+    if (!window.confirm("Esto cambiará únicamente la contraseña de " + name + ". Las demás cuentas no serán tocadas. ¿Continuar?")) return;
+    var result = await supabase.functions.invoke("admin-users", { body: { action: "reset_password", user_id: profileId } });
+    if (result.error || !result.data) return setMessage("appMessage", errorText(result.error), "error");
+    setMessage("appMessage", "Nueva contraseña temporal generada para " + name + ". Ninguna otra cuenta fue modificada.", "success");
+    await loadCredentials();
+  }
+
+  async function linkDiscordAccount(profileId, force) {
+    var select = document.querySelector('[data-discord-link-for="' + profileId + '"]');
+    if (!select || !select.value) return setMessage("appMessage", "Selecciona un miembro de Discord.", "error");
+    var result = await supabase.functions.invoke("admin-users", { body: { action: "link_discord", user_id: profileId, discord_id: select.value, force: Boolean(force) } });
+    if (result.error || result.data && result.data.error) {
+      var message = result.data && result.data.error ? result.data.error : errorText(result.error);
+      if (!force && /otra cuenta/i.test(message) && window.confirm(message + " ¿Mover el vínculo a esta cuenta?")) return linkDiscordAccount(profileId, true);
+      return setMessage("appMessage", message, "error");
+    }
+    setMessage("appMessage", result.data && result.data.moved_from ? "Vínculo de Discord movido a la cuenta seleccionada." : "Cuenta vinculada correctamente con Discord.", "success");
+    await loadAdminData();
   }
 
   function renderTransactions() {
@@ -1155,7 +1213,7 @@
       var grantedSpecialties = state.specialtyApplications.filter(function (row) { return String(row.user_id) === String(profile.id) && row.estado === "aprobada"; });
       var specialtyText = grantedSpecialties.length ? grantedSpecialties.map(function (row) { return escapeHtml(specialtyName(row.role_key)); }).join(" · ") : "Sin especialidades asignadas";
       var deleteAllowed = canManageUsers() && String(profile.id) !== String(state.user.id) && (profile.rol !== "super_admin" || state.profile.rol === "super_admin");
-      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO OPERATIVO</span><input data-profile-field="callsign" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.callsign || profile.usuario_roblox) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO DE PLATAFORMA</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>CARGO DEL PENTÁGONO</span><select data-profile-field="command_role_id" data-profile-id="' + escapeHtml(profile.id) + '">' + commandRoleOptions + '</select><small>Este cargo no cambia el permiso administrativo y suma su bono al salario semanal.</small></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button><label class="wide"><span>NUEVA CONTRASEÑA</span><input type="password" minlength="8" data-new-password-for="' + escapeHtml(profile.id) + '" placeholder="Mínimo 8 caracteres" /></label><button class="wide" type="button" data-reset-password="' + escapeHtml(profile.id) + '">CAMBIAR CONTRASEÑA</button>' + (deleteAllowed ? '<button class="wide danger-action" type="button" data-delete-user="' + escapeHtml(profile.id) + '" data-delete-name="' + escapeHtml(profile.nombre || profile.email) + '">ELIMINAR USUARIO DEFINITIVAMENTE</button>' : '') + '</div>' : '';
+      var editor = canManageUsers() ? '<div class="profile-editor"><label><span>NOMBRE</span><input data-profile-field="nombre" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.nombre) + '" /></label><label><span>USUARIO OPERATIVO</span><input data-profile-field="callsign" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.callsign || profile.usuario_roblox) + '" /></label><label><span>USUARIO ROBLOX</span><input data-profile-field="usuario_roblox" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.usuario_roblox) + '" /></label><label class="wide"><span>CORREO</span><input type="email" pattern="^[^@\\s]+@usmcf\\.com$" title="Solo se aceptan correos @usmcf.com" data-profile-field="email" data-profile-id="' + escapeHtml(profile.id) + '" value="' + escapeHtml(profile.email) + '" /></label><label><span>PERMISO DE PLATAFORMA</span><select data-profile-field="rol" data-profile-id="' + escapeHtml(profile.id) + '">' + roleOptions + '</select></label><label><span>ESTADO</span><select data-profile-field="estado" data-profile-id="' + escapeHtml(profile.id) + '">' + statusOptions + '</select></label><label class="wide"><span>CARGO DEL PENTÁGONO</span><select data-profile-field="command_role_id" data-profile-id="' + escapeHtml(profile.id) + '">' + commandRoleOptions + '</select><small>Este cargo no cambia el permiso administrativo y suma su bono al salario semanal.</small></label><label class="wide"><span>RANGO</span><select data-profile-field="rango" data-profile-id="' + escapeHtml(profile.id) + '">' + rankOptions + '</select></label><button class="wide" type="button" data-save-profile="' + escapeHtml(profile.id) + '">GUARDAR TODOS LOS CAMBIOS</button>' + (deleteAllowed ? '<button class="wide danger-action" type="button" data-delete-user="' + escapeHtml(profile.id) + '" data-delete-name="' + escapeHtml(profile.nombre || profile.email) + '">ELIMINAR USUARIO DEFINITIVAMENTE</button>' : '') + '</div>' : '';
       var specialtyAdmin = canManageUsers() ? '<div class="specialty-admin-control"><label><span>ASIGNAR ESPECIALIDAD</span><select data-specialty-grant-for="' + escapeHtml(profile.id) + '">' + specialtyCatalog.map(function (entry) { return '<option value="' + escapeHtml(entry.key) + '">' + escapeHtml(entry.name) + '</option>'; }).join("") + '</select></label><button type="button" data-grant-specialty="' + escapeHtml(profile.id) + '">OTORGAR</button><button type="button" data-revoke-specialty="' + escapeHtml(profile.id) + '">RETIRAR</button><small>Actuales: ' + specialtyText + '</small></div>' : '';
       var dossier = '<details class="member-dossier"><summary>VER INVENTARIO, FACTURAS, ESPECIALIDADES Y MOVIMIENTOS</summary><div class="dossier-grid"><div><strong>INVENTARIO</strong><p>' + inventoryText + '</p></div><div><strong>FACTURAS</strong><p>' + invoiceText + '</p></div><div><strong>ESPECIALIDADES</strong><p>' + specialtyText + '</p></div><div><strong>ÚLTIMOS MOVIMIENTOS</strong><p>' + movementText + '</p></div></div></details>';
       var accordionAction = canManageUsers() ? "MODIFICAR" : "PUNTOS Y SALDO";
@@ -1555,8 +1613,8 @@
   }
 
   function switchView(view) {
-    if (view === "administracion" && !isStaff()) return;
-    var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", entrenamiento: "MI ENTRENAMIENTO", especialidades: "ESPECIALIDADES", tickets: "TICKETS Y REPORTES", biblioteca: "BIBLIOTECA OPERATIVA", administracion: canManageUsers() ? "INTEGRANTES" : "CENTRO DE STAFF" };
+    if (["administracion", "credenciales"].indexOf(view) !== -1 && !isStaff()) return;
+    var titles = { resumen: "CENTRO DE CONTROL", salario: "MI SALARIO", tienda: "STORE", inventario: "INVENTARIO Y FACTURAS", misiones: "MISIONES", entrenamiento: "MI ENTRENAMIENTO", especialidades: "ESPECIALIDADES", tickets: "TICKETS Y REPORTES", biblioteca: "BIBLIOTECA OPERATIVA", credenciales: "CONTRASEÑAS Y DISCORD", administracion: canManageUsers() ? "INTEGRANTES" : "CENTRO DE STAFF" };
     document.querySelectorAll(".member-nav-btn").forEach(function (button) { button.classList.toggle("active", button.dataset.view === view); });
     document.querySelectorAll(".member-view").forEach(function (panel) { panel.classList.toggle("active", panel.dataset.panel === view); });
     $("viewTitle").textContent = titles[view] || "PLATAFORMA";
@@ -1629,6 +1687,7 @@
       if (/password|credentials|invalid/i.test(result.error.message || "")) return setMessage("appMessage", "La contraseña actual no es correcta o la nueva no cumple los requisitos.", "error");
       return setMessage("appMessage", errorText(result.error), "error");
     }
+    await supabase.functions.invoke("admin-users", { body: { action: "invalidate_own_credential" } });
     $("selfPasswordForm").reset();
     setMessage("appMessage", "Contraseña actualizada correctamente. Úsala en tu próximo inicio de sesión.", "success");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1664,6 +1723,7 @@
     $("cancelMissionEdit").addEventListener("click", resetMissionForm);
     $("librarySearch").addEventListener("input", function (event) { state.libraryQuery = event.target.value; renderLibrary(); });
     $("adminUserSearch").addEventListener("input", function (event) { state.adminQuery = event.target.value; renderAdmin(); });
+    $("credentialSearch").addEventListener("input", function (event) { state.credentialQuery = event.target.value; renderCredentials(); });
     $("adminPurchaseSearch").addEventListener("input", function (event) { state.purchaseQuery = event.target.value; renderPurchaseHistory(); });
     document.addEventListener("toggle", function (event) {
       var opened = event.target;
@@ -1705,6 +1765,20 @@
       if (saveCommandRoleButton) saveCommandRole(saveCommandRoleButton.dataset.saveCommandRole);
       var resetPasswordButton = event.target.closest("[data-reset-password]");
       if (resetPasswordButton) resetMemberPassword(resetPasswordButton.dataset.resetPassword);
+      var generatePasswordButton = event.target.closest("[data-generate-password]");
+      if (generatePasswordButton) generateCredential(generatePasswordButton.dataset.generatePassword, generatePasswordButton.dataset.credentialName || "este usuario");
+      var revealCredentialButton = event.target.closest("[data-reveal-credential]");
+      if (revealCredentialButton) {
+        var secretInput = document.querySelector('[data-credential-value="' + revealCredentialButton.dataset.revealCredential + '"]');
+        if (secretInput) { secretInput.type = secretInput.type === "password" ? "text" : "password"; revealCredentialButton.textContent = secretInput.type === "password" ? "VER" : "OCULTAR"; }
+      }
+      var copyCredentialButton = event.target.closest("[data-copy-credential]");
+      if (copyCredentialButton) {
+        var copyInput = document.querySelector('[data-credential-value="' + copyCredentialButton.dataset.copyCredential + '"]');
+        if (copyInput) navigator.clipboard.writeText(copyInput.value).then(function () { setMessage("appMessage", "Contraseña temporal copiada.", "success"); });
+      }
+      var linkDiscordButton = event.target.closest("[data-link-discord]");
+      if (linkDiscordButton) linkDiscordAccount(linkDiscordButton.dataset.linkDiscord, false);
       var deleteUserButton = event.target.closest("[data-delete-user]");
       if (deleteUserButton) deleteMember(deleteUserButton.dataset.deleteUser, deleteUserButton.dataset.deleteName || "este usuario");
       var deleteDocumentButton = event.target.closest("[data-delete-document]");
